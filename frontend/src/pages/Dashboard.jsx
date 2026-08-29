@@ -72,7 +72,7 @@ function Dashboard() {
 
                     <div>
                         <div style={styles.brandName}>
-                            Adhikar AI
+                            Sankalp AI
                         </div>
 
                         <div style={styles.brandSub}>
@@ -353,7 +353,7 @@ function Dashboard() {
 
                             <p style={styles.welcomeText}>
                                 Submit a complaint and let
-                                Adhikar AI classify its
+                                Sankalp AI classify its
                                 category and priority.
                             </p>
 

@@ -613,7 +613,7 @@ function AdminDashboard() {
                                 styles.brandName
                             }
                         >
-                            Adhikar AI
+                            Sankalp AI
                         </div>
 
                         <div

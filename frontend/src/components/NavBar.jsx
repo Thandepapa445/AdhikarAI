@@ -54,7 +54,7 @@ function Navbar() {
 
             <div>
                 <h2 style={styles.logo}>
-                    Adhikar AI
+                    Sankalp AI
                 </h2>
 
                 <span style={styles.tagline}>

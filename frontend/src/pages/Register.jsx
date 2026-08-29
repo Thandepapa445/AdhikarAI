@@ -51,7 +51,7 @@ function Register() {
     return (
         <div style={styles.container}>
             <div style={styles.card}>
-                <h1>Adhikar AI</h1>
+                <h1>Sankalp AI</h1>
                 <p style={styles.subtitle}>
                     Create your citizen account
                 </p>

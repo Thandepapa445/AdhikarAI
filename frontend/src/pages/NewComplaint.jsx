@@ -550,7 +550,7 @@ function NewComplaint() {
                     <div>
 
                         <div style={styles.brandName}>
-                            Adhikar AI
+                            Sankalp AI
                         </div>
 
                         <div style={styles.brandSub}>
@@ -1370,7 +1370,7 @@ function NewComplaint() {
                                             styles.aiTitle
                                         }
                                     >
-                                        Adhikar AI
+                                        Sankalp AI
                                     </strong>
 
                                     <p
@@ -1452,7 +1452,7 @@ function NewComplaint() {
                                     styles.infoTitle
                                 }
                             >
-                                How Adhikar AI helps
+                                How Sankalp AI helps
                             </h3>
 
 
@@ -1520,7 +1520,7 @@ function NewComplaint() {
 
                                 <p>
                                     Allow location access and
-                                    Adhikar AI will automatically
+                                    Sankalp AI will automatically
                                     detect your position.
                                 </p>
 

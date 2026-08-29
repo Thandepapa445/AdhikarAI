@@ -84,7 +84,7 @@ function Login() {
             <div style={styles.card}>
 
                 <h1 style={styles.title}>
-                    Adhikar AI
+                    Sankalp AI
                 </h1>
 
                 <p style={styles.subtitle}>
