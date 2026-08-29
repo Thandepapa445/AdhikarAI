@@ -113,3 +113,8 @@ env/
 
 # Local Spring Boot secrets
 backend/src/main/resources/application.properties
+# AI test images
+ai-services/*-test.jpg
+ai-services/*-test.jpeg
+ai-services/*-test.png
+ai-services/*-test.webp
