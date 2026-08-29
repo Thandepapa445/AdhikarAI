@@ -1,0 +1,114 @@
+# =====================================================
+# FRONTEND - NODE / VITE
+# =====================================================
+
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# Environment files
+frontend/.env
+frontend/.env.local
+frontend/.env.development
+frontend/.env.production
+
+
+# =====================================================
+# BACKEND - GRADLE
+# =====================================================
+
+backend/.gradle/
+backend/build/
+
+# Gradle generated files
+.gradle/
+build/
+
+
+# =====================================================
+# JAVA / IDE
+# =====================================================
+
+*.class
+
+.idea/
+*.iml
+
+.vscode/
+
+# Eclipse
+.classpath
+.project
+.settings/
+
+
+# =====================================================
+# ENVIRONMENT / SECRETS
+# =====================================================
+
+.env
+.env.*
+!.env.example
+
+application-local.properties
+application-secret.properties
+
+
+# =====================================================
+# LOGS
+# =====================================================
+
+*.log
+logs/
+
+
+# =====================================================
+# OS FILES
+# =====================================================
+
+.DS_Store
+Thumbs.db
+
+
+# =====================================================
+# TEMPORARY FILES
+# =====================================================
+
+*.tmp
+*.temp
+*.swp
+
+
+# =====================================================
+# PYTHON AI MODEL - FUTURE
+# =====================================================
+
+__pycache__/
+*.py[cod]
+
+.venv/
+venv/
+env/
+
+# Model-generated files
+*.pt
+*.pth
+*.onnx
+*.h5
+*.keras
+
+# Jupyter
+.ipynb_checkpoints/
+
+
+# =====================================================
+# DATABASE / LOCAL DATA
+# =====================================================
+
+*.db
+*.sqlite
+*.sqlite3
+
+
+# Local Spring Boot secrets
+backend/src/main/resources/application.properties
