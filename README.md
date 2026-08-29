@@ -1,5 +1,6 @@
 # 🇮🇳 SANKALP AI: Jharkhand Societal Innovation & Collaboration Portal
-### Connecting Grassroots Challenges with Universities (HEIs) & Industry under NEP 2020
+### Smart India Hackathon (SIH PS 26043) • Aligned with National Education Policy (NEP 2020)
+### Connecting Grassroots Challenges with Universities (HEIs) & Industry Partners
 
 ---
 
@@ -13,8 +14,8 @@
 2. **Validated** — Reviewed and validated by State Nodal Innovation Officer.
 3. **Assigned to HEI** — Routed to university multidisciplinary team, specialized fablab, and faculty mentor.
 4. **Research & Design** — Field survey, technical schematics, and baseline data collection.
-5. **Prototyping** — Fabrication of hardware/software prototype in campus labs.
-6. **Testing & Validation** — Controlled lab testing, water/soil quality compliance, and safety certification.
+5. **Prototyping** — Fabrication of hardware/software prototype in campus labs with CSR seed grants.
+6. **Testing & Validation** — Controlled lab testing, water/soil quality compliance (BIS / FSSAI), and safety certification.
 7. **Community Field Pilot** — Live field installation and testing in the target Panchayat/village.
 8. **Deployed & Impact Verified** — Full community adoption with official Citizen & Panchayat verification sign-off.
 
@@ -22,23 +23,31 @@
 
 ## 🚀 Quick Start Guide
 
-### 1. Running the Frontend
+### 1. Running the Frontend (Port 5173)
 ```bash
-cd "jharkhand-societal-innovation-portal/frontend"
-npm run dev
+cd frontend
+npm install
+npm run dev -- --host
 ```
-Open your browser at `http://localhost:5173`.
+Open your browser or phone at `http://localhost:5173`.
 
-### 2. Running the Backend
+### 2. Running the Backend REST API (Port 8080)
 ```bash
-cd "jharkhand-societal-innovation-portal/backend"
+cd backend
 ./gradlew bootRun
 ```
 The REST API will run on `http://localhost:8080/api`.
 
+### 3. Running the AI YOLOv8 Vision API (Port 5000)
+```bash
+cd ai-engine
+python app.py
+```
+
 ---
 
 ## 🧩 Key Modules
-- **Citizen & Panchayat Dashboard (`/dashboard`)**: KPI impact counters, 8-stage progress mini-stepper, interactive Jharkhand GIS map explorer, and deployed technologies showcase.
-- **Smart Submission Portal (`/challenges/new`)**: 24-District cascade, interactive Leaflet GPS pin drop, 9 thematic domains, live AI categorization preview, and duplicate detection alerts.
-- **Challenge Detail & Pilot Verification Modal**: Inspect assigned university faculty, student innovators, CSR funding, and submit citizen pilot sign-off feedback.
+- **🌾 Citizen & Panchayat Dashboard (`/dashboard`)**: KPI impact counters, 8-stage progress mini-stepper, interactive Jharkhand GIS map explorer, deployed technologies showcase, and **Citizen Pilot Sign-off Action**.
+- **🎓 University (HEI) & Faculty Portal (`/university`)**: Workspaces for BIT Mesra, IIT ISM, NIT Jamshedpur, BAU Ranchi, multidisciplinary student team builder, FabLab management, and lab test uploads.
+- **🛡️ State Nodal Admin Command Center (`/admin`)**: 24-District volume triage queue, AI Deduplication & Clustering, Proximity University Allocation, CSR Seed Grants (₹15L–₹25L) tracking, and SLA audit logs.
+- **📱 Mobile App & PWA**: Mobile bottom navigation bar, 1-tap hardware GPS auto-locator, direct camera capture with YOLOv8 vision hazard verification, and vernacular Hindi voice notes.
