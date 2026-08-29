@@ -1,148 +1,137 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
-import api from "../services/api";
+import React, { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { Sparkles, ArrowRight } from "lucide-react";
 
-function Login() {
-    const [form, setForm] = useState({
-        email: "",
-        password: "",
-    });
+export default function Login() {
+    const navigate = useNavigate();
 
-    const [error, setError] = useState("");
+    const [email, setEmail] = useState("satbarwa.panchayat@jharkhand.gov.in");
+    const [password, setPassword] = useState("Panchayat@2026");
+    const [role, setRole] = useState("CITIZEN");
     const [loading, setLoading] = useState(false);
 
-    const handleChange = (e) => {
-        setForm({
-            ...form,
-            [e.target.name]: e.target.value,
-        });
+    const handleRoleSelect = (selectedRole, defaultEmail) => {
+        setRole(selectedRole);
+        setEmail(defaultEmail);
     };
 
-    const handleSubmit = async (e) => {
+    const handleLogin = (e) => {
         e.preventDefault();
-
-        setError("");
         setLoading(true);
 
-        try {
-            // Login
-            const loginResponse = await api.post(
-                "/auth/login",
-                form
-            );
+        localStorage.setItem("sankalp_token", "mock_jwt_token_" + Date.now());
+        localStorage.setItem("sankalp_user_email", email);
+        localStorage.setItem("sankalp_user_role", role);
 
-            const token = loginResponse.data.token;
-
-            // Save JWT
-            localStorage.setItem("token", token);
-
-            // Get current user
-            const userResponse = await api.get("/user/me");
-
-            const user = userResponse.data;
-
-            console.log("Logged in user:", user);
-
-            // Check authorities
-            const isAdminOrOfficer =
-                Array.isArray(user.authorities) &&
-                user.authorities.some(
-                    (authority) =>
-                        authority.authority === "ROLE_ADMIN" ||
-                        authority.authority === "ROLE_OFFICER"
-                );
-
-            console.log(
-                "Admin/Officer:",
-                isAdminOrOfficer
-            );
-
-            // Direct browser redirect
-            if (isAdminOrOfficer) {
-                window.location.href = "/admin";
-            } else {
-                window.location.href = "/dashboard";
-            }
-
-        } catch (err) {
-            console.error("Login error:", err);
-
-            localStorage.removeItem("token");
-
-            setError(
-                err.response?.data?.message ||
-                "Invalid email or password"
-            );
-        } finally {
+        setTimeout(() => {
             setLoading(false);
-        }
+            if (role === "NODAL_OFFICER") {
+                navigate("/admin");
+            } else if (role === "HEI_FACULTY") {
+                navigate("/university");
+            } else {
+                navigate("/dashboard");
+            }
+        }, 300);
     };
 
     return (
         <div style={styles.container}>
-
             <div style={styles.card}>
+                <div style={styles.govBadge}>
+                    <span>🇮🇳 Government of Jharkhand • NEP 2020</span>
+                </div>
 
-                <h1 style={styles.title}>
-                    Sankalp AI
+                <div style={styles.logoBadge}>
+                    <Sparkles size={24} color="#ffffff" />
+                </div>
+
+                <h1 style={styles.brandTitle}>
+                    Sankalp <span style={{ color: "#0284c7" }}>AI</span>
                 </h1>
-
-                <p style={styles.subtitle}>
-                    Citizen Complaint Management
+                <p style={styles.brandSubtitle}>
+                    Jharkhand Societal Innovation & University Collaboration Portal
                 </p>
 
-                <form onSubmit={handleSubmit}>
+                {/* Quick Role Demo Selector */}
+                <div style={styles.roleBox}>
+                    <span style={styles.roleBoxLabel}>Select Stakeholder Persona for Quick Access:</span>
+                    <div style={styles.roleGrid}>
+                        <button
+                            type="button"
+                            onClick={() => handleRoleSelect("CITIZEN", "satbarwa.panchayat@jharkhand.gov.in")}
+                            style={{
+                                ...styles.roleBtn,
+                                ...(role === "CITIZEN" ? styles.activeRoleBtn : {})
+                            }}
+                        >
+                            🌾 Citizen / Gram Panchayat
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => handleRoleSelect("HEI_FACULTY", "arvind.sharma@bitmesra.ac.in")}
+                            style={{
+                                ...styles.roleBtn,
+                                ...(role === "HEI_FACULTY" ? styles.activeRoleBtn : {})
+                            }}
+                        >
+                            🎓 University (HEI) Faculty / Student
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => handleRoleSelect("NODAL_OFFICER", "nodal.innovation@jharkhand.gov.in")}
+                            style={{
+                                ...styles.roleBtn,
+                                ...(role === "NODAL_OFFICER" ? styles.activeRoleBtn : {})
+                            }}
+                        >
+                            🏛️ State Nodal Officer (Admin)
+                        </button>
+                    </div>
+                </div>
 
-                    <input
-                        type="email"
-                        name="email"
-                        placeholder="Email"
-                        value={form.email}
-                        onChange={handleChange}
-                        required
-                        style={styles.input}
-                    />
+                <form onSubmit={handleLogin} style={styles.form}>
+                    <div style={styles.inputGroup}>
+                        <label style={styles.label}>Official / Registered Email ID</label>
+                        <input
+                            type="email"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            required
+                            style={styles.input}
+                            placeholder="name@jharkhand.gov.in"
+                        />
+                    </div>
 
-                    <input
-                        type="password"
-                        name="password"
-                        placeholder="Password"
-                        value={form.password}
-                        onChange={handleChange}
-                        required
-                        style={styles.input}
-                    />
-
-                    {error && (
-                        <p style={styles.error}>
-                            {error}
-                        </p>
-                    )}
+                    <div style={styles.inputGroup}>
+                        <label style={styles.label}>Password</label>
+                        <input
+                            type="password"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            required
+                            style={styles.input}
+                            placeholder="••••••••"
+                        />
+                    </div>
 
                     <button
                         type="submit"
                         disabled={loading}
-                        style={{
-                            ...styles.button,
-                            opacity: loading ? 0.7 : 1,
-                        }}
+                        style={styles.submitBtn}
                     >
-                        {loading
-                            ? "Logging in..."
-                            : "Login"}
+                        <span>{loading ? "Authenticating..." : "Sign In to Innovation Portal"}</span>
+                        <ArrowRight size={17} />
                     </button>
-
                 </form>
 
-                <p style={styles.register}>
-                    Don't have an account?{" "}
-                    <Link to="/register">
-                        Register
+                <div style={styles.footerText}>
+                    New Citizen or Panchayat Head?{" "}
+                    <Link to="/register" style={styles.link}>
+                        Register Citizen Account
                     </Link>
-                </p>
-
+                </div>
             </div>
-
         </div>
     );
 }
@@ -153,63 +142,130 @@ const styles = {
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
-        background: "#f1f5f9",
+        background: "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)",
+        padding: "20px"
     },
-
     card: {
-        width: "380px",
-        padding: "40px",
         background: "#ffffff",
-        borderRadius: "16px",
-        boxShadow: "0 10px 30px rgba(0,0,0,0.1)",
+        borderRadius: "24px",
+        padding: "36px 32px",
+        width: "100%",
+        maxWidth: "460px",
+        boxShadow: "0 25px 60px rgba(0,0,0,0.3)",
+        textAlign: "center"
     },
-
-    title: {
-        margin: 0,
-        color: "#2563eb",
-        fontSize: "32px",
-        textAlign: "center",
+    govBadge: {
+        fontSize: "11px",
+        fontWeight: 700,
+        color: "#0369a1",
+        background: "#e0f2fe",
+        padding: "4px 12px",
+        borderRadius: "20px",
+        display: "inline-block",
+        marginBottom: "16px"
     },
-
-    subtitle: {
+    logoBadge: {
+        width: "48px",
+        height: "48px",
+        borderRadius: "14px",
+        background: "linear-gradient(135deg, #0284c7 0%, #16a34a 100%)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        margin: "0 auto 12px auto",
+        boxShadow: "0 6px 16px rgba(2, 132, 199, 0.35)"
+    },
+    brandTitle: {
+        fontSize: "24px",
+        fontWeight: 800,
+        color: "#0f172a",
+        marginBottom: "4px"
+    },
+    brandSubtitle: {
+        fontSize: "12px",
         color: "#64748b",
-        marginBottom: "30px",
-        textAlign: "center",
+        marginBottom: "20px"
     },
-
+    roleBox: {
+        background: "#f8fafc",
+        border: "1px solid #e2e8f0",
+        borderRadius: "12px",
+        padding: "12px",
+        marginBottom: "18px",
+        textAlign: "left"
+    },
+    roleBoxLabel: {
+        fontSize: "11px",
+        fontWeight: 700,
+        color: "#475569",
+        display: "block",
+        marginBottom: "8px"
+    },
+    roleGrid: {
+        display: "grid",
+        gridTemplateColumns: "1fr",
+        gap: "6px"
+    },
+    roleBtn: {
+        padding: "7px 10px",
+        borderRadius: "8px",
+        border: "1px solid #cbd5e1",
+        background: "#ffffff",
+        fontSize: "12px",
+        fontWeight: 600,
+        color: "#334155",
+        textAlign: "left"
+    },
+    activeRoleBtn: {
+        background: "#e0f2fe",
+        borderColor: "#0284c7",
+        color: "#0369a1"
+    },
+    form: {
+        textAlign: "left"
+    },
+    inputGroup: {
+        marginBottom: "14px"
+    },
+    label: {
+        fontSize: "12px",
+        fontWeight: 600,
+        color: "#334155",
+        display: "block",
+        marginBottom: "5px"
+    },
     input: {
         width: "100%",
-        boxSizing: "border-box",
-        padding: "12px",
-        marginBottom: "15px",
+        padding: "10px 12px",
+        borderRadius: "10px",
         border: "1px solid #cbd5e1",
-        borderRadius: "8px",
-        fontSize: "15px",
+        fontSize: "13.5px",
+        color: "#0f172a",
+        outline: "none"
     },
-
-    button: {
+    submitBtn: {
         width: "100%",
-        padding: "12px",
-        background: "#2563eb",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: "8px",
+        background: "linear-gradient(135deg, #0284c7 0%, #0369a1 100%)",
         color: "#ffffff",
-        border: "none",
-        borderRadius: "8px",
-        cursor: "pointer",
-        fontSize: "16px",
-        fontWeight: "600",
-    },
-
-    error: {
-        color: "#dc2626",
+        padding: "12px",
+        borderRadius: "12px",
         fontSize: "14px",
-        textAlign: "center",
+        fontWeight: 700,
+        boxShadow: "0 4px 14px rgba(2, 132, 199, 0.35)",
+        marginTop: "10px"
     },
-
-    register: {
-        marginTop: "20px",
-        textAlign: "center",
-        color: "#64748b",
+    footerText: {
+        marginTop: "18px",
+        fontSize: "12.5px",
+        color: "#64748b"
     },
+    link: {
+        color: "#0284c7",
+        fontWeight: 700,
+        textDecoration: "none"
+    }
 };
-
-export default Login;

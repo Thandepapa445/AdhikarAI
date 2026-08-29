@@ -118,3 +118,7 @@ ai-services/*-test.jpg
 ai-services/*-test.jpeg
 ai-services/*-test.png
 ai-services/*-test.webp
+# Node modules
+**/node_modules/
+# Expo local files
+mobile-app/.expo/

@@ -67,6 +67,7 @@ if __name__ == "__main__":
     print("Sankalp AI Model Inference Module")
 
     run_detection(
-        "water-test.jpeg",
+        "pothole-test.webp",
         "models/pothole_garbage_water_yolov8.pt"
     )
+    

@@ -1,78 +1,36 @@
-import {
-    BrowserRouter,
-    Routes,
-    Route,
-    Navigate,
-} from "react-router-dom";
-
+import React from "react";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
-import NewComplaint from "./pages/NewComplaint";
+import NewChallenge from "./pages/NewChallenge";
 import AdminDashboard from "./pages/AdminDashboard";
+import UniversityDashboard from "./pages/UniversityDashboard";
 
-function App() {
+export default function App() {
     return (
         <BrowserRouter>
-
             <Routes>
+                {/* Citizen & Gram Panchayat Dashboard */}
+                <Route path="/dashboard" element={<Dashboard />} />
 
-                {/* Login */}
-                <Route
-                    path="/login"
-                    element={<Login />}
-                />
+                {/* Submit New Societal Challenge */}
+                <Route path="/challenges/new" element={<NewChallenge />} />
 
-                {/* Register */}
-                <Route
-                    path="/register"
-                    element={<Register />}
-                />
+                {/* State Nodal Officer & Admin Command Center */}
+                <Route path="/admin" element={<AdminDashboard />} />
 
-                {/* Citizen Dashboard */}
-                <Route
-                    path="/dashboard"
-                    element={<Dashboard />}
-                />
+                {/* Higher Education Institutions (HEIs) & Faculty Portal */}
+                <Route path="/university" element={<UniversityDashboard />} />
 
-                {/* New Complaint */}
-                <Route
-                    path="/complaints/new"
-                    element={<NewComplaint />}
-                />
+                {/* Authentication */}
+                <Route path="/login" element={<Login />} />
+                <Route path="/register" element={<Register />} />
 
-                {/* Admin / Officer Dashboard */}
-                <Route
-                    path="/admin"
-                    element={<AdminDashboard />}
-                />
-
-                {/* Root */}
-                <Route
-                    path="/"
-                    element={
-                        <Navigate
-                            to="/login"
-                            replace
-                        />
-                    }
-                />
-
-                {/* Unknown routes */}
-                <Route
-                    path="*"
-                    element={
-                        <Navigate
-                            to="/login"
-                            replace
-                        />
-                    }
-                />
-
+                {/* Default redirect to Citizen Dashboard */}
+                <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Routes>
-
         </BrowserRouter>
     );
 }
-
-export default App;

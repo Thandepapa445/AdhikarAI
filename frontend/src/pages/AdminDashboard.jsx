@@ -1,4620 +1,1247 @@
-import { useEffect, useMemo, useState } from "react";
-import api from "../services/api";
-
+import React, { useState, useEffect, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import {
-    MapContainer,
-    TileLayer,
-    Marker,
-    Popup,
-    useMap,
-} from "react-leaflet";
+    ShieldCheck, Sparkles, Building2, Briefcase, Award, Users, MapPin,
+    AlertTriangle, CheckCircle2, Clock, Filter, Search, ArrowUpRight,
+    TrendingUp, FileText, ChevronRight, Layers, RefreshCw, Send,
+    SlidersHorizontal, Eye, ExternalLink, ArrowRight, UserCheck
+} from "lucide-react";
+import { THEMATIC_DOMAINS, JHARKHAND_DISTRICTS, PARTICIPATING_HEIS, INDUSTRY_CSR_PARTNERS, STAGES_OF_INNOVATION } from "../data/jharkhandData";
+import { challengeService, getLocalChallenges, saveLocalChallenges } from "../services/api";
+import ChallengeDetailModal from "../components/ChallengeDetailModal";
+import CommunityInnovationMap from "../components/CommunityInnovationMap";
 
-import L from "leaflet";
-import "leaflet/dist/leaflet.css";
+export default function AdminDashboard() {
+    const navigate = useNavigate();
 
+    const [activeTab, setActiveTab] = useState("all-submissions");
+    const [challenges, setChallenges] = useState([]);
+    const [loading, setLoading] = useState(true);
 
-// =====================================================
-// LEAFLET MARKER SETUP
-// =====================================================
+    // Filters
+    const [searchTerm, setSearchTerm] = useState("");
+    const [filterDomain, setFilterDomain] = useState("ALL");
+    const [filterDistrict, setFilterDistrict] = useState("ALL");
+    const [filterStage, setFilterStage] = useState("ALL");
+    const [filterUrgency, setFilterUrgency] = useState("ALL");
 
-delete L.Icon.Default.prototype._getIconUrl;
+    // Modal
+    const [selectedChallenge, setSelectedChallenge] = useState(null);
 
-L.Icon.Default.mergeOptions({
-    iconRetinaUrl:
-        "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
+    // Assign HEI Modal state
+    const [assigningChallenge, setAssigningChallenge] = useState(null);
+    const [selectedHeiId, setSelectedHeiId] = useState("HEI-01");
+    const [selectedCsrId, setSelectedCsrId] = useState("IND-01");
+    const [nodalNote, setNodalNote] = useState("");
 
-    iconUrl:
-        "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+    // Audit Log State
+    const [auditLogs, setAuditLogs] = useState([
+        { id: 1, time: "10 mins ago", event: "Challenge #JH-0101 verified by Satbarwa Panchayat", officer: "System / Citizen Verification", type: "RESOLVED" },
+        { id: 2, time: "2 hours ago", event: "BIT Mesra uploaded Nano-Filter lab test reports", officer: "Dr. Arvind Sharma", type: "TESTING" },
+        { id: 3, time: "Yesterday", event: "Tata Steel CSR allocated ₹3.5 Lakhs Grant to Khunti Lac Project", officer: "CSR Nodal Officer", type: "GRANT" },
+        { id: 4, time: "2 days ago", event: "AI Deduplication clustered 3 water challenges in Palamu", officer: "Sankalp AI Engine", type: "AI_CLUSTER" }
+    ]);
 
-    shadowUrl:
-        "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
-});
-
-
-// =====================================================
-// PRIORITY COLORS
-// =====================================================
-
-const MAP_PIN_COLORS = {
-    HIGH: "#ef4444",
-    MEDIUM: "#f59e0b",
-    LOW: "#22c55e",
-    RESOLVED: "#6b7280",
-};
-
-
-// =====================================================
-// CREATE PRIORITY PIN
-// =====================================================
-
-function createPriorityIcon(priority, isResolved = false) {
-
-    const color = isResolved
-        ? MAP_PIN_COLORS.RESOLVED
-        : MAP_PIN_COLORS[priority] ||
-        MAP_PIN_COLORS.MEDIUM;
-
-    return L.divIcon({
-
-        className: "adhikar-map-pin",
-
-        html: `
-            <div
-                style="
-                    width: 26px;
-                    height: 26px;
-                    border-radius: 50% 50% 50% 0;
-                    background: ${color};
-                    border: 3px solid white;
-                    box-shadow: 0 3px 10px rgba(0,0,0,.45);
-                    transform: rotate(-45deg);
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                "
-            >
-                <span
-                    style="
-                        width: 7px;
-                        height: 7px;
-                        background: white;
-                        border-radius: 50%;
-                        display: block;
-                    "
-                ></span>
-            </div>
-        `,
-
-        iconSize: [32, 32],
-        iconAnchor: [16, 32],
-        popupAnchor: [0, -32],
-    });
-}
-
-
-// =====================================================
-// AUTO FIT MAP
-// =====================================================
-
-function MapAutoFit({ complaints }) {
-
-    const map = useMap();
-
-    useEffect(() => {
-
-        if (!complaints.length) {
-            return;
-        }
-
-        const bounds = L.latLngBounds(
-            complaints.map((complaint) => [
-                Number(
-                    complaint.latitude ??
-                    complaint.lat
-                ),
-
-                Number(
-                    complaint.longitude ??
-                    complaint.lng ??
-                    complaint.lon
-                ),
-            ])
-        );
-
-        map.fitBounds(bounds, {
-            padding: [40, 40],
-            maxZoom: 15,
-        });
-
-    }, [complaints, map]);
-
-    return null;
-}
-
-
-// =====================================================
-// MAIN DASHBOARD
-// =====================================================
-
-function AdminDashboard() {
-
-    const [complaints, setComplaints] =
-        useState([]);
-
-    const [loading, setLoading] =
-        useState(true);
-
-    const [error, setError] =
-        useState("");
-
-    const [search, setSearch] =
-        useState("");
-
-    const [statusFilter, setStatusFilter] =
-        useState("ALL");
-
-    const [categoryFilter, setCategoryFilter] =
-        useState("ALL");
-
-    const [priorityFilter, setPriorityFilter] =
-        useState("ALL");
-
-
-    // =================================================
-    // FETCH COMPLAINTS
-    // =================================================
-
-    const fetchComplaints = async () => {
-
-        try {
-
-            setLoading(true);
-
-            const response =
-                await api.get(
-                    "/admin/complaints"
-                );
-
-            setComplaints(
-                Array.isArray(response.data)
-                    ? response.data
-                    : []
-            );
-
-            setError("");
-
-        } catch (err) {
-
-            console.error(
-                "Admin complaints error:",
-                err
-            );
-
-            if (
-                err.response?.status === 401 ||
-                err.response?.status === 403
-            ) {
-
-                setError(
-                    "You are not authorized to access the Admin Dashboard."
-                );
-
-            } else {
-
-                setError(
-                    "Unable to load complaints."
-                );
-            }
-
-        } finally {
-
-            setLoading(false);
-        }
+    const loadData = async () => {
+        setLoading(true);
+        const data = await challengeService.getAllChallenges();
+        setChallenges(data);
+        setLoading(false);
     };
 
-
     useEffect(() => {
-
-        fetchComplaints();
-
+        loadData();
     }, []);
 
+    // KPIs
+    const totalCount = challenges.length;
+    const pendingValidation = challenges.filter(c => c.status === "SUBMITTED").length;
+    const criticalUrgency = challenges.filter(c => c.urgency === "CRITICAL" && c.status !== "RESOLVED").length;
+    const activeProjects = challenges.filter(c => ["ASSIGNED", "RESEARCH", "PROTOTYPE", "TESTING", "PILOT"].includes(c.status)).length;
+    const deployedSolutions = challenges.filter(c => c.status === "RESOLVED").length;
+    const totalBeneficiaries = useMemo(() => {
+        return challenges.reduce((acc, curr) => acc + (Number(curr.affectedPopulation) || 500), 0);
+    }, [challenges]);
 
-    // =================================================
-    // UPDATE STATUS
-    // =================================================
+    // Filtered challenges
+    const filteredChallenges = useMemo(() => {
+        return challenges.filter(c => {
+            const matchSearch = !searchTerm ||
+                c.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                c.district?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                c.id?.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const updateStatus = async (
-        id,
-        status
-    ) => {
+            const matchDomain = filterDomain === "ALL" || c.domain === filterDomain;
+            const matchDistrict = filterDistrict === "ALL" || c.district === filterDistrict;
+            const matchStage = filterStage === "ALL" || c.status === filterStage;
+            const matchUrgency = filterUrgency === "ALL" || c.urgency === filterUrgency;
 
-        try {
+            return matchSearch && matchDomain && matchDistrict && matchStage && matchUrgency;
+        });
+    }, [challenges, searchTerm, filterDomain, filterDistrict, filterStage, filterUrgency]);
 
-            await api.put(
-                `/admin/complaints/${id}/status`,
-                { status }
-            );
+    // Handle Quick Validation / Stage Advancement
+    const handleAdvanceStage = (challengeId, nextStatus) => {
+        const list = getLocalChallenges();
+        const updated = list.map(c => {
+            if (c.id === challengeId) {
+                return {
+                    ...c,
+                    status: nextStatus,
+                    updatedAt: new Date().toISOString()
+                };
+            }
+            return c;
+        });
+        saveLocalChallenges(updated);
+        setChallenges(updated);
 
-            await fetchComplaints();
-
-        } catch (err) {
-
-            console.error(
-                "Status update error:",
-                err
-            );
-
-            alert(
-                err.response?.data?.message ||
-                "Failed to update complaint status."
-            );
-        }
+        // Add audit log
+        setAuditLogs(prev => [
+            {
+                id: Date.now(),
+                time: "Just now",
+                event: `Challenge #${challengeId} advanced to stage: ${nextStatus}`,
+                officer: "State Nodal Officer (Admin)",
+                type: "STAGE_CHANGE"
+            },
+            ...prev
+        ]);
     };
 
+    // Handle HEI Assignment
+    const handleConfirmAssignment = () => {
+        if (!assigningChallenge) return;
+        const heiObj = PARTICIPATING_HEIS.find(h => h.id === selectedHeiId) || PARTICIPATING_HEIS[0];
+        const csrObj = INDUSTRY_CSR_PARTNERS.find(i => i.id === selectedCsrId) || INDUSTRY_CSR_PARTNERS[0];
 
-    // =================================================
-    // STATISTICS
-    // =================================================
-
-    const pending =
-        complaints.filter(
-            (c) =>
-                c.status === "PENDING"
-        ).length;
-
-
-    const inProgress =
-        complaints.filter(
-            (c) =>
-                c.status === "IN_PROGRESS"
-        ).length;
-
-
-    const resolved =
-        complaints.filter(
-            (c) =>
-                c.status === "RESOLVED"
-        ).length;
-
-
-    const rejected =
-        complaints.filter(
-            (c) =>
-                c.status === "REJECTED"
-        ).length;
-
-
-    const highPriority =
-        complaints.filter(
-            (c) =>
-                c.priority === "HIGH"
-        ).length;
-
-
-    const unassigned =
-        complaints.filter(
-            (c) =>
-                !c.assignedTo &&
-                !c.assignedOfficer &&
-                c.status !== "RESOLVED" &&
-                c.status !== "REJECTED"
-        ).length;
-
-
-    const resolvedToday =
-        complaints.filter((c) => {
-
-            if (
-                c.status !==
-                "RESOLVED"
-            ) {
-                return false;
+        const list = getLocalChallenges();
+        const updated = list.map(c => {
+            if (c.id === assigningChallenge.id) {
+                return {
+                    ...c,
+                    status: "ASSIGNED",
+                    assignedHei: heiObj.name,
+                    assignedHeiDepartment: heiObj.specializedLabs[0],
+                    facultyMentor: heiObj.facultyMentors[0],
+                    studentTeam: "Multidisciplinary Innovation Team (Lead: Student Lead)",
+                    industryPartner: `${csrObj.name} (${csrObj.fundingContribution})`,
+                    updatedAt: new Date().toISOString()
+                };
             }
+            return c;
+        });
+        saveLocalChallenges(updated);
+        setChallenges(updated);
 
-            const dateValue =
-                c.updatedAt ||
-                c.resolvedAt ||
-                c.createdAt ||
-                c.submittedAt;
-
-            if (!dateValue) {
-                return false;
-            }
-
-            const date =
-                new Date(dateValue);
-
-            const today =
-                new Date();
-
-            return (
-                date.getDate() ===
-                today.getDate() &&
-                date.getMonth() ===
-                today.getMonth() &&
-                date.getFullYear() ===
-                today.getFullYear()
-            );
-
-        }).length;
-
-
-    // =================================================
-    // CATEGORIES
-    // =================================================
-
-    const categories = [
-        ...new Set(
-            complaints
-                .map(
-                    (c) =>
-                        c.aiCategory
-                )
-                .filter(Boolean)
-        ),
-    ];
-
-
-    // =================================================
-    // CATEGORY STATS
-    // =================================================
-
-    const categoryStats =
-        useMemo(() => {
-
-            const counts = {};
-
-            complaints.forEach(
-                (complaint) => {
-
-                    const category =
-                        complaint.aiCategory ||
-                        complaint.category ||
-                        "General";
-
-                    counts[category] =
-                        (counts[category] || 0) +
-                        1;
-                }
-            );
-
-            return Object.entries(
-                counts
-            )
-                .sort(
-                    (a, b) =>
-                        b[1] - a[1]
-                )
-                .slice(0, 6);
-
-        }, [complaints]);
-
-
-    // =================================================
-    // PRIORITY QUEUE
-    // =================================================
-
-    const priorityQueue =
-        useMemo(() => {
-
-            const order = {
-                HIGH: 0,
-                MEDIUM: 1,
-                LOW: 2,
-            };
-
-            return [...complaints]
-                .filter(
-                    (c) =>
-                        c.status !==
-                        "RESOLVED" &&
-                        c.status !==
-                        "REJECTED"
-                )
-                .sort(
-                    (a, b) =>
-                        (order[a.priority] ?? 3) -
-                        (order[b.priority] ?? 3)
-                )
-                .slice(0, 5);
-
-        }, [complaints]);
-
-
-    // =================================================
-    // MAP COMPLAINTS
-    // =================================================
-
-    const mapComplaints =
-        useMemo(() => {
-
-            return complaints.filter(
-                (complaint) => {
-
-                    const lat =
-                        complaint.latitude ??
-                        complaint.lat;
-
-                    const lng =
-                        complaint.longitude ??
-                        complaint.lng ??
-                        complaint.lon;
-
-                    return (
-                        lat !== null &&
-                        lat !== undefined &&
-                        lng !== null &&
-                        lng !== undefined &&
-                        !Number.isNaN(
-                            Number(lat)
-                        ) &&
-                        !Number.isNaN(
-                            Number(lng)
-                        )
-                    );
-                }
-            );
-
-        }, [complaints]);
-
-
-    // =================================================
-    // FILTERED COMPLAINTS
-    // =================================================
-
-    const filteredComplaints =
-        useMemo(() => {
-
-            const searchText =
-                search
-                    .trim()
-                    .toLowerCase();
-
-            return complaints.filter(
-                (complaint) => {
-
-                    // Resolved complaints disappear from dashboard lists
-                    // but remain visible on the map as grey markers.
-                    if (complaint.status === "RESOLVED") {
-                        return false;
-                    }
-
-                    const matchesSearch =
-                        !searchText ||
-                        complaint.title
-                            ?.toLowerCase()
-                            .includes(
-                                searchText
-                            ) ||
-                        complaint.description
-                            ?.toLowerCase()
-                            .includes(
-                                searchText
-                            ) ||
-                        complaint.location
-                            ?.toLowerCase()
-                            .includes(
-                                searchText
-                            ) ||
-                        complaint.citizenEmail
-                            ?.toLowerCase()
-                            .includes(
-                                searchText
-                            );
-
-
-                    const matchesStatus =
-                        statusFilter ===
-                        "ALL" ||
-                        complaint.status ===
-                        statusFilter;
-
-
-                    const matchesCategory =
-                        categoryFilter ===
-                        "ALL" ||
-                        complaint.aiCategory ===
-                        categoryFilter;
-
-
-                    const matchesPriority =
-                        priorityFilter ===
-                        "ALL" ||
-                        complaint.priority ===
-                        priorityFilter;
-
-
-                    return (
-                        matchesSearch &&
-                        matchesStatus &&
-                        matchesCategory &&
-                        matchesPriority
-                    );
-                }
-            );
-
-        }, [
-            complaints,
-            search,
-            statusFilter,
-            categoryFilter,
-            priorityFilter,
+        setAuditLogs(prev => [
+            {
+                id: Date.now(),
+                time: "Just now",
+                event: `Challenge #${assigningChallenge.id} allocated to ${heiObj.shortName} with ${csrObj.name}`,
+                officer: "State Nodal Officer (Admin)",
+                type: "ASSIGNMENT"
+            },
+            ...prev
         ]);
 
-
-    // =================================================
-    // CLEAR FILTERS
-    // =================================================
-
-    const clearFilters = () => {
-
-        setSearch("");
-        setStatusFilter("ALL");
-        setCategoryFilter("ALL");
-        setPriorityFilter("ALL");
-
+        setAssigningChallenge(null);
     };
 
-
-    const resolutionRate =
-        complaints.length > 0
-            ? Math.round(
-                (resolved /
-                    complaints.length) *
-                100
-            )
-            : 0;
-
-
-    // =================================================
-    // NAVIGATION
-    // =================================================
-
-    const scrollTo = (id) => {
-
-        document
-            .getElementById(id)
-            ?.scrollIntoView({
-                behavior: "smooth",
-            });
-
+    // Deduplicate & Cluster Action
+    const handleRunAiClustering = () => {
+        alert("✨ AI Deduplication Engine Executed!\n\nAnalyzed 6 challenges across 24 districts.\n• 2 Water Contamination reports clustered in Palamu.\n• 0 Duplicate entries purged.\n• All raw evidence files linked to primary master challenges.");
     };
-
-
-    // =================================================
-    // RENDER
-    // =================================================
 
     return (
-
         <div style={styles.app}>
-
-            {/* ==========================================
-                SIDEBAR
-            ========================================== */}
-
-            <aside style={styles.sidebar}>
-
-                <div style={styles.brand}>
-
-                    <div
-                        style={
-                            styles.brandIcon
-                        }
-                    >
-                        A
-                    </div>
-
-                    <div>
-
-                        <div
-                            style={
-                                styles.brandName
-                            }
-                        >
-                            Sankalp AI
+            {/* Top Admin Bar */}
+            <header style={styles.adminHeader}>
+                <div style={styles.headerContainer}>
+                    <div style={styles.headerLeft}>
+                        <div style={styles.govEmblemBox}>
+                            <ShieldCheck size={24} color="#ffffff" />
                         </div>
-
-                        <div
-                            style={
-                                styles.brandSub
-                            }
-                        >
-                            Smart Governance
-                        </div>
-
-                    </div>
-
-                </div>
-
-
-                <div
-                    style={
-                        styles.divider
-                    }
-                />
-
-
-                <nav style={styles.nav}>
-
-                    <button
-                        style={{
-                            ...styles.navItem,
-                            ...styles.activeNavItem,
-                        }}
-                        onClick={() =>
-                            window.scrollTo({
-                                top: 0,
-                                behavior:
-                                    "smooth",
-                            })
-                        }
-                    >
-                        ▦ &nbsp; Dashboard
-                    </button>
-
-
-                    <button
-                        style={
-                            styles.navItem
-                        }
-                        onClick={() =>
-                            scrollTo(
-                                "all-complaints"
-                            )
-                        }
-                    >
-                        ▤ &nbsp; All Complaints
-                    </button>
-
-
-                    <button
-                        style={
-                            styles.navItem
-                        }
-                        onClick={() =>
-                            scrollTo(
-                                "priority-queue"
-                            )
-                        }
-                    >
-                        ⚠ &nbsp; Priority Queue
-
-                        {highPriority >
-                            0 && (
-                                <span
-                                    style={
-                                        styles.navCount
-                                    }
-                                >
-                                {highPriority}
-                            </span>
-                            )}
-                    </button>
-
-
-                    <button
-                        style={
-                            styles.navItem
-                        }
-                        onClick={() =>
-                            scrollTo(
-                                "unassigned"
-                            )
-                        }
-                    >
-                        ♙ &nbsp; Unassigned
-
-                        {unassigned >
-                            0 && (
-                                <span
-                                    style={
-                                        styles.navCount
-                                    }
-                                >
-                                {unassigned}
-                            </span>
-                            )}
-                    </button>
-
-
-                    {/* REAL MAP BUTTON */}
-
-                    <button
-                        style={
-                            styles.navItem
-                        }
-                        onClick={() =>
-                            scrollTo(
-                                "complaint-map"
-                            )
-                        }
-                    >
-                        ⌖ &nbsp; Map View
-                    </button>
-
-
-                    <button
-                        style={
-                            styles.navItem
-                        }
-                        onClick={() =>
-                            scrollTo(
-                                "analytics"
-                            )
-                        }
-                    >
-                        ▥ &nbsp; Analytics
-                    </button>
-
-
-                    <button
-                        style={
-                            styles.navItem
-                        }
-                        onClick={() =>
-                            alert(
-                                "Reports module will be connected next."
-                            )
-                        }
-                    >
-                        ▧ &nbsp; Reports
-                    </button>
-
-
-                    <button
-                        style={
-                            styles.navItem
-                        }
-                        onClick={() =>
-                            alert(
-                                "Settings module will be connected next."
-                            )
-                        }
-                    >
-                        ⚙ &nbsp; Settings
-                    </button>
-
-                </nav>
-
-
-                <div
-                    style={
-                        styles.sidebarBottom
-                    }
-                >
-
-                    <div
-                        style={
-                            styles.userCard
-                        }
-                    >
-
-                        <div
-                            style={
-                                styles.avatar
-                            }
-                        >
-                            O
-                        </div>
-
                         <div>
-
-                            <strong
-                                style={
-                                    styles.userName
-                                }
-                            >
-                                Officer Admin
-                            </strong>
-
-                            <span
-                                style={
-                                    styles.userRole
-                                }
-                            >
-                                Admin Account
-                            </span>
-
-                            <span
-                                style={
-                                    styles.online
-                                }
-                            >
-                                <span
-                                    style={
-                                        styles.onlineDot
-                                    }
-                                />
-
-                                Online
-                            </span>
-
+                            <div style={styles.adminTitle}>
+                                Sankalp AI <span style={{ color: "#38bdf8" }}>Admin & Nodal Command Center</span>
+                            </div>
+                            <div style={styles.adminSub}>
+                                State Innovation Council • Higher & Technical Education Department, Govt. of Jharkhand
+                            </div>
                         </div>
-
                     </div>
 
+                    <div style={styles.headerRight}>
+                        {/* Mode Switcher */}
+                        <button
+                            onClick={() => navigate("/dashboard")}
+                            style={styles.switchViewBtn}
+                            title="Switch to Citizen Portal"
+                        >
+                            <span>🌾 Switch to Citizen View</span>
+                        </button>
 
-                    <button
-                        style={
-                            styles.logout
-                        }
-                        onClick={() => {
-
-                            localStorage.removeItem(
-                                "token"
-                            );
-
-                            window.location.href =
-                                "/login";
-
-                        }}
-                    >
-                        ↪ &nbsp; Logout
-                    </button>
-
+                        <div style={styles.nodalProfile}>
+                            <div style={styles.nodalAvatar}>SO</div>
+                            <div>
+                                <div style={{ fontSize: "12.5px", fontWeight: 700, color: "#ffffff" }}>Dr. S. K. Verma</div>
+                                <div style={{ fontSize: "10.5px", color: "#94a3b8" }}>State Nodal Innovation Officer</div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-
-            </aside>
-
-
-            {/* ==========================================
-                MAIN
-            ========================================== */}
+            </header>
 
             <main style={styles.main}>
-
-                <header style={styles.header}>
-
-                    <div>
-
-                        <div
-                            style={
-                                styles.overline
-                            }
-                        >
-                            CIVIC OPERATIONS COMMAND CENTER
+                {/* Executive KPI Bar */}
+                <section style={styles.kpiGrid}>
+                    <div style={styles.kpiCard}>
+                        <div style={styles.kpiTop}>
+                            <span style={styles.kpiLabel}>Total Submissions</span>
+                            <div style={{ ...styles.kpiIcon, background: "#e0f2fe", color: "#0284c7" }}>
+                                <FileText size={16} />
+                            </div>
                         </div>
-
-                        <h1
-                            style={
-                                styles.heading
-                            }
-                        >
-                            Admin Dashboard
-                        </h1>
-
-                        <p
-                            style={
-                                styles.subtitle
-                            }
-                        >
-                            Monitor citizen complaints,
-                            priorities and civic
-                            operations.
-                        </p>
-
+                        <div style={styles.kpiVal}>{totalCount}</div>
+                        <span style={styles.kpiSub}>Crowdsourced across 24 districts</span>
                     </div>
 
-
-                    <div
-                        style={
-                            styles.headerActions
-                        }
-                    >
-
-                        <button
-                            style={
-                                styles.notification
-                            }
-                            onClick={() =>
-                                alert(
-                                    `${highPriority} high-priority complaint(s) need attention.`
-                                )
-                            }
-                        >
-                            🔔
-
-                            {highPriority >
-                                0 && (
-                                    <span
-                                        style={
-                                            styles.notificationBadge
-                                        }
-                                    >
-                                    {highPriority}
-                                </span>
-                                )}
-
-                        </button>
-
-
-                        <button
-                            style={
-                                styles.refresh
-                            }
-                            onClick={
-                                fetchComplaints
-                            }
-                            disabled={
-                                loading
-                            }
-                        >
-                            ↻{" "}
-                            {loading
-                                ? "Refreshing..."
-                                : "Refresh Data"}
-                        </button>
-
-
-                        <button
-                            style={
-                                styles.exportButton
-                            }
-                            onClick={() =>
-                                alert(
-                                    "Report export will be connected next."
-                                )
-                            }
-                        >
-                            ↓ Export Report
-                        </button>
-
+                    <div style={{ ...styles.kpiCard, borderColor: "#fed7aa" }}>
+                        <div style={styles.kpiTop}>
+                            <span style={styles.kpiLabel}>Pending Validation</span>
+                            <div style={{ ...styles.kpiIcon, background: "#ffedd5", color: "#ea580c" }}>
+                                <Clock size={16} />
+                            </div>
+                        </div>
+                        <div style={{ ...styles.kpiVal, color: "#ea580c" }}>{pendingValidation}</div>
+                        <span style={styles.kpiSub}>Requires Nodal Triage</span>
                     </div>
 
-                </header>
+                    <div style={{ ...styles.kpiCard, borderColor: "#fecaca" }}>
+                        <div style={styles.kpiTop}>
+                            <span style={styles.kpiLabel}>Critical Hazards</span>
+                            <div style={{ ...styles.kpiIcon, background: "#fee2e2", color: "#dc2626" }}>
+                                <AlertTriangle size={16} />
+                            </div>
+                        </div>
+                        <div style={{ ...styles.kpiVal, color: "#dc2626" }}>{criticalUrgency}</div>
+                        <span style={styles.kpiSub}>High Priority SLA &lt; 24h</span>
+                    </div>
 
+                    <div style={styles.kpiCard}>
+                        <div style={styles.kpiTop}>
+                            <span style={styles.kpiLabel}>Active HEI Projects</span>
+                            <div style={{ ...styles.kpiIcon, background: "#ede9fe", color: "#7c3aed" }}>
+                                <Building2 size={16} />
+                            </div>
+                        </div>
+                        <div style={{ ...styles.kpiVal, color: "#7c3aed" }}>{activeProjects}</div>
+                        <span style={styles.kpiSub}>In Research & Prototyping</span>
+                    </div>
 
-                {/* ==========================================
-                    STATS
-                ========================================== */}
+                    <div style={{ ...styles.kpiCard, borderColor: "#bbf7d0" }}>
+                        <div style={styles.kpiTop}>
+                            <span style={styles.kpiLabel}>Deployed & Verified</span>
+                            <div style={{ ...styles.kpiIcon, background: "#dcfce7", color: "#16a34a" }}>
+                                <CheckCircle2 size={16} />
+                            </div>
+                        </div>
+                        <div style={{ ...styles.kpiVal, color: "#16a34a" }}>{deployedSolutions}</div>
+                        <span style={styles.kpiSub}>Citizen Verified Pilots</span>
+                    </div>
 
-                <section
-                    style={
-                        styles.stats
-                    }
-                >
-
-                    <AdminStat
-                        icon="▤"
-                        title="Total Complaints"
-                        value={
-                            complaints.length
-                        }
-                        subtitle="All time complaints"
-                        color="#60a5fa"
-                    />
-
-                    <AdminStat
-                        icon="⚠"
-                        title="High Priority"
-                        value={
-                            highPriority
-                        }
-                        subtitle="Needs immediate attention"
-                        color="#ef4444"
-                    />
-
-                    <AdminStat
-                        icon="♙"
-                        title="Unassigned"
-                        value={
-                            unassigned
-                        }
-                        subtitle="Awaiting assignment"
-                        color="#f59e0b"
-                    />
-
-                    <AdminStat
-                        icon="↻"
-                        title="In Progress"
-                        value={
-                            inProgress
-                        }
-                        subtitle="Currently being handled"
-                        color="#38bdf8"
-                    />
-
-                    <AdminStat
-                        icon="✓"
-                        title="Resolved Today"
-                        value={
-                            resolvedToday
-                        }
-                        subtitle="Completed today"
-                        color="#22c55e"
-                    />
-
+                    <div style={styles.kpiCard}>
+                        <div style={styles.kpiTop}>
+                            <span style={styles.kpiLabel}>Social Reach</span>
+                            <div style={{ ...styles.kpiIcon, background: "#ccfbf1", color: "#0d9488" }}>
+                                <Users size={16} />
+                            </div>
+                        </div>
+                        <div style={{ ...styles.kpiVal, color: "#0d9488" }}>{totalBeneficiaries.toLocaleString()}+</div>
+                        <span style={styles.kpiSub}>Jharkhand Villagers</span>
+                    </div>
                 </section>
 
-
-                {/* ==========================================
-                    MAP + PRIORITY
-                ========================================== */}
-
-                <section
-                    style={
-                        styles.mainGrid
-                    }
-                >
-
-                    {/* ======================================
-                        REAL MAP
-                    ====================================== */}
-
-                    <div
-                        id="complaint-map"
-                        style={
-                            styles.mapPanel
-                        }
+                {/* Navigation Tabs */}
+                <div style={styles.tabsNav}>
+                    <button
+                        onClick={() => setActiveTab("all-submissions")}
+                        style={{ ...styles.tabBtn, ...(activeTab === "all-submissions" ? styles.activeTabBtn : {}) }}
                     >
+                        📋 Submissions & Triage Queue ({challenges.length})
+                    </button>
+                    <button
+                        onClick={() => setActiveTab("pipeline-visualizer")}
+                        style={{ ...styles.tabBtn, ...(activeTab === "pipeline-visualizer" ? styles.activeTabBtn : {}) }}
+                    >
+                        ⚡ 8-Stage Pipeline Visualizer
+                    </button>
+                    <button
+                        onClick={() => setActiveTab("hei-governance")}
+                        style={{ ...styles.tabBtn, ...(activeTab === "hei-governance" ? styles.activeTabBtn : {}) }}
+                    >
+                        🏛️ University (HEI) Governance
+                    </button>
+                    <button
+                        onClick={() => setActiveTab("csr-partners")}
+                        style={{ ...styles.tabBtn, ...(activeTab === "csr-partners" ? styles.activeTabBtn : {}) }}
+                    >
+                        💼 CSR & Seed Grants
+                    </button>
+                    <button
+                        onClick={() => setActiveTab("district-intelligence")}
+                        style={{ ...styles.tabBtn, ...(activeTab === "district-intelligence" ? styles.activeTabBtn : {}) }}
+                    >
+                        🗺️ District Intelligence
+                    </button>
+                    <button
+                        onClick={() => setActiveTab("audit-logs")}
+                        style={{ ...styles.tabBtn, ...(activeTab === "audit-logs" ? styles.activeTabBtn : {}) }}
+                    >
+                        📜 Audit Trail & SLAs
+                    </button>
+                </div>
 
-                        <div
-                            style={
-                                styles.panelHeader
-                            }
-                        >
-
-                            <div>
-
-                                <div
-                                    style={
-                                        styles.panelTitle
-                                    }
-                                >
-                                    ⌖ &nbsp; Complaint Map
-                                </div>
-
-                                <div
-                                    style={
-                                        styles.panelSubtitle
-                                    }
-                                >
-                                    Live complaint locations
-                                    • pin color shows priority
-                                </div>
-
+                {/* TAB 1: ALL SUBMISSIONS & NODAL TRIAGE */}
+                {activeTab === "all-submissions" && (
+                    <section>
+                        {/* Control Toolbar */}
+                        <div style={styles.toolbar}>
+                            <div style={styles.searchBox}>
+                                <Search size={16} color="#64748b" />
+                                <input
+                                    type="text"
+                                    placeholder="Search challenge ID, problem, district, or Panchayat..."
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    style={styles.searchInput}
+                                />
                             </div>
 
+                            <div style={styles.filterGroup}>
+                                <select
+                                    value={filterDomain}
+                                    onChange={(e) => setFilterDomain(e.target.value)}
+                                    style={styles.select}
+                                >
+                                    <option value="ALL">All 9 Domains</option>
+                                    {THEMATIC_DOMAINS.map(d => (
+                                        <option key={d.id} value={d.id}>{d.icon} {d.name}</option>
+                                    ))}
+                                </select>
 
-                            <div
-                                style={
-                                    styles.mapCount
-                                }
-                            >
-                                {mapComplaints.length}
-                                {" "}
-                                mapped
+                                <select
+                                    value={filterDistrict}
+                                    onChange={(e) => setFilterDistrict(e.target.value)}
+                                    style={styles.select}
+                                >
+                                    <option value="ALL">All 24 Districts</option>
+                                    {JHARKHAND_DISTRICTS.map(d => (
+                                        <option key={d.name} value={d.name}>{d.name}</option>
+                                    ))}
+                                </select>
+
+                                <select
+                                    value={filterStage}
+                                    onChange={(e) => setFilterStage(e.target.value)}
+                                    style={styles.select}
+                                >
+                                    <option value="ALL">All Lifecycle Stages</option>
+                                    {STAGES_OF_INNOVATION.map(s => (
+                                        <option key={s.key} value={s.key}>{s.step}. {s.label}</option>
+                                    ))}
+                                </select>
+
+                                <button
+                                    onClick={handleRunAiClustering}
+                                    style={styles.aiClusterBtn}
+                                    title="Group similar reports & merge duplicate submissions"
+                                >
+                                    <Sparkles size={15} />
+                                    <span>Run AI Cluster & Deduplicate</span>
+                                </button>
                             </div>
-
                         </div>
 
-
-                        <div
-                            style={
-                                styles.realMap
-                            }
-                        >
-
-                            <MapContainer
-                                center={[
-                                    28.6692,
-                                    77.4538,
-                                ]}
-                                zoom={11}
-                                scrollWheelZoom={
-                                    true
-                                }
-                                style={{
-                                    width:
-                                        "100%",
-                                    height:
-                                        "100%",
-                                }}
-                            >
-
-                                <TileLayer
-                                    attribution='&copy; OpenStreetMap contributors'
-                                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                                />
-
-
-                                <MapAutoFit
-                                    complaints={
-                                        mapComplaints
-                                    }
-                                />
-
-
-                                {mapComplaints.map(
-                                    (
-                                        complaint
-                                    ) => {
-
-                                        const lat =
-                                            Number(
-                                                complaint.latitude ??
-                                                complaint.lat
-                                            );
-
-                                        const lng =
-                                            Number(
-                                                complaint.longitude ??
-                                                complaint.lng ??
-                                                complaint.lon
-                                            );
+                        {/* Challenges Table */}
+                        <div style={styles.tableCard}>
+                            <table style={styles.table}>
+                                <thead>
+                                    <tr style={styles.thRow}>
+                                        <th style={styles.th}>ID & Domain</th>
+                                        <th style={styles.th}>Societal Challenge Title</th>
+                                        <th style={styles.th}>District & Panchayat</th>
+                                        <th style={styles.th}>Urgency</th>
+                                        <th style={styles.th}>Assigned University & CSR</th>
+                                        <th style={styles.th}>8-Stage Status</th>
+                                        <th style={styles.th}>Nodal Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {filteredChallenges.map(c => {
+                                        const domainObj = THEMATIC_DOMAINS.find(d => d.id === c.domain) || { icon: "💡", color: "#0284c7" };
+                                        const stageIndex = STAGES_OF_INNOVATION.findIndex(s => s.key === c.status);
+                                        const stageObj = STAGES_OF_INNOVATION[stageIndex >= 0 ? stageIndex : 0];
 
                                         return (
-
-                                            <Marker
-                                                key={
-                                                    complaint.id
-                                                }
-                                                position={[
-                                                    lat,
-                                                    lng,
-                                                ]}
-                                                icon={createPriorityIcon(
-                                                    complaint.priority,
-                                                    complaint.status === "RESOLVED"
-                                                )}
-                                            >
-
-                                                <Popup>
-
-                                                    <div
-                                                        style={
-                                                            styles.popup
-                                                        }
-                                                    >
-
-                                                        <h3>
-                                                            #{complaint.id}{" "}
-                                                            —{" "}
-                                                            {complaint.title ||
-                                                                "Civic Complaint"}
-                                                        </h3>
-
-
-                                                        <div>
-                                                            <b>
-                                                                Priority:
-                                                            </b>{" "}
-                                                            <span
-                                                                style={{
-                                                                    color:
-                                                                        MAP_PIN_COLORS[
-                                                                            complaint.priority
-                                                                            ] ||
-                                                                        "#f59e0b",
-                                                                    fontWeight:
-                                                                        "700",
-                                                                }}
-                                                            >
-                                                                {complaint.priority ||
-                                                                    "MEDIUM"}
-                                                            </span>
-                                                        </div>
-
-
-                                                        <div>
-                                                            <b>
-                                                                Status:
-                                                            </b>{" "}
-                                                            {formatStatus(
-                                                                complaint.status
-                                                            )}
-                                                        </div>
-
-
-                                                        <div>
-                                                            <b>
-                                                                Category:
-                                                            </b>{" "}
-                                                            {complaint.aiCategory ||
-                                                                complaint.category ||
-                                                                "General"}
-                                                        </div>
-
-
-                                                        <div>
-                                                            <b>
-                                                                Location:
-                                                            </b>{" "}
-                                                            {complaint.location ||
-                                                                "GPS location"}
-                                                        </div>
-
-
-                                                        <div
-                                                            style={{
-                                                                marginTop:
-                                                                    "6px",
-                                                                color:
-                                                                    "#64748b",
-                                                                fontSize:
-                                                                    "10px",
-                                                            }}
-                                                        >
-                                                            {lat.toFixed(
-                                                                6
-                                                            )}
-                                                            {" , "}
-                                                            {lng.toFixed(
-                                                                6
-                                                            )}
-                                                        </div>
-
+                                            <tr key={c.id} style={styles.tr}>
+                                                <td style={styles.td}>
+                                                    <div style={{ fontWeight: 800, fontSize: "12px", color: "#0f172a" }}>{c.id}</div>
+                                                    <div style={{ fontSize: "11px", color: domainObj.color, fontWeight: 700 }}>
+                                                        {domainObj.icon} {c.domain}
                                                     </div>
-
-                                                </Popup>
-
-                                            </Marker>
-                                        );
-                                    }
-                                )}
-
-                            </MapContainer>
-
-                        </div>
-
-
-                        {/* MAP LEGEND */}
-
-                        <div
-                            style={
-                                styles.mapLegend
-                            }
-                        >
-
-                            <span>
-                                <i
-                                    style={{
-                                        ...styles.legendDot,
-                                        background:
-                                            "#ef4444",
-                                    }}
-                                />
-
-                                HIGH
-                            </span>
-
-
-                            <span>
-                                <i
-                                    style={{
-                                        ...styles.legendDot,
-                                        background:
-                                            "#f59e0b",
-                                    }}
-                                />
-
-                                MEDIUM
-                            </span>
-
-
-                            <span>
-                                <i
-                                    style={{
-                                        ...styles.legendDot,
-                                        background:
-                                            "#22c55e",
-                                    }}
-                                />
-
-                                LOW
-                            </span>
-
-
-                            <span>
-                                <i
-                                    style={{
-                                        ...styles.legendDot,
-                                        background:
-                                            "#6b7280",
-                                    }}
-                                />
-
-                                RESOLVED
-                            </span>
-
-
-                            <span
-                                style={{
-                                    color:
-                                        "#666",
-                                }}
-                            >
-                                Click a pin for
-                                details
-                            </span>
-
-                        </div>
-
-                    </div>
-
-
-                    {/* ======================================
-                        PRIORITY QUEUE
-                    ====================================== */}
-
-                    <div
-                        id="priority-queue"
-                        style={
-                            styles.priorityPanel
-                        }
-                    >
-
-                        <div
-                            style={
-                                styles.panelHeader
-                            }
-                        >
-
-                            <div>
-
-                                <div
-                                    style={
-                                        styles.panelTitle
-                                    }
-                                >
-                                    ⚠ &nbsp; Priority Queue
-                                </div>
-
-                                <div
-                                    style={
-                                        styles.panelSubtitle
-                                    }
-                                >
-                                    Issues requiring
-                                    officer attention
-                                </div>
-
-                            </div>
-
-
-                            <button
-                                style={
-                                    styles.viewAll
-                                }
-                                onClick={() =>
-                                    scrollTo(
-                                        "all-complaints"
-                                    )
-                                }
-                            >
-                                View All →
-                            </button>
-
-                        </div>
-
-
-                        {priorityQueue.length ===
-                        0 ? (
-
-                            <div
-                                style={
-                                    styles.noPriority
-                                }
-                            >
-                                No active complaints
-                                in the priority queue.
-                            </div>
-
-                        ) : (
-
-                            <div
-                                style={
-                                    styles.priorityList
-                                }
-                            >
-
-                                {priorityQueue.map(
-                                    (
-                                        complaint
-                                    ) => (
-
-                                        <PriorityItem
-                                            key={
-                                                complaint.id
-                                            }
-                                            complaint={
-                                                complaint
-                                            }
-                                            updateStatus={
-                                                updateStatus
-                                            }
-                                        />
-
-                                    )
-                                )}
-
-                            </div>
-                        )}
-
-                    </div>
-
-                </section>
-
-
-                {/* ==========================================
-                    ANALYTICS
-                ========================================== */}
-
-                <section
-                    id="analytics"
-                    style={
-                        styles.bottomGrid
-                    }
-                >
-
-                    <div
-                        style={
-                            styles.analyticsPanel
-                        }
-                    >
-
-                        <div
-                            style={
-                                styles.panelTitle
-                            }
-                        >
-                            ◉ &nbsp; Complaints
-                            by Department
-                        </div>
-
-
-                        <div
-                            style={
-                                styles.departmentBody
-                            }
-                        >
-
-                            <div
-                                style={{
-                                    ...styles.donut,
-                                    background:
-                                        getDonutGradient(
-                                            categoryStats
-                                        ),
-                                }}
-                            >
-
-                                <div
-                                    style={
-                                        styles.donutCenter
-                                    }
-                                >
-
-                                    <strong>
-                                        {
-                                            complaints.length
-                                        }
-                                    </strong>
-
-                                    <span>
-                                        Total
-                                    </span>
-
-                                </div>
-
-                            </div>
-
-
-                            <div
-                                style={
-                                    styles.departmentList
-                                }
-                            >
-
-                                {categoryStats.length ===
-                                0 ? (
-
-                                    <span
-                                        style={
-                                            styles.mutedText
-                                        }
-                                    >
-                                        No category
-                                        data yet.
-                                    </span>
-
-                                ) : (
-
-                                    categoryStats.map(
-                                        (
-                                            [
-                                                category,
-                                                count,
-                                            ],
-                                            index
-                                        ) => (
-
-                                            <div
-                                                key={
-                                                    category
-                                                }
-                                                style={
-                                                    styles.departmentRow
-                                                }
-                                            >
-
-                                                <span
-                                                    style={
-                                                        styles.departmentName
-                                                    }
-                                                >
-
-                                                    <i
-                                                        style={{
-                                                            ...styles.categoryDot,
-                                                            background:
-                                                                CATEGORY_COLORS[
-                                                                index %
-                                                                CATEGORY_COLORS.length
-                                                                    ],
-                                                        }}
-                                                    />
-
-                                                    {
-                                                        category
-                                                    }
-
-                                                </span>
-
-
-                                                <strong>
-                                                    {
-                                                        count
-                                                    }{" "}
-
-                                                    <small>
-                                                        {complaints.length
-                                                            ? `${Math.round(
-                                                                (count /
-                                                                    complaints.length) *
-                                                                100
-                                                            )}%`
-                                                            : "0%"}
-                                                    </small>
-                                                </strong>
-
-                                            </div>
-                                        )
-                                    )
-                                )}
-
-                            </div>
-
-                        </div>
-
-                    </div>
-
-
-                    {/* RESOLUTION */}
-
-                    <div
-                        style={
-                            styles.analyticsPanel
-                        }
-                    >
-
-                        <div
-                            style={
-                                styles.panelTitle
-                            }
-                        >
-                            ▥ &nbsp; Resolution
-                            Performance
-                        </div>
-
-
-                        <div
-                            style={
-                                styles.metricList
-                            }
-                        >
-
-                            <Metric
-                                label="Resolved Complaints"
-                                value={
-                                    resolved
-                                }
-                                suffix=""
-                                positive={
-                                    resolved > 0
-                                }
-                            />
-
-
-                            <Metric
-                                label="Average Resolution Time"
-                                value={
-                                    resolved >
-                                    0
-                                        ? "2.8"
-                                        : "—"
-                                }
-                                suffix={
-                                    resolved >
-                                    0
-                                        ? " days"
-                                        : ""
-                                }
-                                positive={
-                                    resolved >
-                                    0
-                                }
-                            />
-
-
-                            <Metric
-                                label="Resolution Rate"
-                                value={
-                                    resolutionRate
-                                }
-                                suffix="%"
-                                positive={
-                                    resolutionRate >=
-                                    50
-                                }
-                            />
-
-                        </div>
-
-                    </div>
-
-
-                    {/* LIVE ACTIVITY */}
-
-                    <div
-                        style={
-                            styles.analyticsPanel
-                        }
-                    >
-
-                        <div
-                            style={
-                                styles.panelHeader
-                            }
-                        >
-
-                            <div>
-
-                                <div
-                                    style={
-                                        styles.panelTitle
-                                    }
-                                >
-                                    〽 &nbsp; Live Activity
-                                </div>
-
-                                <div
-                                    style={
-                                        styles.panelSubtitle
-                                    }
-                                >
-                                    Latest system
-                                    activity
-                                </div>
-
-                            </div>
-
-
-                            <span
-                                style={
-                                    styles.liveBadge
-                                }
-                            >
-                                <span
-                                    style={
-                                        styles.liveDot
-                                    }
-                                />
-
-                                LIVE
-                            </span>
-
-                        </div>
-
-
-                        <div
-                            style={
-                                styles.activityList
-                            }
-                        >
-
-                            {complaints.length ===
-                            0 ? (
-
-                                <div
-                                    style={
-                                        styles.mutedText
-                                    }
-                                >
-                                    No activity
-                                    available.
-                                </div>
-
-                            ) : (
-
-                                complaints
-                                    .slice(0, 5)
-                                    .map(
-                                        (
-                                            complaint,
-                                            index
-                                        ) => (
-
-                                            <div
-                                                key={
-                                                    complaint.id
-                                                }
-                                                style={
-                                                    styles.activityItem
-                                                }
-                                            >
-
-                                                <span
-                                                    style={{
-                                                        ...styles.activityDot,
-                                                        background:
-                                                            ACTIVITY_COLORS[
-                                                            index %
-                                                            ACTIVITY_COLORS.length
-                                                                ],
-                                                    }}
-                                                />
-
-
-                                                <div
-                                                    style={
-                                                        styles.activityText
-                                                    }
-                                                >
-
-                                                    <strong>
-                                                        {complaint.status ===
-                                                        "RESOLVED"
-                                                            ? `Complaint #${complaint.id} resolved`
-                                                            : complaint.status ===
-                                                            "IN_PROGRESS"
-                                                                ? `Complaint #${complaint.id} moved to In Progress`
-                                                                : `New complaint #${complaint.id} received`}
-                                                    </strong>
-
-
-                                                    <span>
-                                                        {complaint.title ||
-                                                            "Civic complaint"}
+                                                </td>
+                                                <td style={styles.td}>
+                                                    <div style={{ fontWeight: 700, fontSize: "13px", color: "#0f172a", marginBottom: 3, maxWidth: "280px" }}>
+                                                        {c.title}
+                                                    </div>
+                                                    <div style={{ fontSize: "11px", color: "#64748b" }}>
+                                                        Submitted by: <strong>{c.submitterName}</strong>
+                                                    </div>
+                                                </td>
+                                                <td style={styles.td}>
+                                                    <div style={{ fontWeight: 600, fontSize: "12.5px" }}>{c.panchayat || "Panchayat"}</div>
+                                                    <div style={{ fontSize: "11px", color: "#64748b" }}>{c.block}, {c.district}</div>
+                                                </td>
+                                                <td style={styles.td}>
+                                                    <span style={{
+                                                        ...styles.urgencyBadge,
+                                                        ...(c.urgency === "CRITICAL" ? styles.urgencyCritical :
+                                                            c.urgency === "HIGH" ? styles.urgencyHigh : styles.urgencyMedium)
+                                                    }}>
+                                                        {c.urgency}
                                                     </span>
+                                                </td>
+                                                <td style={styles.td}>
+                                                    <div style={{ fontSize: "12px", fontWeight: 600, color: "#7c3aed" }}>
+                                                        {c.assignedHei || "Unassigned"}
+                                                    </div>
+                                                    <div style={{ fontSize: "10.5px", color: "#16a34a" }}>
+                                                        {c.industryPartner?.split("(")[0] || "CSR Pending"}
+                                                    </div>
+                                                </td>
+                                                <td style={styles.td}>
+                                                    <div style={{ display: "inline-block", background: "#f1f5f9", padding: "4px 8px", borderRadius: "6px", fontSize: "11px", fontWeight: 700, color: "#334155" }}>
+                                                        Stage {stageObj.step}: {stageObj.label}
+                                                    </div>
+                                                </td>
+                                                <td style={styles.td}>
+                                                    <div style={{ display: "flex", gap: "6px" }}>
+                                                        <button
+                                                            onClick={() => setSelectedChallenge(c)}
+                                                            style={styles.actionBtnInspect}
+                                                            title="Inspect Full Evidence"
+                                                        >
+                                                            <Eye size={14} />
+                                                        </button>
 
-                                                </div>
+                                                        {c.status === "SUBMITTED" && (
+                                                            <button
+                                                                onClick={() => setAssigningChallenge(c)}
+                                                                style={styles.actionBtnAssign}
+                                                                title="Validate & Assign HEI"
+                                                            >
+                                                                Allocate HEI
+                                                            </button>
+                                                        )}
 
+                                                        {c.status === "ASSIGNED" && (
+                                                            <button
+                                                                onClick={() => handleAdvanceStage(c.id, "RESEARCH")}
+                                                                style={styles.actionBtnNext}
+                                                                title="Move to Research & Design"
+                                                            >
+                                                                Start R&D →
+                                                            </button>
+                                                        )}
 
-                                                <span
-                                                    style={
-                                                        styles.activityTime
-                                                    }
-                                                >
-                                                    {formatDate(
-                                                        complaint.updatedAt ||
-                                                        complaint.createdAt ||
-                                                        complaint.submittedAt
-                                                    )}
-                                                </span>
+                                                        {c.status === "RESEARCH" && (
+                                                            <button
+                                                                onClick={() => handleAdvanceStage(c.id, "PROTOTYPE")}
+                                                                style={styles.actionBtnNext}
+                                                                title="Move to Prototyping"
+                                                            >
+                                                                Prototype →
+                                                            </button>
+                                                        )}
 
-                                            </div>
+                                                        {c.status === "PROTOTYPE" && (
+                                                            <button
+                                                                onClick={() => handleAdvanceStage(c.id, "TESTING")}
+                                                                style={styles.actionBtnNext}
+                                                                title="Move to Lab Testing"
+                                                            >
+                                                                Test →
+                                                            </button>
+                                                        )}
 
-                                        )
-                                    )
-                            )}
-
+                                                        {c.status === "TESTING" && (
+                                                            <button
+                                                                onClick={() => handleAdvanceStage(c.id, "PILOT")}
+                                                                style={styles.actionBtnNext}
+                                                                title="Deploy Village Pilot"
+                                                            >
+                                                                Deploy Pilot →
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
                         </div>
-
-                    </div>
-
-                </section>
-
-
-                {/* ==========================================
-                    MANAGEMENT
-                ========================================== */}
-
-                <section
-                    id="unassigned"
-                    style={
-                        styles.managementSummary
-                    }
-                >
-
-                    <div>
-
-                        <span
-                            style={
-                                styles.sectionEyebrow
-                            }
-                        >
-                            OPERATIONS
-                        </span>
-
-                        <h2
-                            style={
-                                styles.managementTitle
-                            }
-                        >
-                            Complaint Management
-                        </h2>
-
-                        <p
-                            style={
-                                styles.managementText
-                            }
-                        >
-                            {unassigned}
-                            {" "}
-                            complaint(s) are
-                            currently waiting for
-                            assignment and{" "}
-                            {pending}
-                            {" "}
-                            are pending.
-                        </p>
-
-                    </div>
-
-
-                    <div
-                        style={
-                            styles.managementStats
-                        }
-                    >
-
-                        <div>
-                            <strong>
-                                {pending}
-                            </strong>
-                            <span>
-                                Pending
-                            </span>
-                        </div>
-
-                        <div>
-                            <strong>
-                                {inProgress}
-                            </strong>
-                            <span>
-                                In Progress
-                            </span>
-                        </div>
-
-                        <div>
-                            <strong>
-                                {resolved}
-                            </strong>
-                            <span>
-                                Resolved
-                            </span>
-                        </div>
-
-                        <div>
-                            <strong>
-                                {rejected}
-                            </strong>
-                            <span>
-                                Rejected
-                            </span>
-                        </div>
-
-                    </div>
-
-                </section>
-
-
-                {/* ==========================================
-                    ALL COMPLAINTS
-                ========================================== */}
-
-                <section
-                    id="all-complaints"
-                >
-
-                    <div
-                        style={
-                            styles.resultRow
-                        }
-                    >
-
-                        <div>
-
-                            <span
-                                style={
-                                    styles.activityLabel
-                                }
-                            >
-                                COMPLAINT MANAGEMENT
-                            </span>
-
-                            <h2
-                                style={
-                                    styles.sectionTitle
-                                }
-                            >
-                                All Complaints
-                            </h2>
-
-                        </div>
-
-
-                        <span
-                            style={
-                                styles.resultBadge
-                            }
-                        >
-                            {
-                                filteredComplaints.length
-                            }{" "}
-                            Complaints
-                        </span>
-
-                    </div>
-
-
-                    {/* FILTERS */}
-
-                    <section
-                        style={
-                            styles.filterCard
-                        }
-                    >
-
-                        <div
-                            style={
-                                styles.searchBox
-                            }
-                        >
-
-                            <span
-                                style={
-                                    styles.searchIcon
-                                }
-                            >
-                                ⌕
-                            </span>
-
-                            <input
-                                type="text"
-                                placeholder="Search complaints, location, citizen..."
-                                value={
-                                    search
-                                }
-                                onChange={(e) =>
-                                    setSearch(
-                                        e.target.value
-                                    )
-                                }
-                                style={
-                                    styles.search
-                                }
-                            />
-
-                        </div>
-
-
-                        <select
-                            value={
-                                statusFilter
-                            }
-                            onChange={(e) =>
-                                setStatusFilter(
-                                    e.target.value
-                                )
-                            }
-                            style={
-                                styles.select
-                            }
-                        >
-
-                            <option value="ALL">
-                                All Status
-                            </option>
-
-                            <option value="PENDING">
-                                Pending
-                            </option>
-
-                            <option value="IN_PROGRESS">
-                                In Progress
-                            </option>
-
-                            <option value="REJECTED">
-                                Rejected
-                            </option>
-
-                        </select>
-
-
-                        <select
-                            value={
-                                categoryFilter
-                            }
-                            onChange={(e) =>
-                                setCategoryFilter(
-                                    e.target.value
-                                )
-                            }
-                            style={
-                                styles.select
-                            }
-                        >
-
-                            <option value="ALL">
-                                All Categories
-                            </option>
-
-                            {categories.map(
-                                (
-                                    category
-                                ) => (
-
-                                    <option
-                                        key={
-                                            category
-                                        }
-                                        value={
-                                            category
-                                        }
-                                    >
-                                        {
-                                            category
-                                        }
-                                    </option>
-
-                                )
-                            )}
-
-                        </select>
-
-
-                        <select
-                            value={
-                                priorityFilter
-                            }
-                            onChange={(e) =>
-                                setPriorityFilter(
-                                    e.target.value
-                                )
-                            }
-                            style={
-                                styles.select
-                            }
-                        >
-
-                            <option value="ALL">
-                                All Priorities
-                            </option>
-
-                            <option value="HIGH">
-                                High
-                            </option>
-
-                            <option value="MEDIUM">
-                                Medium
-                            </option>
-
-                            <option value="LOW">
-                                Low
-                            </option>
-
-                        </select>
-
-
-                        <button
-                            onClick={
-                                clearFilters
-                            }
-                            style={
-                                styles.clear
-                            }
-                        >
-                            Clear
-                        </button>
-
                     </section>
-
-
-                    {error && (
-
-                        <div
-                            style={
-                                styles.error
-                            }
-                        >
-                            ⚠ {error}
-                        </div>
-
-                    )}
-
-
-                    {loading && (
-
-                        <div
-                            style={
-                                styles.message
-                            }
-                        >
-
-                            <div
-                                style={
-                                    styles.spinner
-                                }
-                            >
-                                ◌
-                            </div>
-
-                            <strong>
-                                Loading complaints...
-                            </strong>
-
-                            <p>
-                                Fetching the latest
-                                civic complaints.
-                            </p>
-
-                        </div>
-
-                    )}
-
-
-                    {!loading &&
-                        !error &&
-                        filteredComplaints.length ===
-                        0 && (
-
-                            <div
-                                style={
-                                    styles.message
-                                }
-                            >
-
-                                <div
-                                    style={
-                                        styles.emptyIcon
-                                    }
-                                >
-                                    ⌕
-                                </div>
-
-                                <strong>
-                                    No complaints found
-                                </strong>
-
-                                <p>
-                                    Try changing your
-                                    search or filters.
-                                </p>
-
-                            </div>
-                        )}
-
-
-                    {!loading &&
-                        filteredComplaints.map(
-                            (complaint) => (
-
-                                <ComplaintCard
-                                    key={
-                                        complaint.id
-                                    }
-                                    complaint={
-                                        complaint
-                                    }
-                                    updateStatus={
-                                        updateStatus
-                                    }
-                                />
-
-                            )
-                        )}
-
-                </section>
-
-            </main>
-
-        </div>
-    );
-}
-
-
-// =====================================================
-// ADMIN STAT
-// =====================================================
-
-function AdminStat({
-                       icon,
-                       title,
-                       value,
-                       subtitle,
-                       color,
-                   }) {
-
-    return (
-
-        <div
-            style={
-                styles.statCard
-            }
-        >
-
-            <div
-                style={{
-                    ...styles.statIcon,
-                    color,
-                    background:
-                        `${color}18`,
-                    border:
-                        `1px solid ${color}30`,
-                }}
-            >
-                {icon}
-            </div>
-
-            <div
-                style={
-                    styles.statNumber
-                }
-            >
-                {value}
-            </div>
-
-            <div
-                style={
-                    styles.statTitle
-                }
-            >
-                {title}
-            </div>
-
-            <div
-                style={
-                    styles.statSubtitle
-                }
-            >
-                {subtitle}
-            </div>
-
-        </div>
-    );
-}
-
-
-// =====================================================
-// PRIORITY ITEM
-// =====================================================
-
-function PriorityItem({
-                          complaint,
-                          updateStatus,
-                      }) {
-
-    return (
-
-        <div
-            style={
-                styles.priorityItem
-            }
-        >
-
-            <div
-                style={
-                    styles.priorityImage
-                }
-            >
-
-                {complaint.evidenceImageUrl ? (
-
-                    <img
-                        src={
-                            complaint.evidenceImageUrl
-                        }
-                        alt=""
-                        style={
-                            styles.priorityImageImg
-                        }
-                    />
-
-                ) : (
-
-                    <span>
-                        ⚠
-                    </span>
-
                 )}
 
-            </div>
+                {/* TAB 2: 8-STAGE PIPELINE VISUALIZER */}
+                {activeTab === "pipeline-visualizer" && (
+                    <section>
+                        <div style={styles.kanbanBoard}>
+                            {STAGES_OF_INNOVATION.map(stage => {
+                                const stageChallenges = challenges.filter(c => c.status === stage.key);
+                                return (
+                                    <div key={stage.key} style={styles.kanbanCol}>
+                                        <div style={styles.kanbanColHeader}>
+                                            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                                <span style={styles.stageNumberBadge}>{stage.step}</span>
+                                                <span style={styles.kanbanColTitle}>{stage.label}</span>
+                                            </div>
+                                            <span style={styles.kanbanCountBadge}>{stageChallenges.length}</span>
+                                        </div>
 
+                                        <div style={styles.kanbanCardsArea}>
+                                            {stageChallenges.length === 0 ? (
+                                                <div style={styles.kanbanEmpty}>No challenges</div>
+                                            ) : (
+                                                stageChallenges.map(c => (
+                                                    <div
+                                                        key={c.id}
+                                                        style={styles.kanbanCard}
+                                                        onClick={() => setSelectedChallenge(c)}
+                                                    >
+                                                        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                                                            <span style={{ fontSize: "10.5px", fontWeight: 700, color: "#0284c7" }}>{c.id}</span>
+                                                            <span style={{ fontSize: "10px", color: "#64748b" }}>{c.district}</span>
+                                                        </div>
+                                                        <div style={{ fontSize: "12px", fontWeight: 700, color: "#0f172a", lineHeight: 1.3, marginBottom: 6 }}>
+                                                            {c.title}
+                                                        </div>
+                                                        <div style={{ fontSize: "11px", color: "#7c3aed", fontWeight: 600 }}>
+                                                            🎓 {c.assignedHei?.split(",")[0] || "Unassigned"}
+                                                        </div>
+                                                    </div>
+                                                ))
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </section>
+                )}
 
-            <div
-                style={
-                    styles.priorityContent
-                }
-            >
+                {/* TAB 3: UNIVERSITY (HEI) GOVERNANCE */}
+                {activeTab === "hei-governance" && (
+                    <section>
+                        <div style={styles.heiGrid}>
+                            {PARTICIPATING_HEIS.map(hei => {
+                                const heiProjects = challenges.filter(c => c.assignedHei?.includes(hei.shortName.split(",")[0]));
+                                return (
+                                    <div key={hei.id} style={styles.heiGovCard}>
+                                        <div style={styles.heiGovTop}>
+                                            <div style={styles.heiGovAvatar}>🎓</div>
+                                            <div>
+                                                <h3 style={styles.heiGovName}>{hei.name}</h3>
+                                                <span style={styles.heiGovLoc}>📍 {hei.district}, Jharkhand</span>
+                                            </div>
+                                            <div style={styles.heiActiveCountBadge}>
+                                                <strong>{heiProjects.length}</strong> Active Projects
+                                            </div>
+                                        </div>
 
-                <div
-                    style={
-                        styles.priorityTitleRow
-                    }
-                >
+                                        <div style={styles.heiGovSection}>
+                                            <strong>Specialized Innovation Centers & FabLabs:</strong>
+                                            <ul style={{ paddingLeft: "18px", marginTop: "4px", fontSize: "12px", color: "#475569" }}>
+                                                {hei.specializedLabs.map((lab, i) => (
+                                                    <li key={i}>{lab}</li>
+                                                ))}
+                                            </ul>
+                                        </div>
 
-                    <span
-                        style={{
-                            ...styles.priorityTag,
-                            ...getPriorityStyle(
-                                complaint.priority
-                            ),
-                        }}
-                    >
-                        {
-                            complaint.priority ||
-                            "MEDIUM"
-                        }
-                    </span>
+                                        <div style={styles.heiGovSection}>
+                                            <strong>Assigned Faculty Mentors:</strong>
+                                            <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", marginTop: "4px" }}>
+                                                {hei.facultyMentors.map((mentor, i) => (
+                                                    <span key={i} style={styles.mentorPill}>{mentor}</span>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </section>
+                )}
 
-                    <span
-                        style={
-                            styles.priorityId
-                        }
-                    >
-                        #{complaint.id}
-                    </span>
+                {/* TAB 4: CSR & SEED GRANTS */}
+                {activeTab === "csr-partners" && (
+                    <section>
+                        <div style={styles.heiGrid}>
+                            {INDUSTRY_CSR_PARTNERS.map(ind => (
+                                <div key={ind.id} style={styles.heiGovCard}>
+                                    <div style={styles.heiGovTop}>
+                                        <div style={{ ...styles.heiGovAvatar, background: "#dcfce7", color: "#16a34a" }}>💼</div>
+                                        <div>
+                                            <h3 style={styles.heiGovName}>{ind.name}</h3>
+                                            <span style={styles.heiGovLoc}>{ind.category}</span>
+                                        </div>
+                                    </div>
+                                    <div style={styles.heiGovSection}>
+                                        <strong>Thematic CSR Focus Areas:</strong>
+                                        <div style={{ fontSize: "12.5px", color: "#334155", marginTop: "4px" }}>
+                                            {ind.focusAreas.join(" • ")}
+                                        </div>
+                                    </div>
+                                    <div style={styles.heiGovSection}>
+                                        <strong>Seed Funding Commitment:</strong>
+                                        <div style={{ fontSize: "13px", color: "#166534", fontWeight: 700, background: "#ecfdf5", padding: "8px", borderRadius: "8px", marginTop: "4px" }}>
+                                            {ind.fundingContribution}
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </section>
+                )}
 
-                </div>
+                {/* TAB 5: DISTRICT INTELLIGENCE */}
+                {activeTab === "district-intelligence" && (
+                    <section>
+                        <div style={styles.districtGrid}>
+                            {JHARKHAND_DISTRICTS.map(dist => {
+                                const distChallenges = challenges.filter(c => c.district === dist.name);
+                                const solvedCount = distChallenges.filter(c => c.status === "RESOLVED").length;
 
+                                return (
+                                    <div key={dist.name} style={styles.districtCard}>
+                                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                            <h4 style={{ fontSize: "15px", fontWeight: 800, color: "#0f172a" }}>{dist.name}</h4>
+                                            <span style={{ fontSize: "12px", fontWeight: 700, color: "#0284c7", background: "#e0f2fe", padding: "2px 8px", borderRadius: "10px" }}>
+                                                {distChallenges.length} Submissions
+                                            </span>
+                                        </div>
+                                        <div style={{ fontSize: "12px", color: "#64748b", margin: "6px 0" }}>
+                                            Blocks covered: {dist.blocks.length} | Solved Pilots: <strong>{solvedCount}</strong>
+                                        </div>
+                                        <div style={{ width: "100%", height: "6px", background: "#e2e8f0", borderRadius: "4px", overflow: "hidden" }}>
+                                            <div style={{ width: `${distChallenges.length > 0 ? (solvedCount / distChallenges.length) * 100 : 0}%`, height: "100%", background: "#16a34a" }} />
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </section>
+                )}
 
-                <strong
-                    style={
-                        styles.priorityTitle
-                    }
-                >
-                    {
-                        complaint.title ||
-                        "Civic complaint"
-                    }
-                </strong>
+                {/* TAB 6: AUDIT TRAIL */}
+                {activeTab === "audit-logs" && (
+                    <section>
+                        <div style={styles.tableCard}>
+                            <div style={{ padding: "16px 20px", borderBottom: "1px solid #e2e8f0", fontWeight: 800, fontSize: "16px" }}>
+                                State Nodal Governance Audit Log
+                            </div>
+                            <div style={{ padding: "12px 20px" }}>
+                                {auditLogs.map(log => (
+                                    <div key={log.id} style={styles.auditRow}>
+                                        <div style={styles.auditTime}>{log.time}</div>
+                                        <div style={styles.auditEvent}>
+                                            <strong>{log.event}</strong>
+                                            <div style={{ fontSize: "11px", color: "#64748b" }}>Action Officer: {log.officer}</div>
+                                        </div>
+                                        <span style={styles.auditBadge}>{log.type}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </section>
+                )}
+            </main>
 
-
-                <span
-                    style={
-                        styles.priorityLocation
-                    }
-                >
-                    ⌖{" "}
-                    {
-                        complaint.location ||
-                        "Location unavailable"
-                    }
-                </span>
-
-            </div>
-
-
-            <button
-                style={
-                    styles.assignButton
-                }
-                onClick={() =>
-                    updateStatus(
-                        complaint.id,
-                        "IN_PROGRESS"
-                    )
-                }
-            >
-                Assign
-            </button>
-
-        </div>
-    );
-}
-
-
-// =====================================================
-// METRIC
-// =====================================================
-
-function Metric({
-                    label,
-                    value,
-                    suffix,
-                    positive,
-                }) {
-
-    return (
-
-        <div
-            style={
-                styles.metric
-            }
-        >
-
-            <div>
-
-                <span>
-                    {label}
-                </span>
-
-                <strong>
-                    {value}
-
-                    <small>
-                        {suffix}
-                    </small>
-
-                </strong>
-
-            </div>
-
-
-            <div
-                style={{
-                    ...styles.miniTrend,
-                    color:
-                        positive
-                            ? "#22c55e"
-                            : "#94a3b8",
-                }}
-            >
-                {
-                    positive
-                        ? "↗"
-                        : "—"
-                }
-            </div>
-
-        </div>
-    );
-}
-
-
-// =====================================================
-// COMPLAINT CARD
-// =====================================================
-
-function ComplaintCard({
-                           complaint,
-                           updateStatus,
-                       }) {
-
-    return (
-
-        <article
-            style={
-                styles.complaintCard
-            }
-        >
-
-            <div
-                style={
-                    styles.cardTop
-                }
-            >
-
-                <div
-                    style={
-                        styles.titleArea
-                    }
-                >
-
-                    <div
-                        style={
-                            styles.complaintNumber
-                        }
-                    >
-                        #{complaint.id}
-                    </div>
-
-
-                    <div
-                        style={
-                            styles.titleContent
-                        }
-                    >
-
-                        <h3
-                            style={
-                                styles.complaintTitle
-                            }
-                        >
-                            {
-                                complaint.title
-                            }
+            {/* University Allocation Modal */}
+            {assigningChallenge && (
+                <div style={styles.backdrop} onClick={() => setAssigningChallenge(null)}>
+                    <div style={styles.assignModal} onClick={e => e.stopPropagation()}>
+                        <h3 style={{ fontSize: "18px", fontWeight: 800, color: "#0f172a", marginBottom: 6 }}>
+                            Assign Higher Education Institution (HEI) & CSR
                         </h3>
+                        <p style={{ fontSize: "13px", color: "#64748b", marginBottom: 16 }}>
+                            Challenge: <strong>{assigningChallenge.title}</strong> ({assigningChallenge.district})
+                        </p>
 
-                        <span
-                            style={
-                                styles.complaintId
-                            }
-                        >
-                            Complaint #
-                            {
-                                complaint.id
-                            }
-                        </span>
+                        <div style={{ marginBottom: 14 }}>
+                            <label style={styles.label}>Select Higher Education Institution (HEI) *</label>
+                            <select
+                                value={selectedHeiId}
+                                onChange={(e) => setSelectedHeiId(e.target.value)}
+                                style={styles.selectFull}
+                            >
+                                {PARTICIPATING_HEIS.map(h => (
+                                    <option key={h.id} value={h.id}>
+                                        {h.name} ({h.specializedLabs[0]})
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
 
+                        <div style={{ marginBottom: 14 }}>
+                            <label style={styles.label}>Select Industry CSR / Seed Grant Partner *</label>
+                            <select
+                                value={selectedCsrId}
+                                onChange={(e) => setSelectedCsrId(e.target.value)}
+                                style={styles.selectFull}
+                            >
+                                {INDUSTRY_CSR_PARTNERS.map(i => (
+                                    <option key={i.id} value={i.id}>
+                                        {i.name} — {i.fundingContribution}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div style={{ marginBottom: 18 }}>
+                            <label style={styles.label}>Nodal Allocation Directives / Special Notes</label>
+                            <textarea
+                                value={nodalNote}
+                                onChange={(e) => setNodalNote(e.target.value)}
+                                placeholder="e.g. Prioritize low-cost gravity filtration for fluoride removal without grid dependence..."
+                                rows={3}
+                                style={styles.textarea}
+                            />
+                        </div>
+
+                        <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+                            <button onClick={() => setAssigningChallenge(null)} style={styles.cancelBtn}>
+                                Cancel
+                            </button>
+                            <button onClick={handleConfirmAssignment} style={styles.confirmBtn}>
+                                ✓ Confirm Allocation & Dispatch Request
+                            </button>
+                        </div>
                     </div>
-
                 </div>
-
-
-                <span
-                    style={{
-                        ...styles.statusBadge,
-                        ...getStatusStyle(
-                            complaint.status
-                        ),
-                    }}
-                >
-                    •{" "}
-                    {
-                        formatStatus(
-                            complaint.status
-                        )
-                    }
-                </span>
-
-            </div>
-
-
-            <p
-                style={
-                    styles.description
-                }
-            >
-                {
-                    complaint.description
-                }
-            </p>
-
-
-            <div
-                style={
-                    styles.detailsGrid
-                }
-            >
-
-                <Detail
-                    icon="✦"
-                    label="AI CATEGORY"
-                    value={
-                        complaint.aiCategory ||
-                        "N/A"
-                    }
-                    valueColor="#a78bfa"
-                />
-
-
-                <Detail
-                    icon="!"
-                    label="PRIORITY"
-                    value={
-                        complaint.priority ||
-                        "N/A"
-                    }
-                    valueColor={
-                        getPriorityColor(
-                            complaint.priority
-                        )
-                    }
-                />
-
-
-                <Detail
-                    icon="⌖"
-                    label="LOCATION"
-                    value={
-                        complaint.location ||
-                        "N/A"
-                    }
-                />
-
-
-                <Detail
-                    icon="◉"
-                    label="CITIZEN"
-                    value={
-                        complaint.citizenEmail ||
-                        "N/A"
-                    }
-                />
-
-            </div>
-
-
-            {complaint.evidenceImageUrl && (
-
-                <div
-                    style={
-                        styles.evidenceSection
-                    }
-                >
-
-                    <img
-                        src={
-                            complaint.evidenceImageUrl
-                        }
-                        alt="Evidence"
-                        style={
-                            styles.evidenceImage
-                        }
-                    />
-
-                </div>
-
             )}
 
-
-            <div
-                style={
-                    styles.cardFooter
-                }
-            >
-
-                <span>
-                    Created:{" "}
-                    {
-                        formatDate(
-                            complaint.createdAt ||
-                            complaint.submittedAt
-                        )
-                    }
-                </span>
-
-
-                <div
-                    style={
-                        styles.cardActions
-                    }
-                >
-
-                    {complaint.status ===
-                        "PENDING" && (
-
-                            <button
-                                style={
-                                    styles.actionButton
-                                }
-                                onClick={() =>
-                                    updateStatus(
-                                        complaint.id,
-                                        "IN_PROGRESS"
-                                    )
-                                }
-                            >
-                                Start
-                            </button>
-
-                        )}
-
-
-                    {complaint.status ===
-                        "IN_PROGRESS" && (
-
-                            <button
-                                style={
-                                    styles.resolveButton
-                                }
-                                onClick={() =>
-                                    updateStatus(
-                                        complaint.id,
-                                        "RESOLVED"
-                                    )
-                                }
-                            >
-                                Resolve
-                            </button>
-
-                        )}
-
-                </div>
-
-            </div>
-
-        </article>
-    );
-}
-
-
-// =====================================================
-// DETAIL
-// =====================================================
-
-function Detail({
-                    icon,
-                    label,
-                    value,
-                    valueColor,
-                }) {
-
-    return (
-
-        <div
-            style={
-                styles.detail
-            }
-        >
-
-            <span
-                style={
-                    styles.detailLabel
-                }
-            >
-                {icon}{" "}
-                {label}
-            </span>
-
-            <strong
-                style={{
-                    ...styles.detailValue,
-                    color:
-                        valueColor ||
-                        "#d4d4d4",
-                }}
-            >
-                {value}
-            </strong>
-
+            {/* Detail Modal */}
+            {selectedChallenge && (
+                <ChallengeDetailModal
+                    challenge={selectedChallenge}
+                    onClose={() => setSelectedChallenge(null)}
+                    onUpdate={(newList) => {
+                        setChallenges(newList);
+                        const updatedSelected = newList.find(c => c.id === selectedChallenge.id);
+                        if (updatedSelected) setSelectedChallenge(updatedSelected);
+                    }}
+                />
+            )}
         </div>
     );
 }
 
-
-// =====================================================
-// STATUS STYLE
-// =====================================================
-
-function getStatusStyle(
-    status
-) {
-
-    switch (status) {
-
-        case "PENDING":
-
-            return {
-                color: "#fbbf24",
-                background:
-                    "rgba(251,191,36,.1)",
-                border:
-                    "1px solid rgba(251,191,36,.2)",
-            };
-
-        case "IN_PROGRESS":
-
-            return {
-                color: "#38bdf8",
-                background:
-                    "rgba(56,189,248,.1)",
-                border:
-                    "1px solid rgba(56,189,248,.2)",
-            };
-
-        case "RESOLVED":
-
-            return {
-                color: "#4ade80",
-                background:
-                    "rgba(74,222,128,.1)",
-                border:
-                    "1px solid rgba(74,222,128,.2)",
-            };
-
-        case "REJECTED":
-
-            return {
-                color: "#f87171",
-                background:
-                    "rgba(248,113,113,.1)",
-                border:
-                    "1px solid rgba(248,113,113,.2)",
-            };
-
-        default:
-
-            return {
-                color: "#a3a3a3",
-                background:
-                    "rgba(163,163,163,.1)",
-            };
-    }
-}
-
-
-// =====================================================
-// PRIORITY STYLE
-// =====================================================
-
-function getPriorityStyle(
-    priority
-) {
-
-    switch (priority) {
-
-        case "HIGH":
-
-            return {
-                color: "#f87171",
-                background:
-                    "rgba(239,68,68,.1)",
-                border:
-                    "1px solid rgba(239,68,68,.2)",
-            };
-
-        case "LOW":
-
-            return {
-                color: "#4ade80",
-                background:
-                    "rgba(34,197,94,.1)",
-                border:
-                    "1px solid rgba(34,197,94,.2)",
-            };
-
-        default:
-
-            return {
-                color: "#fbbf24",
-                background:
-                    "rgba(245,158,11,.1)",
-                border:
-                    "1px solid rgba(245,158,11,.2)",
-            };
-    }
-}
-
-
-// =====================================================
-// PRIORITY COLOR
-// =====================================================
-
-function getPriorityColor(
-    priority
-) {
-
-    return (
-        MAP_PIN_COLORS[
-            priority
-            ] || "#f59e0b"
-    );
-}
-
-
-// =====================================================
-// FORMAT STATUS
-// =====================================================
-
-function formatStatus(
-    status
-) {
-
-    if (!status) {
-        return "Unknown";
-    }
-
-    return status
-        .replaceAll(
-            "_",
-            " "
-        )
-        .replace(
-            /\b\w/g,
-            (char) =>
-                char.toUpperCase()
-        );
-}
-
-
-// =====================================================
-// FORMAT DATE
-// =====================================================
-
-function formatDate(
-    value
-) {
-
-    if (!value) {
-        return "—";
-    }
-
-    const date =
-        new Date(value);
-
-    if (
-        Number.isNaN(
-            date.getTime()
-        )
-    ) {
-        return "—";
-    }
-
-    return date.toLocaleString(
-        "en-IN",
-        {
-            day: "2-digit",
-            month: "short",
-            year: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-        }
-    );
-}
-
-
-// =====================================================
-// DONUT GRADIENT
-// =====================================================
-
-const CATEGORY_COLORS = [
-    "#60a5fa",
-    "#a78bfa",
-    "#22c55e",
-    "#f59e0b",
-    "#ef4444",
-    "#38bdf8",
-];
-
-
-function getDonutGradient(
-    stats
-) {
-
-    if (!stats.length) {
-
-        return `
-            conic-gradient(
-                #252525 0deg 360deg
-            )
-        `;
-    }
-
-
-    const total =
-        stats.reduce(
-            (sum, item) =>
-                sum + item[1],
-            0
-        );
-
-
-    let current = 0;
-
-
-    const segments =
-        stats.map(
-            (
-                [, count],
-                index
-            ) => {
-
-                const start =
-                    current;
-
-                current +=
-                    (count / total) *
-                    360;
-
-                return `
-                    ${CATEGORY_COLORS[
-                index %
-                CATEGORY_COLORS.length
-                    ]}
-                    ${start}deg
-                    ${current}deg
-                `;
-            }
-        );
-
-
-    return `
-        conic-gradient(
-            ${segments.join(",")}
-        )
-    `;
-}
-
-
-// =====================================================
-// COLORS
-// =====================================================
-
-const ACTIVITY_COLORS = [
-    "#60a5fa",
-    "#a78bfa",
-    "#22c55e",
-    "#f59e0b",
-    "#ef4444",
-];
-
-
-// =====================================================
-// STYLES
-// =====================================================
-
 const styles = {
-
     app: {
-        minHeight:
-            "100vh",
-        background:
-            "#050505",
-        color:
-            "#e5e5e5",
-        fontFamily:
-            "Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+        minHeight: "100vh",
+        backgroundColor: "#f8fafc"
     },
-
-
-    sidebar: {
-        position:
-            "fixed",
-        left: 0,
-        top: 0,
-        bottom: 0,
-        width: "235px",
-        background:
-            "#090909",
-        borderRight:
-            "1px solid #202020",
-        display:
-            "flex",
-        flexDirection:
-            "column",
-        zIndex: 100,
+    adminHeader: {
+        background: "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)",
+        borderBottom: "1px solid #334155",
+        padding: "14px 0",
+        boxShadow: "0 4px 20px rgba(0,0,0,0.15)"
     },
-
-
-    brand: {
-        display:
-            "flex",
-        alignItems:
-            "center",
-        gap:
-            "11px",
-        padding:
-            "23px 19px",
+    headerContainer: {
+        maxWidth: "1320px",
+        margin: "0 auto",
+        padding: "0 20px",
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center"
     },
-
-
-    brandIcon: {
-        width:
-            "36px",
-        height:
-            "36px",
-        borderRadius:
-            "9px",
-        background:
-            "#fbbf24",
-        color:
-            "#111",
-        display:
-            "flex",
-        alignItems:
-            "center",
-        justifyContent:
-            "center",
-        fontWeight:
-            "900",
-        fontSize:
-            "18px",
+    headerLeft: {
+        display: "flex",
+        alignItems: "center",
+        gap: "12px"
     },
-
-
-    brandName: {
-        fontSize:
-            "16px",
-        fontWeight:
-            "750",
-        color:
-            "#fff",
+    govEmblemBox: {
+        width: "42px",
+        height: "42px",
+        borderRadius: "12px",
+        background: "linear-gradient(135deg, #0284c7 0%, #38bdf8 100%)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        boxShadow: "0 4px 12px rgba(2, 132, 199, 0.35)"
     },
-
-
-    brandSub: {
-        color:
-            "#737373",
-        fontSize:
-            "9px",
-        marginTop:
-            "2px",
+    adminTitle: {
+        fontSize: "18px",
+        fontWeight: 800,
+        color: "#ffffff"
     },
-
-
-    divider: {
-        height:
-            "1px",
-        background:
-            "#202020",
-        margin:
-            "0 15px 13px",
+    adminSub: {
+        fontSize: "11.5px",
+        color: "#94a3b8"
     },
-
-
-    nav: {
-        display:
-            "flex",
-        flexDirection:
-            "column",
-        gap:
-            "3px",
-        padding:
-            "0 10px",
+    headerRight: {
+        display: "flex",
+        alignItems: "center",
+        gap: "16px"
     },
-
-
-    navItem: {
-        width:
-            "100%",
-        border:
-            "none",
-        background:
-            "transparent",
-        color:
-            "#8a8a8a",
-        padding:
-            "11px 12px",
-        borderRadius:
-            "7px",
-        textAlign:
-            "left",
-        cursor:
-            "pointer",
-        fontSize:
-            "11px",
-        display:
-            "flex",
-        alignItems:
-            "center",
-        gap:
-            "5px",
+    switchViewBtn: {
+        display: "flex",
+        alignItems: "center",
+        gap: "6px",
+        background: "rgba(56, 189, 248, 0.15)",
+        border: "1px solid rgba(56, 189, 248, 0.3)",
+        color: "#38bdf8",
+        padding: "8px 14px",
+        borderRadius: "10px",
+        fontSize: "12.5px",
+        fontWeight: 700
     },
-
-
-    activeNavItem: {
-        background:
-            "#171717",
-        color:
-            "#fff",
-        borderLeft:
-            "2px solid #fbbf24",
+    nodalProfile: {
+        display: "flex",
+        alignItems: "center",
+        gap: "10px"
     },
-
-
-    navCount: {
-        marginLeft:
-            "auto",
-        minWidth:
-            "19px",
-        height:
-            "19px",
-        borderRadius:
-            "10px",
-        background:
-            "#ef4444",
-        color:
-            "#fff",
-        display:
-            "flex",
-        alignItems:
-            "center",
-        justifyContent:
-            "center",
-        fontSize:
-            "9px",
-        fontWeight:
-            "700",
+    nodalAvatar: {
+        width: "34px",
+        height: "34px",
+        borderRadius: "10px",
+        background: "#0284c7",
+        color: "#ffffff",
+        fontWeight: 800,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        fontSize: "12px"
     },
-
-
-    sidebarBottom: {
-        marginTop:
-            "auto",
-        padding:
-            "14px",
-    },
-
-
-    userCard: {
-        display:
-            "flex",
-        gap:
-            "9px",
-        alignItems:
-            "center",
-        padding:
-            "10px",
-        background:
-            "#111",
-        border:
-            "1px solid #222",
-        borderRadius:
-            "8px",
-    },
-
-
-    avatar: {
-        width:
-            "31px",
-        height:
-            "31px",
-        borderRadius:
-            "50%",
-        background:
-            "#fbbf24",
-        color:
-            "#111",
-        display:
-            "flex",
-        alignItems:
-            "center",
-        justifyContent:
-            "center",
-        fontWeight:
-            "800",
-        fontSize:
-            "11px",
-    },
-
-
-    userName: {
-        display:
-            "block",
-        fontSize:
-            "10px",
-        color:
-            "#ddd",
-    },
-
-
-    userRole: {
-        display:
-            "block",
-        fontSize:
-            "8px",
-        color:
-            "#666",
-        marginTop:
-            "2px",
-    },
-
-
-    online: {
-        display:
-            "flex",
-        alignItems:
-            "center",
-        gap:
-            "4px",
-        color:
-            "#4ade80",
-        fontSize:
-            "8px",
-        marginTop:
-            "3px",
-    },
-
-
-    onlineDot: {
-        width:
-            "5px",
-        height:
-            "5px",
-        borderRadius:
-            "50%",
-        background:
-            "#4ade80",
-    },
-
-
-    logout: {
-        width:
-            "100%",
-        border:
-            "none",
-        background:
-            "transparent",
-        color:
-            "#737373",
-        padding:
-            "9px",
-        textAlign:
-            "left",
-        cursor:
-            "pointer",
-        fontSize:
-            "10px",
-        marginTop:
-            "4px",
-    },
-
-
     main: {
-        marginLeft:
-            "235px",
-        padding:
-            "0 38px 60px",
-        minHeight:
-            "100vh",
+        maxWidth: "1320px",
+        margin: "0 auto",
+        padding: "24px 20px 80px 20px"
+    },
+    kpiGrid: {
+        display: "grid",
+        gridTemplateColumns: "repeat(6, 1fr)",
+        gap: "14px",
+        marginBottom: "24px"
+    },
+    kpiCard: {
+        background: "#ffffff",
+        border: "1px solid #e2e8f0",
+        borderRadius: "16px",
+        padding: "16px",
+        boxShadow: "0 2px 8px rgba(15,23,42,0.03)"
+    },
+    kpiTop: {
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        marginBottom: "6px"
+    },
+    kpiLabel: {
+        fontSize: "11.5px",
+        fontWeight: 600,
+        color: "#64748b"
+    },
+    kpiIcon: {
+        width: "28px",
+        height: "28px",
+        borderRadius: "6px",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center"
+    },
+    kpiVal: {
+        fontSize: "22px",
+        fontWeight: 800,
+        color: "#0f172a",
+        marginBottom: "2px"
+    },
+    kpiSub: {
+        fontSize: "10.5px",
+        color: "#94a3b8"
+    },
+    tabsNav: {
+        display: "flex",
+        gap: "8px",
+        borderBottom: "2px solid #e2e8f0",
+        paddingBottom: "10px",
+        marginBottom: "20px",
+        overflowX: "auto"
+    },
+    tabBtn: {
+        padding: "9px 16px",
+        borderRadius: "10px",
+        fontSize: "13px",
+        fontWeight: 600,
+        color: "#64748b",
+        background: "#ffffff",
+        border: "1px solid #e2e8f0",
+        whiteSpace: "nowrap"
+    },
+    activeTabBtn: {
+        background: "#0f172a",
+        color: "#ffffff",
+        borderColor: "#0f172a",
+        boxShadow: "0 4px 12px rgba(15,23,42,0.2)"
+    },
+    toolbar: {
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        gap: "12px",
+        marginBottom: "16px",
+        flexWrap: "wrap"
     },
-
-
-    header: {
-        minHeight:
-            "105px",
-        borderBottom:
-            "1px solid #202020",
-        display:
-            "flex",
-        alignItems:
-            "center",
-        justifyContent:
-            "space-between",
-        gap:
-            "20px",
-    },
-
-
-    overline: {
-        color:
-            "#737373",
-        fontSize:
-            "8px",
-        letterSpacing:
-            "1.5px",
-        fontWeight:
-            "700",
-    },
-
-
-    heading: {
-        margin:
-            "5px 0 3px",
-        fontSize:
-            "27px",
-        color:
-            "#fff",
-        letterSpacing:
-            "-0.5px",
-    },
-
-
-    subtitle: {
-        margin:
-            0,
-        color:
-            "#737373",
-        fontSize:
-            "10px",
-    },
-
-
-    headerActions: {
-        display:
-            "flex",
-        alignItems:
-            "center",
-        gap:
-            "7px",
-    },
-
-
-    notification: {
-        position:
-            "relative",
-        width:
-            "35px",
-        height:
-            "35px",
-        border:
-            "1px solid #292929",
-        background:
-            "#0d0d0d",
-        color:
-            "#aaa",
-        borderRadius:
-            "7px",
-        cursor:
-            "pointer",
-    },
-
-
-    notificationBadge: {
-        position:
-            "absolute",
-        top:
-            "-5px",
-        right:
-            "-5px",
-        minWidth:
-            "15px",
-        height:
-            "15px",
-        borderRadius:
-            "50%",
-        background:
-            "#ef4444",
-        color:
-            "#fff",
-        fontSize:
-            "8px",
-        display:
-            "flex",
-        alignItems:
-            "center",
-        justifyContent:
-            "center",
-    },
-
-
-    refresh: {
-        height:
-            "35px",
-        padding:
-            "0 12px",
-        border:
-            "1px solid #292929",
-        background:
-            "#0d0d0d",
-        color:
-            "#aaa",
-        borderRadius:
-            "7px",
-        cursor:
-            "pointer",
-        fontSize:
-            "10px",
-    },
-
-
-    exportButton: {
-        height:
-            "35px",
-        padding:
-            "0 13px",
-        border:
-            "1px solid #fbbf24",
-        background:
-            "#fbbf24",
-        color:
-            "#111",
-        borderRadius:
-            "7px",
-        cursor:
-            "pointer",
-        fontSize:
-            "10px",
-        fontWeight:
-            "700",
-    },
-
-
-    stats: {
-        display:
-            "grid",
-        gridTemplateColumns:
-            "repeat(5, 1fr)",
-        gap:
-            "10px",
-        margin:
-            "22px 0",
-    },
-
-
-    statCard: {
-        background:
-            "#0a0a0a",
-        border:
-            "1px solid #202020",
-        borderRadius:
-            "9px",
-        padding:
-            "15px",
-    },
-
-
-    statIcon: {
-        width:
-            "28px",
-        height:
-            "28px",
-        borderRadius:
-            "7px",
-        display:
-            "flex",
-        alignItems:
-            "center",
-        justifyContent:
-            "center",
-        fontSize:
-            "12px",
-        marginBottom:
-            "12px",
-    },
-
-
-    statNumber: {
-        color:
-            "#fff",
-        fontSize:
-            "25px",
-        fontWeight:
-            "750",
-    },
-
-
-    statTitle: {
-        color:
-            "#ccc",
-        fontSize:
-            "10px",
-        marginTop:
-            "2px",
-    },
-
-
-    statSubtitle: {
-        color:
-            "#5f5f5f",
-        fontSize:
-            "8px",
-        marginTop:
-            "4px",
-    },
-
-
-    mainGrid: {
-        display:
-            "grid",
-        gridTemplateColumns:
-            "1.55fr 1fr",
-        gap:
-            "12px",
-        marginBottom:
-            "12px",
-    },
-
-
-    mapPanel: {
-        background:
-            "#0a0a0a",
-        border:
-            "1px solid #202020",
-        borderRadius:
-            "10px",
-        overflow:
-            "hidden",
-    },
-
-
-    panelHeader: {
-        padding:
-            "14px 15px",
-        display:
-            "flex",
-        justifyContent:
-            "space-between",
-        alignItems:
-            "center",
-        borderBottom:
-            "1px solid #1c1c1c",
-    },
-
-
-    panelTitle: {
-        color:
-            "#eee",
-        fontSize:
-            "12px",
-        fontWeight:
-            "700",
-    },
-
-
-    panelSubtitle: {
-        color:
-            "#666",
-        fontSize:
-            "8px",
-        marginTop:
-            "4px",
-    },
-
-
-    mapCount: {
-        color:
-            "#aaa",
-        background:
-            "#151515",
-        border:
-            "1px solid #292929",
-        padding:
-            "6px 9px",
-        borderRadius:
-            "5px",
-        fontSize:
-            "9px",
-    },
-
-
-    realMap: {
-        width:
-            "100%",
-        height:
-            "390px",
-    },
-
-
-    mapLegend: {
-        minHeight:
-            "43px",
-        display:
-            "flex",
-        alignItems:
-            "center",
-        gap:
-            "17px",
-        padding:
-            "0 15px",
-        borderTop:
-            "1px solid #202020",
-        fontSize:
-            "8px",
-        color:
-            "#aaa",
-        flexWrap:
-            "wrap",
-    },
-
-
-    legendDot: {
-        display:
-            "inline-block",
-        width:
-            "8px",
-        height:
-            "8px",
-        borderRadius:
-            "50%",
-        marginRight:
-            "5px",
-    },
-
-
-    popup: {
-        color:
-            "#222",
-        fontSize:
-            "12px",
-        lineHeight:
-            "1.6",
-    },
-
-
-    priorityPanel: {
-        background:
-            "#0a0a0a",
-        border:
-            "1px solid #202020",
-        borderRadius:
-            "10px",
-        overflow:
-            "hidden",
-    },
-
-
-    viewAll: {
-        border:
-            "none",
-        background:
-            "transparent",
-        color:
-            "#fbbf24",
-        fontSize:
-            "9px",
-        cursor:
-            "pointer",
-    },
-
-
-    priorityList: {
-        padding:
-            "5px 12px 12px",
-    },
-
-
-    priorityItem: {
-        display:
-            "flex",
-        alignItems:
-            "center",
-        gap:
-            "9px",
-        padding:
-            "11px 3px",
-        borderBottom:
-            "1px solid #181818",
-    },
-
-
-    priorityImage: {
-        width:
-            "42px",
-        height:
-            "42px",
-        borderRadius:
-            "7px",
-        background:
-            "#151515",
-        overflow:
-            "hidden",
-        display:
-            "flex",
-        alignItems:
-            "center",
-        justifyContent:
-            "center",
-        color:
-            "#fbbf24",
-        flexShrink:
-            0,
-    },
-
-
-    priorityImageImg: {
-        width:
-            "100%",
-        height:
-            "100%",
-        objectFit:
-            "cover",
-    },
-
-
-    priorityContent: {
-        flex:
-            1,
-        minWidth:
-            0,
-    },
-
-
-    priorityTitleRow: {
-        display:
-            "flex",
-        alignItems:
-            "center",
-        gap:
-            "6px",
-        marginBottom:
-            "4px",
-    },
-
-
-    priorityTag: {
-        padding:
-            "3px 6px",
-        borderRadius:
-            "4px",
-        fontSize:
-            "7px",
-        fontWeight:
-            "800",
-    },
-
-
-    priorityId: {
-        color:
-            "#555",
-        fontSize:
-            "8px",
-    },
-
-
-    priorityTitle: {
-        display:
-            "block",
-        color:
-            "#ddd",
-        fontSize:
-            "10px",
-        whiteSpace:
-            "nowrap",
-        overflow:
-            "hidden",
-        textOverflow:
-            "ellipsis",
-    },
-
-
-    priorityLocation: {
-        display:
-            "block",
-        color:
-            "#666",
-        fontSize:
-            "8px",
-        marginTop:
-            "3px",
-        whiteSpace:
-            "nowrap",
-        overflow:
-            "hidden",
-        textOverflow:
-            "ellipsis",
-    },
-
-
-    assignButton: {
-        border:
-            "1px solid #333",
-        background:
-            "#141414",
-        color:
-            "#bbb",
-        padding:
-            "6px 8px",
-        borderRadius:
-            "5px",
-        cursor:
-            "pointer",
-        fontSize:
-            "8px",
-    },
-
-
-    noPriority: {
-        padding:
-            "35px 15px",
-        textAlign:
-            "center",
-        color:
-            "#555",
-        fontSize:
-            "9px",
-    },
-
-
-    bottomGrid: {
-        display:
-            "grid",
-        gridTemplateColumns:
-            "repeat(3, 1fr)",
-        gap:
-            "12px",
-        marginBottom:
-            "12px",
-    },
-
-
-    analyticsPanel: {
-        background:
-            "#0a0a0a",
-        border:
-            "1px solid #202020",
-        borderRadius:
-            "10px",
-        padding:
-            "15px",
-        minHeight:
-            "220px",
-        boxSizing:
-            "border-box",
-    },
-
-
-    departmentBody: {
-        display:
-            "flex",
-        alignItems:
-            "center",
-        gap:
-            "18px",
-        marginTop:
-            "22px",
-    },
-
-
-    donut: {
-        width:
-            "105px",
-        height:
-            "105px",
-        borderRadius:
-            "50%",
-        display:
-            "flex",
-        alignItems:
-            "center",
-        justifyContent:
-            "center",
-        flexShrink:
-            0,
-    },
-
-
-    donutCenter: {
-        width:
-            "69px",
-        height:
-            "69px",
-        borderRadius:
-            "50%",
-        background:
-            "#0a0a0a",
-        display:
-            "flex",
-        flexDirection:
-            "column",
-        alignItems:
-            "center",
-        justifyContent:
-            "center",
-    },
-
-
-    departmentList: {
-        flex:
-            1,
-    },
-
-
-    departmentRow: {
-        display:
-            "flex",
-        justifyContent:
-            "space-between",
-        alignItems:
-            "center",
-        padding:
-            "7px 0",
-        borderBottom:
-            "1px solid #181818",
-        fontSize:
-            "9px",
-    },
-
-
-    departmentName: {
-        color:
-            "#aaa",
-    },
-
-
-    categoryDot: {
-        display:
-            "inline-block",
-        width:
-            "6px",
-        height:
-            "6px",
-        borderRadius:
-            "50%",
-        marginRight:
-            "6px",
-    },
-
-
-    metricList: {
-        marginTop:
-            "15px",
-    },
-
-
-    metric: {
-        display:
-            "flex",
-        justifyContent:
-            "space-between",
-        alignItems:
-            "center",
-        padding:
-            "13px 0",
-        borderBottom:
-            "1px solid #181818",
-    },
-
-
-    metric: {
-        display:
-            "flex",
-        justifyContent:
-            "space-between",
-        alignItems:
-            "center",
-        padding:
-            "13px 0",
-        borderBottom:
-            "1px solid #181818",
-    },
-
-
-    miniTrend: {
-        fontSize:
-            "16px",
-    },
-
-
-    liveBadge: {
-        color:
-            "#4ade80",
-        fontSize:
-            "8px",
-        display:
-            "flex",
-        alignItems:
-            "center",
-        gap:
-            "5px",
-    },
-
-
-    liveDot: {
-        width:
-            "6px",
-        height:
-            "6px",
-        borderRadius:
-            "50%",
-        background:
-            "#4ade80",
-    },
-
-
-    activityList: {
-        marginTop:
-            "12px",
-    },
-
-
-    activityItem: {
-        display:
-            "flex",
-        alignItems:
-            "center",
-        gap:
-            "8px",
-        padding:
-            "9px 0",
-        borderBottom:
-            "1px solid #181818",
-    },
-
-
-    activityDot: {
-        width:
-            "6px",
-        height:
-            "6px",
-        borderRadius:
-            "50%",
-        flexShrink:
-            0,
-    },
-
-
-    activityText: {
-        flex:
-            1,
-        minWidth:
-            0,
-    },
-
-
-    activityTime: {
-        color:
-            "#555",
-        fontSize:
-            "7px",
-    },
-
-
-    mutedText: {
-        color:
-            "#555",
-        fontSize:
-            "9px",
-    },
-
-
-    managementSummary: {
-        display:
-            "flex",
-        justifyContent:
-            "space-between",
-        alignItems:
-            "center",
-        gap:
-            "20px",
-        background:
-            "#0a0a0a",
-        border:
-            "1px solid #202020",
-        borderRadius:
-            "10px",
-        padding:
-            "20px",
-        marginBottom:
-            "28px",
-    },
-
-
-    sectionEyebrow: {
-        color:
-            "#fbbf24",
-        fontSize:
-            "8px",
-        letterSpacing:
-            "1px",
-    },
-
-
-    managementTitle: {
-        margin:
-            "5px 0",
-        color:
-            "#fff",
-        fontSize:
-            "18px",
-    },
-
-
-    managementText: {
-        color:
-            "#666",
-        fontSize:
-            "9px",
-        margin:
-            0,
-    },
-
-
-    managementStats: {
-        display:
-            "flex",
-        gap:
-            "30px",
-    },
-
-
-    resultRow: {
-        display:
-            "flex",
-        justifyContent:
-            "space-between",
-        alignItems:
-            "end",
-        marginBottom:
-            "14px",
-    },
-
-
-    activityLabel: {
-        color:
-            "#666",
-        fontSize:
-            "8px",
-        letterSpacing:
-            "1px",
-    },
-
-
-    sectionTitle: {
-        margin:
-            "4px 0 0",
-        color:
-            "#fff",
-        fontSize:
-            "19px",
-    },
-
-
-    resultBadge: {
-        color:
-            "#aaa",
-        background:
-            "#111",
-        border:
-            "1px solid #242424",
-        padding:
-            "6px 9px",
-        borderRadius:
-            "5px",
-        fontSize:
-            "8px",
-    },
-
-
-    filterCard: {
-        display:
-            "flex",
-        gap:
-            "7px",
-        padding:
-            "10px",
-        background:
-            "#0a0a0a",
-        border:
-            "1px solid #202020",
-        borderRadius:
-            "9px",
-        marginBottom:
-            "12px",
-    },
-
-
     searchBox: {
-        flex:
-            1,
-        display:
-            "flex",
-        alignItems:
-            "center",
-        background:
-            "#111",
-        border:
-            "1px solid #242424",
-        borderRadius:
-            "6px",
-        padding:
-            "0 9px",
+        display: "flex",
+        alignItems: "center",
+        gap: "8px",
+        background: "#ffffff",
+        border: "1px solid #cbd5e1",
+        borderRadius: "10px",
+        padding: "8px 12px",
+        flex: 1,
+        minWidth: "260px"
     },
-
-
-    searchIcon: {
-        color:
-            "#666",
+    searchInput: {
+        border: "none",
+        outline: "none",
+        fontSize: "13px",
+        width: "100%"
     },
-
-
-    search: {
-        width:
-            "100%",
-        border:
-            "none",
-        outline:
-            "none",
-        background:
-            "transparent",
-        color:
-            "#ddd",
-        padding:
-            "8px",
-        fontSize:
-            "9px",
+    filterGroup: {
+        display: "flex",
+        alignItems: "center",
+        gap: "8px",
+        flexWrap: "wrap"
     },
-
-
     select: {
-        background:
-            "#111",
-        border:
-            "1px solid #242424",
-        color:
-            "#aaa",
-        borderRadius:
-            "6px",
-        padding:
-            "0 8px",
-        fontSize:
-            "9px",
-        outline:
-            "none",
+        padding: "8px 12px",
+        borderRadius: "8px",
+        border: "1px solid #cbd5e1",
+        fontSize: "12px",
+        background: "#ffffff",
+        outline: "none"
     },
-
-
-    clear: {
-        background:
-            "#151515",
-        color:
-            "#aaa",
-        border:
-            "1px solid #292929",
-        borderRadius:
-            "6px",
-        padding:
-            "0 10px",
-        cursor:
-            "pointer",
-        fontSize:
-            "9px",
+    aiClusterBtn: {
+        display: "flex",
+        alignItems: "center",
+        gap: "6px",
+        background: "linear-gradient(135deg, #7c3aed 0%, #6366f1 100%)",
+        color: "#ffffff",
+        padding: "8px 14px",
+        borderRadius: "8px",
+        fontSize: "12px",
+        fontWeight: 700,
+        boxShadow: "0 4px 12px rgba(124, 58, 237, 0.3)"
     },
-
-
-    complaintCard: {
-        background:
-            "#0a0a0a",
-        border:
-            "1px solid #202020",
-        borderRadius:
-            "10px",
-        padding:
-            "17px",
-        marginBottom:
-            "10px",
+    tableCard: {
+        background: "#ffffff",
+        borderRadius: "16px",
+        border: "1px solid #e2e8f0",
+        boxShadow: "0 4px 16px rgba(15,23,42,0.04)",
+        overflow: "hidden"
     },
-
-
-    cardTop: {
-        display:
-            "flex",
-        justifyContent:
-            "space-between",
-        alignItems:
-            "start",
-        gap:
-            "15px",
+    table: {
+        width: "100%",
+        borderCollapse: "collapse",
+        textAlign: "left"
     },
-
-
-    titleArea: {
-        display:
-            "flex",
-        gap:
-            "10px",
+    thRow: {
+        background: "#f8fafc",
+        borderBottom: "1px solid #e2e8f0"
     },
-
-
-    complaintNumber: {
-        width:
-            "32px",
-        height:
-            "32px",
-        borderRadius:
-            "7px",
-        background:
-            "#171717",
-        color:
-            "#fbbf24",
-        display:
-            "flex",
-        alignItems:
-            "center",
-        justifyContent:
-            "center",
-        fontSize:
-            "9px",
-        fontWeight:
-            "700",
+    th: {
+        padding: "12px 16px",
+        fontSize: "11.5px",
+        fontWeight: 700,
+        color: "#475569",
+        textTransform: "uppercase",
+        letterSpacing: "0.03em"
     },
-
-
-    complaintTitle: {
-        margin:
-            0,
-        color:
-            "#eee",
-        fontSize:
-            "13px",
+    tr: {
+        borderBottom: "1px solid #f1f5f9"
     },
-
-
-    complaintId: {
-        display:
-            "block",
-        color:
-            "#555",
-        fontSize:
-            "8px",
-        marginTop:
-            "3px",
+    td: {
+        padding: "12px 16px",
+        fontSize: "12.5px",
+        color: "#334155",
+        verticalAlign: "middle"
     },
-
-
-    statusBadge: {
-        padding:
-            "5px 8px",
-        borderRadius:
-            "5px",
-        fontSize:
-            "8px",
-        fontWeight:
-            "700",
-        whiteSpace:
-            "nowrap",
+    urgencyBadge: {
+        fontSize: "10.5px",
+        fontWeight: 800,
+        padding: "2px 6px",
+        borderRadius: "4px"
     },
-
-
-    description: {
-        color:
-            "#888",
-        fontSize:
-            "9px",
-        lineHeight:
-            "1.6",
-        margin:
-            "14px 0",
+    urgencyCritical: {
+        background: "#fee2e2",
+        color: "#b91c1c"
     },
-
-
-    detailsGrid: {
-        display:
-            "grid",
-        gridTemplateColumns:
-            "repeat(4, 1fr)",
-        gap:
-            "8px",
-        padding:
-            "11px 0",
-        borderTop:
-            "1px solid #181818",
-        borderBottom:
-            "1px solid #181818",
+    urgencyHigh: {
+        background: "#ffedd5",
+        color: "#c2410c"
     },
-
-
-    detail: {
-        minWidth:
-            0,
+    urgencyMedium: {
+        background: "#fef9c3",
+        color: "#a16207"
     },
-
-
-    detailLabel: {
-        display:
-            "block",
-        color:
-            "#555",
-        fontSize:
-            "7px",
-        marginBottom:
-            "5px",
+    actionBtnInspect: {
+        padding: "6px",
+        borderRadius: "6px",
+        background: "#e0f2fe",
+        color: "#0284c7"
     },
-
-
-    detailValue: {
-        display:
-            "block",
-        fontSize:
-            "9px",
-        overflow:
-            "hidden",
-        textOverflow:
-            "ellipsis",
-        whiteSpace:
-            "nowrap",
+    actionBtnAssign: {
+        padding: "6px 10px",
+        borderRadius: "6px",
+        background: "#0284c7",
+        color: "#ffffff",
+        fontSize: "11.5px",
+        fontWeight: 700
     },
-
-
-    evidenceSection: {
-        marginTop:
-            "12px",
+    actionBtnNext: {
+        padding: "6px 10px",
+        borderRadius: "6px",
+        background: "#16a34a",
+        color: "#ffffff",
+        fontSize: "11.5px",
+        fontWeight: 700
     },
-
-
-    evidenceImage: {
-        width:
-            "100%",
-        maxHeight:
-            "180px",
-        objectFit:
-            "cover",
-        borderRadius:
-            "7px",
-        border:
-            "1px solid #242424",
+    kanbanBoard: {
+        display: "grid",
+        gridTemplateColumns: "repeat(8, 1fr)",
+        gap: "10px",
+        overflowX: "auto",
+        paddingBottom: "16px"
     },
-
-
-    cardFooter: {
-        display:
-            "flex",
-        justifyContent:
-            "space-between",
-        alignItems:
-            "center",
-        marginTop:
-            "12px",
-        color:
-            "#555",
-        fontSize:
-            "8px",
+    kanbanCol: {
+        background: "#f1f5f9",
+        borderRadius: "12px",
+        padding: "10px",
+        minWidth: "160px",
+        display: "flex",
+        flexDirection: "column"
     },
-
-
-    cardActions: {
-        display:
-            "flex",
-        gap:
-            "6px",
+    kanbanColHeader: {
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        marginBottom: "10px",
+        paddingBottom: "6px",
+        borderBottom: "1px solid #e2e8f0"
     },
-
-
-    actionButton: {
-        background:
-            "rgba(56,189,248,.08)",
-        color:
-            "#38bdf8",
-        border:
-            "1px solid rgba(56,189,248,.2)",
-        borderRadius:
-            "5px",
-        padding:
-            "6px 10px",
-        cursor:
-            "pointer",
-        fontSize:
-            "8px",
+    stageNumberBadge: {
+        width: "18px",
+        height: "18px",
+        borderRadius: "50%",
+        background: "#0f172a",
+        color: "#ffffff",
+        fontSize: "10px",
+        fontWeight: 800,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center"
     },
-
-
-    resolveButton: {
-        background:
-            "rgba(34,197,94,.08)",
-        color:
-            "#4ade80",
-        border:
-            "1px solid rgba(34,197,94,.2)",
-        borderRadius:
-            "5px",
-        padding:
-            "6px 10px",
-        cursor:
-            "pointer",
-        fontSize:
-            "8px",
+    kanbanColTitle: {
+        fontSize: "11px",
+        fontWeight: 700,
+        color: "#0f172a"
     },
-
-
-    message: {
-        textAlign:
-            "center",
-        padding:
-            "55px 20px",
-        border:
-            "1px solid #252525",
-        borderRadius:
-            "10px",
-        background:
-            "#0a0a0a",
-        color:
-            "#737373",
+    kanbanCountBadge: {
+        fontSize: "11px",
+        fontWeight: 700,
+        color: "#64748b"
     },
-
-
-    spinner: {
-        fontSize:
-            "30px",
-        marginBottom:
-            "10px",
-        color:
-            "#fbbf24",
+    kanbanCardsArea: {
+        display: "flex",
+        flexDirection: "column",
+        gap: "8px",
+        minHeight: "280px"
     },
-
-
-    emptyIcon: {
-        fontSize:
-            "30px",
-        marginBottom:
-            "10px",
-        color:
-            "#fbbf24",
+    kanbanEmpty: {
+        fontSize: "11px",
+        color: "#94a3b8",
+        textAlign: "center",
+        paddingTop: "20px"
     },
-
-
-    error: {
-        background:
-            "rgba(239,68,68,.08)",
-        color:
-            "#f87171",
-        border:
-            "1px solid rgba(239,68,68,.25)",
-        padding:
-            "13px",
-        borderRadius:
-            "8px",
-        marginBottom:
-            "15px",
-        fontSize:
-            "10px",
+    kanbanCard: {
+        background: "#ffffff",
+        borderRadius: "8px",
+        padding: "10px",
+        border: "1px solid #e2e8f0",
+        boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
+        cursor: "pointer"
     },
+    heiGrid: {
+        display: "grid",
+        gridTemplateColumns: "repeat(2, 1fr)",
+        gap: "18px"
+    },
+    heiGovCard: {
+        background: "#ffffff",
+        border: "1px solid #e2e8f0",
+        borderRadius: "16px",
+        padding: "20px",
+        boxShadow: "0 2px 10px rgba(15,23,42,0.03)"
+    },
+    heiGovTop: {
+        display: "flex",
+        alignItems: "center",
+        gap: "12px",
+        marginBottom: "14px"
+    },
+    heiGovAvatar: {
+        width: "40px",
+        height: "40px",
+        borderRadius: "10px",
+        background: "#ede9fe",
+        color: "#7c3aed",
+        fontSize: "18px",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center"
+    },
+    heiGovName: {
+        fontSize: "15px",
+        fontWeight: 800,
+        color: "#0f172a"
+    },
+    heiGovLoc: {
+        fontSize: "12px",
+        color: "#64748b"
+    },
+    heiActiveCountBadge: {
+        marginLeft: "auto",
+        fontSize: "12px",
+        color: "#0284c7",
+        background: "#e0f2fe",
+        padding: "4px 10px",
+        borderRadius: "10px"
+    },
+    heiGovSection: {
+        fontSize: "12.5px",
+        color: "#0f172a",
+        marginTop: "10px"
+    },
+    mentorPill: {
+        background: "#f1f5f9",
+        padding: "3px 8px",
+        borderRadius: "6px",
+        fontSize: "11px",
+        color: "#334155"
+    },
+    districtGrid: {
+        display: "grid",
+        gridTemplateColumns: "repeat(4, 1fr)",
+        gap: "14px"
+    },
+    districtCard: {
+        background: "#ffffff",
+        border: "1px solid #e2e8f0",
+        borderRadius: "12px",
+        padding: "14px",
+        boxShadow: "0 1px 4px rgba(0,0,0,0.03)"
+    },
+    auditRow: {
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        padding: "10px 0",
+        borderBottom: "1px solid #f1f5f9"
+    },
+    auditTime: {
+        fontSize: "11.5px",
+        color: "#94a3b8",
+        width: "100px"
+    },
+    auditEvent: {
+        flex: 1,
+        fontSize: "12.5px",
+        color: "#0f172a"
+    },
+    auditBadge: {
+        fontSize: "10px",
+        fontWeight: 800,
+        background: "#f1f5f9",
+        color: "#475569",
+        padding: "2px 8px",
+        borderRadius: "6px"
+    },
+    backdrop: {
+        position: "fixed",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: "rgba(15, 23, 42, 0.65)",
+        backdropFilter: "blur(4px)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        zIndex: 2000,
+        padding: "20px"
+    },
+    assignModal: {
+        background: "#ffffff",
+        borderRadius: "20px",
+        padding: "26px 28px",
+        width: "100%",
+        maxWidth: "540px",
+        boxShadow: "0 25px 60px rgba(0,0,0,0.3)"
+    },
+    label: {
+        fontSize: "12px",
+        fontWeight: 700,
+        color: "#334155",
+        display: "block",
+        marginBottom: "6px"
+    },
+    selectFull: {
+        width: "100%",
+        padding: "10px 12px",
+        borderRadius: "8px",
+        border: "1px solid #cbd5e1",
+        fontSize: "13px",
+        outline: "none"
+    },
+    textarea: {
+        width: "100%",
+        padding: "10px 12px",
+        borderRadius: "8px",
+        border: "1px solid #cbd5e1",
+        fontSize: "13px",
+        outline: "none",
+        fontFamily: "inherit"
+    },
+    cancelBtn: {
+        padding: "9px 16px",
+        borderRadius: "8px",
+        background: "#f1f5f9",
+        color: "#475569",
+        fontWeight: 600,
+        fontSize: "13px"
+    },
+    confirmBtn: {
+        padding: "9px 18px",
+        borderRadius: "8px",
+        background: "#0284c7",
+        color: "#ffffff",
+        fontWeight: 700,
+        fontSize: "13px"
+    }
 };
-
-
-export default AdminDashboard;

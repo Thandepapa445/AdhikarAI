@@ -1,111 +1,162 @@
-import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
-import api from "../services/api";
+import React, { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { Sparkles, ArrowRight, UserPlus } from "lucide-react";
+import { JHARKHAND_DISTRICTS } from "../data/jharkhandData";
 
-function Register() {
+export default function Register() {
     const navigate = useNavigate();
 
     const [form, setForm] = useState({
         name: "",
         email: "",
+        phone: "",
         password: "",
+        district: "Ranchi",
+        entityType: "CITIZEN",
+        panchayatName: ""
     });
 
-    const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
 
     const handleChange = (e) => {
         setForm({
             ...form,
-            [e.target.name]: e.target.value,
+            [e.target.name]: e.target.value
         });
     };
 
-    const handleSubmit = async (e) => {
+    const handleSubmit = (e) => {
         e.preventDefault();
-        setError("");
         setLoading(true);
 
-        try {
-            const response = await api.post(
-                "/auth/register",
-                form
-            );
+        localStorage.setItem("sankalp_token", "mock_jwt_token_" + Date.now());
+        localStorage.setItem("sankalp_user_email", form.email);
+        localStorage.setItem("sankalp_user_role", form.entityType);
 
-            localStorage.setItem(
-                "token",
-                response.data.token
-            );
-
-            navigate("/dashboard");
-        } catch (err) {
-            setError(
-                err.response?.data?.message ||
-                "Registration failed"
-            );
-        } finally {
+        setTimeout(() => {
             setLoading(false);
-        }
+            alert("Registration successful! Welcome to Sankalp AI - Jharkhand Innovation Portal.");
+            navigate("/dashboard");
+        }, 300);
     };
 
     return (
         <div style={styles.container}>
             <div style={styles.card}>
-                <h1>Sankalp AI</h1>
-                <p style={styles.subtitle}>
-                    Create your citizen account
+                <div style={styles.govBadge}>
+                    <span>🇮🇳 Government of Jharkhand • NEP 2020</span>
+                </div>
+
+                <div style={styles.logoBadge}>
+                    <Sparkles size={24} color="#ffffff" />
+                </div>
+
+                <h1 style={styles.brandTitle}>Create Citizen / PRI Account</h1>
+                <p style={styles.brandSubtitle}>
+                    Join the Jharkhand Societal Innovation Ecosystem to submit and track community solutions
                 </p>
 
-                <form onSubmit={handleSubmit}>
-                    <input
-                        type="text"
-                        name="name"
-                        placeholder="Full Name"
-                        value={form.name}
-                        onChange={handleChange}
-                        required
-                        style={styles.input}
-                    />
+                <form onSubmit={handleSubmit} style={styles.form}>
+                    <div style={styles.inputGroup}>
+                        <label style={styles.label}>Full Name / Submitter Representative Name *</label>
+                        <input
+                            type="text"
+                            name="name"
+                            value={form.name}
+                            onChange={handleChange}
+                            required
+                            style={styles.input}
+                            placeholder="e.g. Somra Kisku / Rajesh Oraon"
+                        />
+                    </div>
 
-                    <input
-                        type="email"
-                        name="email"
-                        placeholder="Email"
-                        value={form.email}
-                        onChange={handleChange}
-                        required
-                        style={styles.input}
-                    />
+                    <div style={styles.inputGroup}>
+                        <label style={styles.label}>Entity Classification *</label>
+                        <select
+                            name="entityType"
+                            value={form.entityType}
+                            onChange={handleChange}
+                            style={styles.input}
+                        >
+                            <option value="CITIZEN">Individual Citizen / Resident</option>
+                            <option value="GRAM_PANCHAYAT">Gram Panchayat / PRI (Mukhya / Panchayat Samiti)</option>
+                            <option value="COMMUNITY_SHG">Self-Help Group (SHG) / Farmer Producer Org (FPO)</option>
+                            <option value="LOCAL_BODY">Urban Local Body (ULB) / Ward Committee</option>
+                        </select>
+                    </div>
 
-                    <input
-                        type="password"
-                        name="password"
-                        placeholder="Password"
-                        value={form.password}
-                        onChange={handleChange}
-                        required
-                        style={styles.input}
-                    />
+                    <div style={styles.grid2}>
+                        <div style={styles.inputGroup}>
+                            <label style={styles.label}>District *</label>
+                            <select
+                                name="district"
+                                value={form.district}
+                                onChange={handleChange}
+                                style={styles.input}
+                            >
+                                {JHARKHAND_DISTRICTS.map(d => (
+                                    <option key={d.name} value={d.name}>{d.name}</option>
+                                ))}
+                            </select>
+                        </div>
 
-                    {error && (
-                        <p style={styles.error}>
-                            {error}
-                        </p>
-                    )}
+                        <div style={styles.inputGroup}>
+                            <label style={styles.label}>Panchayat / Ward Name</label>
+                            <input
+                                type="text"
+                                name="panchayatName"
+                                value={form.panchayatName}
+                                onChange={handleChange}
+                                style={styles.input}
+                                placeholder="e.g. Satbarwa Khurd"
+                            />
+                        </div>
+                    </div>
+
+                    <div style={styles.grid2}>
+                        <div style={styles.inputGroup}>
+                            <label style={styles.label}>Email Address *</label>
+                            <input
+                                type="email"
+                                name="email"
+                                value={form.email}
+                                onChange={handleChange}
+                                required
+                                style={styles.input}
+                                placeholder="name@domain.com"
+                            />
+                        </div>
+
+                        <div style={styles.inputGroup}>
+                            <label style={styles.label}>Password *</label>
+                            <input
+                                type="password"
+                                name="password"
+                                value={form.password}
+                                onChange={handleChange}
+                                required
+                                style={styles.input}
+                                placeholder="••••••••"
+                            />
+                        </div>
+                    </div>
 
                     <button
                         type="submit"
                         disabled={loading}
-                        style={styles.button}
+                        style={styles.submitBtn}
                     >
-                        {loading ? "Creating account..." : "Register"}
+                        <span>{loading ? "Registering..." : "Register Citizen Account"}</span>
+                        <ArrowRight size={17} />
                     </button>
                 </form>
 
-                <p style={styles.login}>
+                <div style={styles.footerText}>
                     Already have an account?{" "}
-                    <Link to="/login">Login</Link>
-                </p>
+                    <Link to="/login" style={styles.link}>
+                        Sign In
+                    </Link>
+                </div>
             </div>
         </div>
     );
@@ -117,53 +168,100 @@ const styles = {
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
-        background: "#f1f5f9",
+        background: "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)",
+        padding: "20px"
     },
-
     card: {
-        width: "380px",
-        padding: "40px",
-        background: "white",
-        borderRadius: "16px",
-        boxShadow: "0 10px 30px rgba(0,0,0,0.1)",
+        background: "#ffffff",
+        borderRadius: "24px",
+        padding: "36px 32px",
+        width: "100%",
+        maxWidth: "520px",
+        boxShadow: "0 25px 60px rgba(0,0,0,0.3)",
+        textAlign: "center"
     },
-
-    subtitle: {
+    govBadge: {
+        fontSize: "11px",
+        fontWeight: 700,
+        color: "#0369a1",
+        background: "#e0f2fe",
+        padding: "4px 12px",
+        borderRadius: "20px",
+        display: "inline-block",
+        marginBottom: "14px"
+    },
+    logoBadge: {
+        width: "44px",
+        height: "44px",
+        borderRadius: "12px",
+        background: "linear-gradient(135deg, #0284c7 0%, #16a34a 100%)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        margin: "0 auto 10px auto",
+        boxShadow: "0 6px 16px rgba(2, 132, 199, 0.35)"
+    },
+    brandTitle: {
+        fontSize: "22px",
+        fontWeight: 800,
+        color: "#0f172a",
+        marginBottom: "4px"
+    },
+    brandSubtitle: {
+        fontSize: "12px",
         color: "#64748b",
-        marginBottom: "30px",
+        marginBottom: "20px"
     },
-
+    form: {
+        textAlign: "left"
+    },
+    grid2: {
+        display: "grid",
+        gridTemplateColumns: "1fr 1fr",
+        gap: "12px"
+    },
+    inputGroup: {
+        marginBottom: "12px"
+    },
+    label: {
+        fontSize: "12px",
+        fontWeight: 600,
+        color: "#334155",
+        display: "block",
+        marginBottom: "4px"
+    },
     input: {
         width: "100%",
-        boxSizing: "border-box",
-        padding: "12px",
-        marginBottom: "15px",
+        padding: "9px 12px",
+        borderRadius: "10px",
         border: "1px solid #cbd5e1",
-        borderRadius: "8px",
-        fontSize: "15px",
+        fontSize: "13px",
+        color: "#0f172a",
+        outline: "none"
     },
-
-    button: {
+    submitBtn: {
         width: "100%",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: "8px",
+        background: "linear-gradient(135deg, #0284c7 0%, #0369a1 100%)",
+        color: "#ffffff",
         padding: "12px",
-        background: "#2563eb",
-        color: "white",
-        border: "none",
-        borderRadius: "8px",
-        cursor: "pointer",
-        fontSize: "16px",
-    },
-
-    error: {
-        color: "#dc2626",
+        borderRadius: "12px",
         fontSize: "14px",
+        fontWeight: 700,
+        boxShadow: "0 4px 14px rgba(2, 132, 199, 0.35)",
+        marginTop: "10px"
     },
-
-    login: {
-        marginTop: "20px",
-        textAlign: "center",
-        color: "#64748b",
+    footerText: {
+        marginTop: "16px",
+        fontSize: "12.5px",
+        color: "#64748b"
     },
+    link: {
+        color: "#0284c7",
+        fontWeight: 700,
+        textDecoration: "none"
+    }
 };
-
-export default Register;
