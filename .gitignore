@@ -1,40 +1,53 @@
-# =====================================================
+# ==========================================
 # FRONTEND - NODE / VITE
-# =====================================================
+# ==========================================
 
 frontend/node_modules/
 frontend/dist/
 frontend/.vite/
 
-# Environment files
+# Frontend environment files
 frontend/.env
-frontend/.env.local
-frontend/.env.development
-frontend/.env.production
+frontend/.env.*
+!frontend/.env.example
 
 
-# =====================================================
-# BACKEND - GRADLE
-# =====================================================
+# ==========================================
+# BACKEND - JAVA / GRADLE
+# ==========================================
 
+# Gradle generated files
 backend/.gradle/
 backend/build/
 
-# Gradle generated files
-.gradle/
-build/
-
-
-# =====================================================
-# JAVA / IDE
-# =====================================================
-
+# Java compiled files
 *.class
 
-.idea/
-*.iml
+# Backend secrets / local configuration
+backend/src/main/resources/application.properties
+
+
+# ==========================================
+# ENVIRONMENT / SECRETS
+# ==========================================
+
+.env
+.env.*
+!.env.example
+!*.example
+
+# API keys / secret configuration
+*.pem
+*.key
+
+
+# ==========================================
+# IDE / EDITORS
+# ==========================================
 
 .vscode/
+.idea/
+*.iml
 
 # Eclipse
 .classpath
@@ -42,73 +55,26 @@ build/
 .settings/
 
 
-# =====================================================
-# ENVIRONMENT / SECRETS
-# =====================================================
-
-.env
-.env.*
-!.env.example
-
-application-local.properties
-application-secret.properties
-
-
-# =====================================================
-# LOGS
-# =====================================================
-
-*.log
-logs/
-
-
-# =====================================================
+# ==========================================
 # OS FILES
-# =====================================================
+# ==========================================
 
 .DS_Store
 Thumbs.db
 
 
-# =====================================================
+# ==========================================
+# LOG FILES
+# ==========================================
+
+*.log
+
+
+# ==========================================
 # TEMPORARY FILES
-# =====================================================
+# ==========================================
 
 *.tmp
 *.temp
 *.swp
-
-
-# =====================================================
-# PYTHON AI MODEL - FUTURE
-# =====================================================
-
-__pycache__/
-*.py[cod]
-
-.venv/
-venv/
-env/
-
-# Model-generated files
-*.pt
-*.pth
-*.onnx
-*.h5
-*.keras
-
-# Jupyter
-.ipynb_checkpoints/
-
-
-# =====================================================
-# DATABASE / LOCAL DATA
-# =====================================================
-
-*.db
-*.sqlite
-*.sqlite3
-
-
-# Local Spring Boot secrets
-backend/src/main/resources/application.properties
+*~
