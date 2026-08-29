@@ -1,4 +1,4 @@
-package com.sociosphere.backend;
+package com.adhikar.backend;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
