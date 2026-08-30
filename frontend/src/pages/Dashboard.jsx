@@ -79,8 +79,8 @@ export default function Dashboard() {
 
             <main style={styles.main}>
                 {/* Hero & Impact Banner */}
-                <section style={styles.heroSection}>
-                    <div style={styles.heroContent}>
+                <section className="hero-section" style={styles.heroSection}>
+                    <div className="hero-content" style={styles.heroContent}>
                         <div style={styles.heroBadge}>
                             <Sparkles size={14} color="#0284c7" />
                             <span>Jharkhand NEP 2020 Experiential Social Innovation Platform</span>
@@ -113,7 +113,7 @@ export default function Dashboard() {
                     </div>
 
                     {/* KPI Impact Cards */}
-                    <div style={styles.kpiGrid}>
+                    <div className="kpi-grid" style={styles.kpiGrid}>
                         <div style={styles.kpiCard}>
                             <div style={styles.kpiHeader}>
                                 <span style={styles.kpiTitle}>Total Challenges</span>
@@ -161,7 +161,7 @@ export default function Dashboard() {
                 </section>
 
                 {/* Main Navigation Tabs */}
-                <div style={styles.tabsBar}>
+                <div className="tabs-bar" style={styles.tabsBar}>
                     <button
                         onClick={() => setActiveTab("my-challenges")}
                         style={{
@@ -207,7 +207,7 @@ export default function Dashboard() {
                 {activeTab === "my-challenges" && (
                     <section style={styles.contentSection}>
                         {/* Search & Filter Toolbar */}
-                        <div style={styles.toolbar}>
+                        <div className="toolbar-section" style={styles.toolbar}>
                             <div style={styles.searchBox}>
                                 <Search size={16} color="#64748b" />
                                 <input
@@ -249,7 +249,7 @@ export default function Dashboard() {
                         </div>
 
                         {/* Challenges List Grid */}
-                        <div style={styles.challengesGrid}>
+                        <div className="challenges-grid" style={styles.challengesGrid}>
                             {filteredChallenges.length === 0 ? (
                                 <div style={styles.emptyState}>
                                     <Lightbulb size={36} color="#94a3b8" />

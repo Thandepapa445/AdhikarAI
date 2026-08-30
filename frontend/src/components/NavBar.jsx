@@ -16,7 +16,7 @@ export default function NavBar({ activeTab, setActiveTab }) {
 
     return (
         <header style={styles.header}>
-            <div style={styles.topGovBar}>
+            <div className="top-gov-bar" style={styles.topGovBar}>
                 <div style={styles.topGovContainer}>
                     <div style={styles.govTag}>
                         <span style={styles.govEmblem}>🇮🇳</span>
@@ -29,25 +29,25 @@ export default function NavBar({ activeTab, setActiveTab }) {
                 </div>
             </div>
 
-            <div style={styles.mainNav}>
-                <div style={styles.container}>
+            <div className="main-nav" style={styles.mainNav}>
+                <div className="nav-container" style={styles.container}>
                     {/* Brand */}
                     <Link to="/dashboard" style={styles.brand}>
-                        <div style={styles.logoBadge}>
+                        <div className="brand-logo" style={styles.logoBadge}>
                             <Sparkles size={22} color="#ffffff" />
                         </div>
                         <div>
-                            <div style={styles.brandTitle}>
+                            <div className="brand-title-text" style={styles.brandTitle}>
                                 Sankalp <span style={styles.brandHighlight}>AI</span>
                             </div>
-                            <div style={styles.brandSubtitle}>
+                            <div className="brand-subtitle-text" style={styles.brandSubtitle}>
                                 Jharkhand Societal Innovation & HEI Collaboration Portal
                             </div>
                         </div>
                     </Link>
 
                     {/* Navigation Links */}
-                    <nav style={styles.navLinks}>
+                    <nav className="nav-links-desktop" style={styles.navLinks}>
                         <button
                             onClick={() => {
                                 if (!isHome) navigate("/dashboard");
@@ -106,8 +106,8 @@ export default function NavBar({ activeTab, setActiveTab }) {
                     </nav>
 
                     {/* Action Buttons & Persona Links */}
-                    <div style={styles.navActions}>
-                        <Link to="/challenges/new" style={styles.submitBtn}>
+                    <div className="nav-actions-group" style={styles.navActions}>
+                        <Link to="/challenges/new" className="submit-challenge-nav-btn" style={styles.submitBtn}>
                             <PlusCircle size={17} />
                             <span>Submit Challenge</span>
                         </Link>
