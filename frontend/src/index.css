@@ -72,11 +72,6 @@ input, textarea, select {
   to { opacity: 1; transform: translateY(0); }
 }
 
-@keyframes pulseGlow {
-  0%, 100% { box-shadow: 0 0 15px rgba(2, 132, 199, 0.3); }
-  50% { box-shadow: 0 0 25px rgba(2, 132, 199, 0.6); }
-}
-
 .animate-fade-in {
   animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
@@ -96,4 +91,127 @@ input, textarea, select {
 .leaflet-popup-content {
   margin: 12px 14px !important;
   line-height: 1.4 !important;
+}
+
+/* ==========================================================================
+   MOBILE-ONLY RESPONSIVE ENGINE (Strictly for mobile screens <= 768px)
+   Laptop / PC views (> 768px) remain 100% desktop-standard & untouched.
+   ========================================================================== */
+
+@media screen and (max-width: 768px) {
+  /* Body and main container */
+  body {
+    font-size: 13.5px;
+  }
+
+  main {
+    padding: 10px 10px 85px 10px !important;
+    max-width: 100% !important;
+  }
+
+  /* Header adjustments for mobile */
+  div[style*="topGovBar"] {
+    display: none !important;
+  }
+
+  nav[style*="display: flex"][style*="gap: 2px"],
+  div[style*="display: flex"][style*="gap: 2px"] {
+    display: none !important;
+  }
+
+  div[style*="userProfile"] {
+    display: none !important;
+  }
+
+  a[title*="Higher Education Institutions"],
+  a[title*="State Nodal Officer"] {
+    display: none !important;
+  }
+
+  /* Form & Page Title */
+  h1 {
+    font-size: 20px !important;
+    line-height: 1.25 !important;
+  }
+
+  p {
+    font-size: 12.5px !important;
+  }
+
+  /* Force multi-column grids to stack vertically on mobile */
+  .contentGrid, 
+  div[style*="gridTemplateColumns: 2fr 1fr"],
+  div[style*="gridTemplateColumns: 1fr 1fr"],
+  div[style*="gridTemplateColumns: repeat(3, 1fr)"],
+  div[style*="gridTemplateColumns: repeat(4, 1fr)"] {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  /* Form Card Mobile Padding */
+  div[style*="borderRadius: 20px"][style*="padding: 24px"],
+  div[style*="background: #ffffff"][style*="padding: 24px"] {
+    padding: 16px 12px !important;
+    border-radius: 16px !important;
+  }
+
+  /* Full-width Touch Friendly Inputs */
+  input, select, textarea {
+    font-size: 14px !important;
+    padding: 12px 12px !important;
+    border-radius: 10px !important;
+    width: 100% !important;
+  }
+
+  /* Mobile Button Sizing */
+  button {
+    min-height: 42px !important;
+    font-size: 13.5px !important;
+  }
+
+  /* Hero & KPI Banners on Dashboard */
+  section[style*="display: flex"],
+  section[style*="display: grid"] {
+    flex-direction: column !important;
+  }
+
+  /* KPI Grid: 2 columns on mobile instead of 4 */
+  div[style*="gridTemplateColumns: repeat(4, 1fr)"] {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px !important;
+  }
+
+  /* Navigation Tabs Bar Horizontal Swipe */
+  div[style*="display: flex"][style*="gap: 10px"],
+  div[style*="display: flex"][style*="gap: 12px"] {
+    overflow-x: auto !important;
+    white-space: nowrap !important;
+    padding-bottom: 6px !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Camera & Live Viewfinder Modal Mobile Responsive */
+  div[style*="maxWidth: 480px"] {
+    width: 96% !important;
+    max-width: 96% !important;
+    padding: 14px !important;
+    border-radius: 16px !important;
+  }
+
+  /* Map Container Mobile Height */
+  .leaflet-container {
+    height: 180px !important;
+    border-radius: 10px !important;
+  }
+
+  /* Mobile Challenge Detail Modal */
+  div[style*="maxWidth: 800px"],
+  div[style*="maxWidth: 850px"],
+  div[style*="maxWidth: 900px"] {
+    width: 96% !important;
+    max-width: 96% !important;
+    max-height: 90vh !important;
+    padding: 14px !important;
+    overflow-y: auto !important;
+  }
 }
