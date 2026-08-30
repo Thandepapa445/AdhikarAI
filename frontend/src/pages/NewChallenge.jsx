@@ -406,9 +406,9 @@ export default function NewChallenge() {
                     </p>
                 </div>
 
-                <div style={styles.contentGrid}>
+                <div className="new-challenge-grid" style={styles.contentGrid}>
                     {/* Main Form */}
-                    <div style={styles.formCard}>
+                    <div className="new-challenge-form-card" style={styles.formCard}>
                         <form onSubmit={handleSubmit}>
                             {/* Submitter Details */}
                             <div style={styles.sectionHeading}>
@@ -416,7 +416,7 @@ export default function NewChallenge() {
                                 <h3>Submitter & Organization Classification</h3>
                             </div>
 
-                            <div style={styles.grid2}>
+                            <div className="form-grid-2" style={styles.grid2}>
                                 <div style={styles.inputGroup}>
                                     <label style={styles.label}>Submitter Classification *</label>
                                     <select
@@ -450,7 +450,7 @@ export default function NewChallenge() {
                                 <h3>Geographic Location in Jharkhand</h3>
                             </div>
 
-                            <div style={styles.grid3}>
+                            <div className="form-grid-3" style={styles.grid3}>
                                 <div style={styles.inputGroup}>
                                     <label style={styles.label}>District *</label>
                                     <select
@@ -627,7 +627,7 @@ export default function NewChallenge() {
                                 )}
                             </div>
 
-                            <div style={styles.grid2}>
+                            <div className="form-grid-2" style={styles.grid2}>
                                 <div style={styles.inputGroup}>
                                     <label style={styles.label}>Urgency & Community Risk Level *</label>
                                     <select
@@ -666,7 +666,7 @@ export default function NewChallenge() {
                     </div>
 
                     {/* AI Assistant Sidebar */}
-                    <div style={styles.sidebar}>
+                    <div className="new-challenge-sidebar" style={styles.sidebar}>
                         <div style={styles.aiCard}>
                             <div style={styles.aiHeader}>
                                 <Sparkles size={20} color="#0284c7" />

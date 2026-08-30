@@ -122,7 +122,7 @@ input, textarea, select {
   }
 
   .nav-container, div[style*="maxWidth: 1280px"] {
-    padding: 0 12px !important;
+    padding: 0 10px !important;
     max-width: 100% !important;
   }
 
@@ -137,6 +137,12 @@ input, textarea, select {
   .brand-logo {
     width: 32px !important;
     height: 32px !important;
+  }
+
+  /* Hide header button on mobile since bottom nav already handles it */
+  .submit-challenge-nav-btn,
+  .nav-actions-group a[style*="submitBtn"] {
+    display: none !important;
   }
 
   .nav-actions-group a[title*="Higher Education"],
@@ -172,7 +178,7 @@ input, textarea, select {
     justify-content: center !important;
   }
 
-  /* 3. KPI Grid - 2x2 Clean Mobile Stack (No Horizontal Cutoff!) */
+  /* 3. KPI Grid - 2x2 Clean Mobile Stack */
   .kpi-grid, 
   div[style*="gridTemplateColumns: repeat(4, 1fr)"] {
     grid-template-columns: 1fr 1fr !important;
@@ -241,7 +247,7 @@ input, textarea, select {
     width: 100% !important;
   }
 
-  /* 6. Challenges Grid - Strictly 1 Card per Row (100% Width, Zero Cutoff) */
+  /* 6. Challenges Grid - Strictly 1 Card per Row (100% Width) */
   .challenges-grid,
   div[style*="challengesGrid"],
   div[style*="gridTemplateColumns: repeat(2, 1fr)"] {
@@ -259,12 +265,32 @@ input, textarea, select {
     box-sizing: border-box !important;
   }
 
-  /* 7. New Challenge Form Grid Stacks */
-  div[style*="gridTemplateColumns: 2fr 1fr"],
+  /* 7. New Challenge Submit Screen Mobile Fixes (Strict 1-Column Stack) */
+  .new-challenge-grid,
+  div[style*="gridTemplateColumns: 2fr 1fr"] {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+    width: 100% !important;
+  }
+
+  .new-challenge-form-card,
+  .new-challenge-sidebar,
+  div[style*="formCard"],
+  div[style*="sidebar"] {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 16px 14px !important;
+    border-radius: 16px !important;
+    box-sizing: border-box !important;
+  }
+
+  .form-grid-2,
+  .form-grid-3,
   div[style*="gridTemplateColumns: 1fr 1fr"],
   div[style*="gridTemplateColumns: repeat(3, 1fr)"] {
     grid-template-columns: 1fr !important;
-    gap: 12px !important;
+    gap: 10px !important;
+    width: 100% !important;
   }
 
   input, select, textarea {
@@ -272,5 +298,6 @@ input, textarea, select {
     padding: 12px 12px !important;
     border-radius: 10px !important;
     width: 100% !important;
+    box-sizing: border-box !important;
   }
 }
