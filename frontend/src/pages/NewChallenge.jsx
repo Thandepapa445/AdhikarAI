@@ -361,7 +361,9 @@ export default function NewChallenge() {
             district,
             block,
             panchayat: panchayat || `${block} Khurd`,
-            locationText: locationText || `${panchayat}, ${block}, ${district}`,
+            locationText: locationText || `${panchayat || block}, ${district}`,
+            lat: mapPosition.lat,
+            lng: mapPosition.lng,
             latitude: mapPosition.lat,
             longitude: mapPosition.lng,
             affectedPopulation: Number(affectedPopulation) || 850,
@@ -378,11 +380,9 @@ export default function NewChallenge() {
 
         try {
             await challengeService.createChallenge(newChallenge);
-            setTimeout(() => {
-                setSubmitting(false);
-                alert("🎉 Challenge Submitted Successfully!\nYour societal problem has passed the AI Quality Gate & DPDP Privacy Check, and is routed to the State Nodal Council & BIT Mesra / BAU FabLabs.");
-                navigate("/dashboard");
-            }, 600);
+            setSubmitting(false);
+            alert("🎉 Challenge Submitted Successfully!\nYour societal problem has passed the AI Quality Gate & DPDP Privacy Check, and is routed to the State Nodal Council & BIT Mesra / BAU FabLabs.");
+            navigate("/dashboard");
         } catch (err) {
             setSubmitting(false);
             alert("Submitted locally! Redirecting to dashboard...");

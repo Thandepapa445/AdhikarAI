@@ -44,13 +44,24 @@ export default function AdminDashboard() {
 
     const loadData = async () => {
         setLoading(true);
-        const data = await challengeService.getAllChallenges();
-        setChallenges(data);
-        setLoading(false);
+        try {
+            const data = await challengeService.getAllChallenges();
+            setChallenges(data);
+        } catch (e) {
+            setChallenges(getLocalChallenges());
+        } finally {
+            setLoading(false);
+        }
     };
 
     useEffect(() => {
         loadData();
+    }, [activeTab]);
+
+    useEffect(() => {
+        const handleFocus = () => loadData();
+        window.addEventListener("focus", handleFocus);
+        return () => window.removeEventListener("focus", handleFocus);
     }, []);
 
     // KPIs
