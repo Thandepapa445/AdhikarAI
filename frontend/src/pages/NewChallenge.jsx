@@ -228,43 +228,97 @@ export default function NewChallenge() {
         acquireLiveLocation(false);
     }, []);
 
-    // Live AI NLP Keyword Classifier & Nearest HEI Spatial Proximity Router
+    // Live Multi-Modal AI NLP Classifier & Intelligent Multi-Factor University Matcher
     useEffect(() => {
-        const text = (title + " " + description).toLowerCase();
-        let detected = domain;
-        let conf = 85;
+        let isMounted = true;
+        const text = (title + " " + description).trim();
 
-        if (text.includes("water") || text.includes("fluoride") || text.includes("arsenic") || text.includes("drinking") || text.includes("handpump")) {
+        // 1. Instant fallback local analysis
+        let detected = domain;
+        let conf = 88;
+        const lower = text.toLowerCase();
+
+        if (lower.includes("water") || lower.includes("fluoride") || lower.includes("arsenic") || lower.includes("drinking") || lower.includes("handpump") || lower.includes("leakage")) {
             detected = "WATER";
-            conf = 94;
-        } else if (text.includes("lac") || text.includes("crop") || text.includes("farmer") || text.includes("storage") || text.includes("kisan") || text.includes("agriculture")) {
-            detected = "AGRICULTURE";
-            conf = 92;
-        } else if (text.includes("mine") || text.includes("coal") || text.includes("ash") || text.includes("overburden") || text.includes("quarry")) {
-            detected = "MINING_REHAB";
             conf = 96;
-        } else if (text.includes("health") || text.includes("hospital") || text.includes("clinic") || text.includes("sickle cell") || text.includes("doctor")) {
+        } else if (lower.includes("crop") || lower.includes("farmer") || lower.includes("pest") || lower.includes("kisan") || lower.includes("agriculture")) {
+            detected = "AGRICULTURE";
+            conf = 93;
+        } else if (lower.includes("mine") || lower.includes("coal") || lower.includes("ash") || lower.includes("quarry") || lower.includes("mining")) {
+            detected = "MINING_REHAB";
+            conf = 98;
+        } else if (lower.includes("health") || lower.includes("hospital") || lower.includes("malaria") || lower.includes("doctor") || lower.includes("garbage")) {
             detected = "HEALTHCARE";
-            conf = 91;
-        } else if (text.includes("school") || text.includes("education") || text.includes("santhali") || text.includes("student") || text.includes("teacher")) {
+            conf = 92;
+        } else if (lower.includes("school") || lower.includes("education") || lower.includes("student") || lower.includes("teacher")) {
             detected = "EDUCATION";
-            conf = 88;
-        } else if (text.includes("solar") || text.includes("micro-grid") || text.includes("electricity") || text.includes("energy")) {
-            detected = "ENERGY_ENVIRONMENT";
             conf = 89;
-        } else if (text.includes("road") || text.includes("culvert") || text.includes("bridge") || text.includes("pothole") || text.includes("infrastructure") || text.includes("highway") || text.includes("traffic")) {
+        } else if (lower.includes("solar") || lower.includes("electricity") || lower.includes("power") || lower.includes("energy")) {
+            detected = "ENERGY_ENVIRONMENT";
+            conf = 91;
+        } else if (lower.includes("road") || lower.includes("culvert") || lower.includes("bridge") || lower.includes("pothole") || lower.includes("infrastructure")) {
             detected = "INFRASTRUCTURE";
-            conf = 94;
+            conf = 95;
         }
 
         setAiDomainSuggestion(detected);
         setAiConfidence(conf);
         setDomain(detected);
 
-        // Dynamically find nearest university to this exact GPS location!
         const nearestHei = findNearestMatchedHei(mapPosition.lat, mapPosition.lng, detected);
         setSuggestedHei(nearestHei);
-    }, [title, description, mapPosition.lat, mapPosition.lng, domain]);
+
+        // 2. Call backend Multi-Modal AI Intelligence Microservice for real-time Scikit-Learn NLP & Multi-Factor Matching
+        if (text.length >= 4) {
+            fetch(`/yolo-api/v1/analyze-challenge`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ text: text })
+            })
+            .then(res => res.ok ? res.json() : null)
+            .then(nlpRes => {
+                if (!isMounted || !nlpRes) return;
+                if (nlpRes.domain) {
+                    setAiDomainSuggestion(nlpRes.domain);
+                    setDomain(nlpRes.domain);
+                    setAiConfidence(Math.round(nlpRes.confidence * 100));
+                    if (nlpRes.urgency) setUrgency(nlpRes.urgency);
+                }
+
+                // Call Multi-Factor University Matcher
+                return fetch(`/yolo-api/v1/match-university`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        domain: nlpRes.domain || detected,
+                        latitude: mapPosition.lat,
+                        longitude: mapPosition.lng,
+                        title: title,
+                        description: description
+                    })
+                });
+            })
+            .then(res => res && res.ok ? res.json() : null)
+            .then(heiRes => {
+                if (!isMounted || !heiRes || !heiRes.topMatch) return;
+                const top = heiRes.topMatch;
+                setSuggestedHei({
+                    id: top.id,
+                    name: top.name,
+                    shortName: top.shortName,
+                    distanceKm: top.distanceKm,
+                    matchScorePercent: top.matchScorePercent,
+                    specializedLabs: [top.specializedLab],
+                    facultyMentors: [top.facultyMentor],
+                    city: top.city,
+                    state: top.state
+                });
+            })
+            .catch(() => {});
+        }
+
+        return () => { isMounted = false; };
+    }, [title, description, mapPosition.lat, mapPosition.lng]);
 
     // 1-Tap Live GPS Button Trigger
     const handleDetectGPS = () => {
@@ -962,22 +1016,29 @@ export default function NewChallenge() {
 
                             <div style={styles.aiRow}>
                                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
-                                    <span style={styles.aiLabel}>🎯 Nearest Matched University (HEI):</span>
-                                    {suggestedHei.distanceKm !== undefined && (
-                                        <span style={{ fontSize: "11px", fontWeight: 800, color: "#15803d", background: "#dcfce7", padding: "1px 8px", borderRadius: "10px" }}>
-                                            📍 {suggestedHei.distanceKm} km away
-                                        </span>
-                                    )}
+                                    <span style={styles.aiLabel}>🎯 Top Matched University (HEI):</span>
+                                    <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                                        {suggestedHei.matchScorePercent && (
+                                            <span style={{ fontSize: "11px", fontWeight: 800, color: "#7c3aed", background: "#f3e8ff", padding: "1px 8px", borderRadius: "10px" }}>
+                                                ⭐ {suggestedHei.matchScorePercent} Match
+                                            </span>
+                                        )}
+                                        {suggestedHei.distanceKm !== undefined && (
+                                            <span style={{ fontSize: "11px", fontWeight: 800, color: "#15803d", background: "#dcfce7", padding: "1px 8px", borderRadius: "10px" }}>
+                                                📍 {suggestedHei.distanceKm} km away
+                                            </span>
+                                        )}
+                                    </div>
                                 </div>
                                 <div style={styles.heiPill}>
                                     <Building2 size={20} color="#7c3aed" style={{ minWidth: "20px" }} />
                                     <div style={{ width: "100%" }}>
                                         <div style={{ fontWeight: 800, fontSize: "13px", color: "#0f172a" }}>{suggestedHei.name}</div>
                                         <div style={{ fontSize: "11.5px", color: "#475569", marginTop: "2px" }}>
-                                            🔬 <strong>Lab:</strong> {suggestedHei.specializedLabs[0]}
+                                            🔬 <strong>Lab:</strong> {suggestedHei.specializedLabs ? suggestedHei.specializedLabs[0] : suggestedHei.specializedLab}
                                         </div>
                                         <div style={{ fontSize: "11px", color: "#64748b", marginTop: "1px" }}>
-                                            👨‍🏫 <strong>Mentor:</strong> {suggestedHei.facultyMentors[0]}
+                                            👨‍🏫 <strong>Mentor:</strong> {suggestedHei.facultyMentors ? suggestedHei.facultyMentors[0] : suggestedHei.facultyMentor}
                                         </div>
                                     </div>
                                 </div>
