@@ -98,25 +98,19 @@ export default function UniversityDashboard() {
     const studentCount = studentTeams.reduce((acc, t) => acc + t.members.length + 1, 0);
 
     // University action: advance project stage & add lab deliverables
-    const handleSaveDeliverable = () => {
+    const handleSaveDeliverable = async () => {
         if (!updatingChallenge) return;
 
-        const list = getLocalChallenges();
-        const updated = list.map(c => {
-            if (c.id === updatingChallenge.id) {
-                return {
-                    ...c,
-                    status: targetStage,
-                    prototypeDetails: newPrototypeDetails || c.prototypeDetails,
-                    pilotResults: newLabResults || c.pilotResults,
-                    citizenVerificationRequested: targetStage === "PILOT",
-                    updatedAt: new Date().toISOString()
-                };
+        const updated = await challengeService.updateChallengeStatus(
+            updatingChallenge.id,
+            targetStage,
+            {
+                prototypeDetails: newPrototypeDetails || updatingChallenge.prototypeDetails,
+                pilotResults: newLabResults || updatingChallenge.pilotResults,
+                citizenVerificationRequested: targetStage === "PILOT"
             }
-            return c;
-        });
+        );
 
-        saveLocalChallenges(updated);
         setChallenges(updated);
         alert(`🚀 Deliverable & Milestone saved! Challenge #${updatingChallenge.id} advanced to ${targetStage}.`);
         setUpdatingChallenge(null);

@@ -60,4 +60,23 @@ public class ChallengeController {
     public ResponseEntity<Challenge> upvoteChallenge(@PathVariable Long id) {
         return ResponseEntity.ok(challengeService.upvoteChallenge(id));
     }
+
+    @PutMapping("/{id}/status")
+    public ResponseEntity<Challenge> updateStatus(
+            @PathVariable Long id,
+            @RequestBody java.util.Map<String, Object> body
+    ) {
+        return ResponseEntity.ok(challengeService.updateStatus(id, body));
+    }
+
+    @PostMapping("/{id}/allocate")
+    public ResponseEntity<Challenge> allocateHei(
+            @PathVariable Long id,
+            @RequestBody java.util.Map<String, String> body
+    ) {
+        String heiName = body.getOrDefault("heiName", "BIT Mesra, Ranchi");
+        String labDepartment = body.getOrDefault("labDepartment", "Clean Water & Rural Innovation FabLab");
+        String facultyMentor = body.getOrDefault("facultyMentor", "Dr. Arvind Sharma");
+        return ResponseEntity.ok(challengeService.allocateHei(id, heiName, labDepartment, facultyMentor));
+    }
 }

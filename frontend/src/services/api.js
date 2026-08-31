@@ -177,53 +177,54 @@ export const challengeService = {
         return updated;
     },
 
-    // Allocate HEI to challenge
-    async allocateHei(id, heiName, labDepartment, facultyMentor) {
+    // Generic Stage Progression Updater (Advances through all 8 Stages)
+    async updateChallengeStatus(id, newStatus, extraData = {}) {
         const list = getLocalChallenges();
         const updated = list.map(c => {
             if (String(c.id) === String(id)) {
                 return {
                     ...c,
-                    assignedHei: heiName,
-                    assignedHeiDepartment: labDepartment,
-                    facultyMentor: facultyMentor,
-                    status: "ASSIGNED",
+                    status: newStatus,
+                    ...extraData,
                     updatedAt: new Date().toISOString()
                 };
             }
             return c;
         });
         saveLocalChallenges(updated);
+
         try {
-            await api.post(`/challenges/${id}/allocate`, { heiName, labDepartment, facultyMentor });
+            const res = await api.put(`/challenges/${id}/status`, {
+                status: newStatus,
+                ...extraData
+            });
+            if (res.data) {
+                const merged = updated.map(c => String(c.id) === String(id) ? res.data : c);
+                saveLocalChallenges(merged);
+                return merged;
+            }
         } catch (e) {
-            // silent
+            console.warn("Backend status update fallback to local storage", e?.message);
         }
         return updated;
     },
 
+    // Allocate HEI to challenge
+    async allocateHei(id, heiName, labDepartment, facultyMentor, extra = {}) {
+        return this.updateChallengeStatus(id, "ASSIGNED", {
+            assignedHei: heiName,
+            assignedHeiDepartment: labDepartment,
+            facultyMentor: facultyMentor,
+            ...extra
+        });
+    },
+
     // Citizen verify pilot deployment
     async verifyPilot(id, feedbackText) {
-        const list = getLocalChallenges();
-        const updated = list.map(c => {
-            if (String(c.id) === String(id)) {
-                return {
-                    ...c,
-                    status: "RESOLVED",
-                    citizenVerificationRequested: false,
-                    citizenFeedbackNotes: feedbackText || "Citizen & Gram Panchayat verified field deployment.",
-                    updatedAt: new Date().toISOString()
-                };
-            }
-            return c;
+        return this.updateChallengeStatus(id, "RESOLVED", {
+            citizenVerificationRequested: false,
+            citizenFeedbackNotes: feedbackText || "Citizen & Gram Panchayat verified field deployment."
         });
-        saveLocalChallenges(updated);
-        try {
-            await api.post(`/challenges/${id}/verify-pilot`, { feedback: feedbackText });
-        } catch (e) {
-            // silent
-        }
-        return updated;
     }
 };
 

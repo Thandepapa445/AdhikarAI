@@ -84,6 +84,41 @@ public class ChallengeService {
         return challengeRepository.save(challenge);
     }
 
+    public Challenge updateStatus(Long id, Map<String, Object> body) {
+        Challenge challenge = getChallengeById(id);
+        if (body != null) {
+            if (body.get("status") != null) {
+                try {
+                    challenge.setStatus(Challenge.Status.valueOf((String) body.get("status")));
+                } catch (Exception e) {
+                    // ignore invalid status enum
+                }
+            }
+            if (body.get("assignedHei") != null) challenge.setAssignedHei((String) body.get("assignedHei"));
+            if (body.get("assignedHeiDepartment") != null) challenge.setAssignedHeiDepartment((String) body.get("assignedHeiDepartment"));
+            if (body.get("facultyMentor") != null) challenge.setFacultyMentor((String) body.get("facultyMentor"));
+            if (body.get("studentTeam") != null) challenge.setStudentTeam((String) body.get("studentTeam"));
+            if (body.get("industryPartner") != null) challenge.setIndustryPartner((String) body.get("industryPartner"));
+            if (body.get("prototypeDetails") != null) challenge.setPrototypeDetails((String) body.get("prototypeDetails"));
+            if (body.get("pilotResults") != null) challenge.setPilotResults((String) body.get("pilotResults"));
+            if (body.get("citizenVerificationRequested") != null) {
+                challenge.setCitizenVerificationRequested(Boolean.TRUE.equals(body.get("citizenVerificationRequested")));
+            }
+        }
+        challenge.setUpdatedAt(LocalDateTime.now());
+        return challengeRepository.save(challenge);
+    }
+
+    public Challenge allocateHei(Long id, String heiName, String labDepartment, String facultyMentor) {
+        Challenge challenge = getChallengeById(id);
+        challenge.setAssignedHei(heiName);
+        challenge.setAssignedHeiDepartment(labDepartment);
+        challenge.setFacultyMentor(facultyMentor);
+        challenge.setStatus(Challenge.Status.ASSIGNED);
+        challenge.setUpdatedAt(LocalDateTime.now());
+        return challengeRepository.save(challenge);
+    }
+
     public Challenge upvoteChallenge(Long id) {
         Challenge challenge = getChallengeById(id);
         challenge.setUpvotes((challenge.getUpvotes() != null ? challenge.getUpvotes() : 0) + 1);

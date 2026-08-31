@@ -73,6 +73,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/challenges/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/challenges/**").permitAll()
+                        .requestMatchers(HttpMethod.PUT, "/api/challenges/**").permitAll()
+                        .requestMatchers(HttpMethod.PATCH, "/api/challenges/**").permitAll()
                         .requestMatchers("/error").permitAll()
                         .anyRequest().authenticated()
                 )

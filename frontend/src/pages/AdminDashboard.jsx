@@ -101,19 +101,8 @@ export default function AdminDashboard() {
     }, [challenges, searchTerm, filterDomain, filterDistrict, filterStage, filterUrgency]);
 
     // Handle Quick Validation / Stage Advancement
-    const handleAdvanceStage = (challengeId, nextStatus) => {
-        const list = getLocalChallenges();
-        const updated = list.map(c => {
-            if (c.id === challengeId) {
-                return {
-                    ...c,
-                    status: nextStatus,
-                    updatedAt: new Date().toISOString()
-                };
-            }
-            return c;
-        });
-        saveLocalChallenges(updated);
+    const handleAdvanceStage = async (challengeId, nextStatus) => {
+        const updated = await challengeService.updateChallengeStatus(challengeId, nextStatus);
         setChallenges(updated);
 
         // Add audit log
@@ -130,28 +119,21 @@ export default function AdminDashboard() {
     };
 
     // Handle HEI Assignment
-    const handleConfirmAssignment = () => {
+    const handleConfirmAssignment = async () => {
         if (!assigningChallenge) return;
         const heiObj = PARTICIPATING_HEIS.find(h => h.id === selectedHeiId) || PARTICIPATING_HEIS[0];
         const csrObj = INDUSTRY_CSR_PARTNERS.find(i => i.id === selectedCsrId) || INDUSTRY_CSR_PARTNERS[0];
 
-        const list = getLocalChallenges();
-        const updated = list.map(c => {
-            if (c.id === assigningChallenge.id) {
-                return {
-                    ...c,
-                    status: "ASSIGNED",
-                    assignedHei: heiObj.name,
-                    assignedHeiDepartment: heiObj.specializedLabs[0],
-                    facultyMentor: heiObj.facultyMentors[0],
-                    studentTeam: "Multidisciplinary Innovation Team (Lead: Student Lead)",
-                    industryPartner: `${csrObj.name} (${csrObj.fundingContribution})`,
-                    updatedAt: new Date().toISOString()
-                };
+        const updated = await challengeService.allocateHei(
+            assigningChallenge.id,
+            heiObj.name,
+            heiObj.specializedLabs[0],
+            heiObj.facultyMentors[0],
+            {
+                studentTeam: "Multidisciplinary Innovation Team (Lead: Student Lead)",
+                industryPartner: `${csrObj.name} (${csrObj.fundingContribution})`
             }
-            return c;
-        });
-        saveLocalChallenges(updated);
+        );
         setChallenges(updated);
 
         setAuditLogs(prev => [
