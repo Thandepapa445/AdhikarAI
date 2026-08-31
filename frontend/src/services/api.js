@@ -18,7 +18,7 @@ const api = axios.create({
 });
 
 api.interceptors.request.use((config) => {
-    config.baseURL = getApiBaseUrl(); // dynamically update base url
+    config.baseURL = getApiBaseUrl();
     const token = localStorage.getItem("sankalp_token");
     if (token) {
         config.headers.Authorization = `Bearer ${token}`;
@@ -47,28 +47,18 @@ export function getLocalChallenges() {
     try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(INITIAL_SEED_CHALLENGES));
     } catch (e) {
-        // quota safety
+        // safety
     }
     return INITIAL_SEED_CHALLENGES;
 }
 
 export function saveLocalChallenges(challenges) {
     try {
-        const cleanList = (challenges || []).slice(0, 30).map(c => ({
-            ...c,
-            evidenceImageUrl: (c.evidenceImageUrl && c.evidenceImageUrl.length > 250000)
-                ? "https://images.unsplash.com/photo-1541888946425-d0fbb180c5f5?w=800"
-                : (c.evidenceImageUrl || "https://images.unsplash.com/photo-1541888946425-d0fbb180c5f5?w=800")
-        }));
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(cleanList));
-    } catch (e) {
-        console.warn("Local storage quota exceeded. Purging older items to free space...", e);
-        try {
-            const smaller = (challenges || []).slice(0, 10);
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(smaller));
-        } catch (err) {
-            console.error("Failed to write to local storage", err);
+        if (Array.isArray(challenges)) {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(challenges));
         }
+    } catch (e) {
+        console.warn("Local storage write error", e);
     }
 }
 
@@ -79,21 +69,22 @@ export function saveLocalChallenges(challenges) {
 export const challengeService = {
     // Fetch all challenges (syncs backend with local state)
     async getAllChallenges() {
+        const localList = getLocalChallenges();
         try {
             const res = await api.get("/challenges");
             if (Array.isArray(res.data) && res.data.length > 0) {
-                // Merge backend challenges with local state
-                const localList = getLocalChallenges();
-                const backendIds = new Set(res.data.map(c => String(c.id)));
-                const uniqueLocal = localList.filter(c => !backendIds.has(String(c.id)));
-                const merged = [...res.data, ...uniqueLocal];
+                // Merge by ID so all challenges from both backend and local queue are visible!
+                const map = new Map();
+                localList.forEach(c => map.set(String(c.id), c));
+                res.data.forEach(c => map.set(String(c.id), c));
+                const merged = Array.from(map.values());
                 saveLocalChallenges(merged);
                 return merged;
             }
         } catch (err) {
             // Fallback gracefully to local dataset
         }
-        return getLocalChallenges();
+        return localList;
     },
 
     // Fetch citizen's own challenges
@@ -114,7 +105,7 @@ export const challengeService = {
 
     // Submit / Create new societal challenge
     async submitChallenge(challengeData) {
-        const newId = challengeData.id || `JH-2026-${String(Math.floor(100 + Math.random() * 900))}`;
+        const newId = challengeData.id || `JH-2026-${String(Math.floor(1000 + Math.random() * 9000))}`;
         const fullChallenge = {
             ...challengeData,
             id: newId,
@@ -124,9 +115,9 @@ export const challengeService = {
             upvotes: challengeData.upvotes || 1
         };
 
-        // Always prepend to local storage immediately for instant UI reactive update
+        // Always prepend to local storage immediately so it appears on all tabs instantly
         const list = getLocalChallenges();
-        const updated = [fullChallenge, ...list.filter(c => c.id !== newId)];
+        const updated = [fullChallenge, ...list.filter(c => String(c.id) !== String(newId))];
         saveLocalChallenges(updated);
 
         try {
@@ -148,12 +139,19 @@ export const challengeService = {
                 evidenceImageUrl: fullChallenge.evidenceImageUrl || "https://images.unsplash.com/photo-1541888946425-d0fbb180c5f5?w=800"
             });
             if (res.data) {
-                const merged = [res.data, ...list.filter(c => c.id !== res.data.id && c.id !== newId)];
+                const map = new Map();
+                map.set(String(res.data.id), res.data);
+                updated.forEach(c => {
+                    if (String(c.id) !== String(newId) && String(c.id) !== String(res.data.id)) {
+                        map.set(String(c.id), c);
+                    }
+                });
+                const merged = Array.from(map.values());
                 saveLocalChallenges(merged);
                 return res.data;
             }
         } catch (err) {
-            console.warn("Backend sync pending, challenge saved in local reactive queue.", err?.message);
+            console.warn("Backend sync pending, challenge stored in active reactive local cache.", err?.message);
         }
 
         return fullChallenge;
@@ -168,7 +166,7 @@ export const challengeService = {
     async upvoteChallenge(id) {
         const list = getLocalChallenges();
         const updated = list.map(c => {
-            if (c.id === id) {
+            if (String(c.id) === String(id)) {
                 return { ...c, upvotes: (c.upvotes || 0) + 1 };
             }
             return c;
@@ -186,13 +184,13 @@ export const challengeService = {
     async allocateHei(id, heiName, labDepartment, facultyMentor) {
         const list = getLocalChallenges();
         const updated = list.map(c => {
-            if (c.id === id) {
+            if (String(c.id) === String(id)) {
                 return {
                     ...c,
                     assignedHei: heiName,
                     assignedHeiDepartment: labDepartment,
                     facultyMentor: facultyMentor,
-                    status: "ASSIGNED_TO_HEI",
+                    status: "ASSIGNED",
                     updatedAt: new Date().toISOString()
                 };
             }
@@ -211,10 +209,10 @@ export const challengeService = {
     async verifyPilot(id, feedbackText) {
         const list = getLocalChallenges();
         const updated = list.map(c => {
-            if (c.id === id) {
+            if (String(c.id) === String(id)) {
                 return {
                     ...c,
-                    status: "DEPLOYED_VERIFIED",
+                    status: "RESOLVED",
                     citizenVerificationRequested: false,
                     citizenFeedbackNotes: feedbackText || "Citizen & Gram Panchayat verified field deployment.",
                     updatedAt: new Date().toISOString()

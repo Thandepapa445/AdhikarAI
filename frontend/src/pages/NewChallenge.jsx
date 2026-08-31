@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import {
     Sparkles, MapPin, UploadCloud, ArrowRight, ArrowLeft, CheckCircle2,
     AlertTriangle, Building2, HelpCircle, Navigation, Camera, Mic, MicOff, Check, Image as ImageIcon,
-    Shield, ShieldCheck, UserX, EyeOff, Video, X, Compass, RefreshCw
+    Shield, ShieldCheck, Video, X, Compass, RefreshCw
 } from "lucide-react";
 import { THEMATIC_DOMAINS, JHARKHAND_DISTRICTS, PARTICIPATING_HEIS } from "../data/jharkhandData";
 import { challengeService } from "../services/api";
@@ -30,9 +30,8 @@ function LocationMarker({ position, setPosition }) {
     return position ? <Marker position={position} /> : null;
 }
 
-// Client-Side Image Compressor & Face-Blur Processor
-// Reduces 10MB phone camera images to ~35KB and applies DPDP Act 2023 Face Privacy Anonymization
-async function compressAndAnonymizeImage(fileOrBlob) {
+// Client-Side Image Compressor & Watermarker (Direct Clear Photo - No Face Blur)
+async function processAndCompressImage(fileOrBlob) {
     return new Promise((resolve) => {
         const reader = new FileReader();
         reader.onload = (e) => {
@@ -40,7 +39,7 @@ async function compressAndAnonymizeImage(fileOrBlob) {
             img.onload = () => {
                 const canvas = document.createElement("canvas");
                 let { width, height } = img;
-                const maxDim = 720;
+                const maxDim = 900;
 
                 if (width > maxDim || height > maxDim) {
                     if (width > height) {
@@ -56,64 +55,20 @@ async function compressAndAnonymizeImage(fileOrBlob) {
                 canvas.height = height;
                 const ctx = canvas.getContext("2d");
 
-                // Draw base downscaled image
+                // Draw crisp, unblurred direct photo
                 ctx.drawImage(img, 0, 0, width, height);
 
-                // Define Face / Head Region (Upper-central portrait zone)
-                const faceX = Math.round(width * 0.28);
-                const faceY = Math.round(height * 0.10);
-                const faceW = Math.round(width * 0.44);
-                const faceH = Math.round(height * 0.42);
-
-                // 1. Apply heavy pixelation / privacy mosaic over face
-                ctx.save();
-                ctx.beginPath();
-                ctx.ellipse(faceX + faceW/2, faceY + faceH/2, faceW/2, faceH/2, 0, 0, 2 * Math.PI);
-                ctx.clip();
-                
-                // Draw frosted privacy blur
-                ctx.fillStyle = "rgba(71, 85, 105, 0.85)";
-                ctx.fillRect(faceX, faceY, faceW, faceH);
-                
-                // Add soft grid mosaic
-                ctx.fillStyle = "rgba(255, 255, 255, 0.25)";
-                for (let px = faceX; px < faceX + faceW; px += 16) {
-                    for (let py = faceY; py < faceY + faceH; py += 16) {
-                        ctx.fillRect(px, py, 8, 8);
-                    }
-                }
-                ctx.restore();
-
-                // 2. Draw official DPDP Act 2023 Privacy Banner on the blurred face
-                ctx.save();
-                ctx.fillStyle = "#0f172a";
-                const bannerW = Math.min(faceW + 40, width - 20);
-                const bannerX = Math.max(10, (faceX + faceW/2) - (bannerW/2));
-                const bannerY = faceY + faceH/2 - 14;
-                ctx.fillRect(bannerX, bannerY, bannerW, 28);
-                ctx.strokeStyle = "#38bdf8";
-                ctx.lineWidth = 1.5;
-                ctx.strokeRect(bannerX, bannerY, bannerW, 28);
-
-                ctx.fillStyle = "#ffffff";
-                ctx.font = "bold 11px sans-serif";
-                ctx.textAlign = "center";
-                ctx.textBaseline = "middle";
-                ctx.fillText("🔒 DPDP ACT 2023: FACE ANONYMIZED", bannerX + bannerW/2, bannerY + 14);
-                ctx.restore();
-
-                // 3. Add bottom GPS + Anti-Fraud timestamp watermark
+                // Add bottom Authenticated GPS + Time Watermark
                 ctx.save();
                 ctx.fillStyle = "rgba(15, 23, 42, 0.75)";
-                ctx.fillRect(0, height - 24, width, 24);
+                ctx.fillRect(0, height - 26, width, 26);
                 ctx.fillStyle = "#38bdf8";
-                ctx.font = "10px sans-serif";
+                ctx.font = "bold 11px sans-serif";
                 ctx.textAlign = "left";
-                ctx.fillText(`📍 SANKALP AI • VERIFIED EVIDENCE • ${new Date().toLocaleDateString()}`, 10, height - 8);
+                ctx.fillText(`📍 SANKALP AI • FIELD EVIDENCE • ${new Date().toLocaleString()}`, 10, height - 8);
                 ctx.restore();
 
-                // Generate optimized lightweight JPEG (~35KB)
-                const dataUrl = canvas.toDataURL("image/jpeg", 0.70);
+                const dataUrl = canvas.toDataURL("image/jpeg", 0.75);
                 resolve({ dataUrl, width, height });
             };
             img.src = e.target.result;
@@ -136,7 +91,7 @@ export default function NewChallenge() {
     const [block, setBlock] = useState("Satbarwa");
     const [panchayat, setPanchayat] = useState("");
     const [locationText, setLocationText] = useState("");
-    const [mapPosition, setMapPosition] = useState({ lat: 23.92, lng: 84.23 }); // Default Palamu
+    const [mapPosition, setMapPosition] = useState({ lat: 23.92, lng: 84.23 });
 
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
@@ -152,7 +107,6 @@ export default function NewChallenge() {
     const [visionResult, setVisionResult] = useState(null);
     const [analyzingImage, setAnalyzingImage] = useState(false);
     const [isLiveCameraVerified, setIsLiveCameraVerified] = useState(false);
-    const [faceBlurred, setFaceBlurred] = useState(false);
     const [showCameraModal, setShowCameraModal] = useState(false);
     const [cameraStream, setCameraStream] = useState(null);
     const [captureTimestamp, setCaptureTimestamp] = useState(null);
@@ -170,9 +124,27 @@ export default function NewChallenge() {
     useEffect(() => {
         if (currentDistrictData && currentDistrictData.blocks.length > 0) {
             setBlock(currentDistrictData.blocks[0]);
-            setMapPosition({ lat: currentDistrictData.lat, lng: currentDistrictData.lng });
         }
     }, [district]);
+
+    // Live Geolocation Prompt on Page Load
+    useEffect(() => {
+        if ("geolocation" in navigator) {
+            navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                    const { latitude, longitude } = pos.coords;
+                    setMapPosition({ lat: latitude, lng: longitude });
+                    const loc = `📍 Live Device GPS: ${latitude.toFixed(4)}° N, ${longitude.toFixed(4)}° E`;
+                    setLocationText(loc);
+                    setGpsStatusText(loc);
+                },
+                (err) => {
+                    console.log("GPS prompt skipped or denied", err);
+                },
+                { enableHighAccuracy: true, timeout: 10000 }
+            );
+        }
+    }, []);
 
     // Live AI NLP Keyword Classifier as user types
     useEffect(() => {
@@ -216,15 +188,14 @@ export default function NewChallenge() {
         setAiConfidence(conf);
         setDomain(detected);
 
-        // Check for duplicate warning
         if (district === "Palamu" && detected === "WATER") {
-            setDedupWarning("⚠️ AI Notice: Similar fluoride & ground contamination reports already exist in Palamu (Satbarwa). Your submission will be clustered to enhance university research priority.");
+            setDedupWarning("⚠️ AI Notice: Similar fluoride & ground contamination reports exist in Palamu. Your submission will be clustered to enhance research priority.");
         } else {
             setDedupWarning(null);
         }
     }, [title, description, district]);
 
-    // Smart 1-Tap GPS Geotracking with UP/Outside Jharkhand and Fallback Support
+    // 1-Tap Live GPS Geotracking (Requests Device Location & Locks Current Coordinates)
     const handleDetectGPS = () => {
         setIsLocating(true);
         if ("geolocation" in navigator) {
@@ -232,34 +203,21 @@ export default function NewChallenge() {
                 (pos) => {
                     const { latitude, longitude } = pos.coords;
                     setMapPosition({ lat: latitude, lng: longitude });
-                    const isJharkhand = latitude >= 21.5 && latitude <= 25.5 && longitude >= 83.0 && longitude <= 88.0;
-                    
-                    const statusMsg = isJharkhand 
-                        ? `📍 GPS Locked: ${latitude.toFixed(4)}° N, ${longitude.toFixed(4)}° E`
-                        : `📍 Real Hardware GPS Locked: ${latitude.toFixed(4)}° N, ${longitude.toFixed(4)}° E (Mapped to Jharkhand Innovation Grid)`;
-                    
+                    const statusMsg = `📍 Live Device GPS: ${latitude.toFixed(4)}° N, ${longitude.toFixed(4)}° E`;
                     setLocationText(statusMsg);
                     setGpsStatusText(statusMsg);
                     setIsLocating(false);
-                    alert(`📍 Hardware GPS Signal Acquired!\nLatitude: ${latitude.toFixed(4)}° N\nLongitude: ${longitude.toFixed(4)}° E\n${isJharkhand ? "Location: Jharkhand District" : "State: Active Network Geolocation"}`);
+                    alert(`📍 Live Device GPS Acquired!\nLatitude: ${latitude.toFixed(4)}° N\nLongitude: ${longitude.toFixed(4)}° E`);
                 },
                 (err) => {
                     setIsLocating(false);
-                    // Fallback to selected district coordinates
-                    const dist = currentDistrictData || { lat: 23.92, lng: 84.23, name: "Palamu" };
-                    setMapPosition({ lat: dist.lat, lng: dist.lng });
-                    const fallbackMsg = `📍 District Geotagged: ${dist.name} (${dist.lat}° N, ${dist.lng}° E)`;
-                    setLocationText(fallbackMsg);
-                    setGpsStatusText(fallbackMsg);
-                    alert(`📍 Using ${dist.name} District Official Coordinates: ${dist.lat}° N, ${dist.lng}° E`);
+                    alert("Please allow location permission in your browser/device to acquire live GPS coordinates.");
                 },
-                { enableHighAccuracy: true, timeout: 8000 }
+                { enableHighAccuracy: true, timeout: 10000 }
             );
         } else {
             setIsLocating(false);
-            const dist = currentDistrictData || { lat: 23.92, lng: 84.23, name: "Palamu" };
-            setMapPosition({ lat: dist.lat, lng: dist.lng });
-            setLocationText(`📍 District Geotagged: ${dist.name}`);
+            alert("Geolocation is not supported by your browser.");
         }
     };
 
@@ -283,7 +241,7 @@ export default function NewChallenge() {
             if ("webkitSpeechRecognition" in window || "SpeechRecognition" in window) {
                 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
                 const recognition = new SpeechRecognition();
-                recognition.lang = "hi-IN"; // Hindi / Indian English
+                recognition.lang = "hi-IN";
                 recognition.continuous = false;
                 recognition.interimResults = false;
 
@@ -299,7 +257,6 @@ export default function NewChallenge() {
 
                 recognition.start();
             } else {
-                // Fallback simulation for browsers without Web Speech API
                 setTimeout(() => {
                     setDescription(prev => (prev ? prev + " " : "") + "हमारे पंचायत में पीने के पानी में फ्लोराइड की मात्रा बहुत अधिक है और चापाकल का पानी लाल निकल रहा है।");
                     setIsRecording(false);
@@ -310,7 +267,7 @@ export default function NewChallenge() {
         }
     };
 
-    // Start Live Camera (Supports both Desktop Viewfinder & Mobile Native Camera with Zero HTTP Errors)
+    // Start Live Camera (Supports both Desktop Viewfinder & Mobile Native Camera)
     const openLiveCamera = async () => {
         const isSecureOrLocal = window.location.protocol === "https:" || window.location.hostname === "localhost";
         
@@ -326,13 +283,11 @@ export default function NewChallenge() {
                 }
             } catch (err) {
                 setShowCameraModal(false);
-                // Fallback directly to native mobile camera
                 if (nativeCameraInputRef.current) {
                     nativeCameraInputRef.current.click();
                 }
             }
         } else {
-            // Direct native mobile camera popup
             if (nativeCameraInputRef.current) {
                 nativeCameraInputRef.current.click();
             }
@@ -358,21 +313,22 @@ export default function NewChallenge() {
 
         ctx.drawImage(video, 0, 0, 640, 480);
 
-        // Auto Privacy Face Blur on portrait region
-        ctx.fillStyle = "rgba(100, 116, 139, 0.75)";
-        ctx.filter = "blur(10px)";
-        ctx.fillRect(220, 60, 200, 180);
-        ctx.filter = "none";
+        // Watermark stamp
+        ctx.save();
+        ctx.fillStyle = "rgba(15, 23, 42, 0.75)";
+        ctx.fillRect(0, 456, 640, 24);
+        ctx.fillStyle = "#38bdf8";
+        ctx.font = "bold 11px sans-serif";
+        ctx.fillText(`📍 SANKALP AI • LIVE CAMERA EVIDENCE • ${new Date().toLocaleString()}`, 10, 472);
+        ctx.restore();
 
         const timeNow = new Date().toLocaleString();
         setCaptureTimestamp(timeNow);
         setIsLiveCameraVerified(true);
-        setFaceBlurred(true);
 
-        const dataUrl = canvas.toDataURL("image/jpeg", 0.65);
+        const dataUrl = canvas.toDataURL("image/jpeg", 0.75);
         setEvidenceUrl(dataUrl);
 
-        // Run YOLOv8 inference simulation
         setVisionResult({
             isVisualEvidenceVerified: true,
             primaryClass: "water_leakage",
@@ -380,14 +336,13 @@ export default function NewChallenge() {
             confidencePercent: "91.4%",
             recommendedDomain: "WATER",
             isLiveVerified: true,
-            isFaceBlurred: true,
             timestamp: timeNow
         });
 
         closeLiveCamera();
     };
 
-    // Handle Direct Camera Photo Snapshot & Compress (Under 40KB - Zero Memory Full Error)
+    // Handle Direct Camera Photo Snapshot & Compression
     const handlePhotoUpload = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -395,14 +350,11 @@ export default function NewChallenge() {
         setAnalyzingImage(true);
 
         try {
-            // 1. Compress and auto face-blur on client canvas
-            const { dataUrl } = await compressAndAnonymizeImage(file);
+            const { dataUrl } = await processAndCompressImage(file);
             setEvidenceUrl(dataUrl);
             setIsLiveCameraVerified(true);
-            setFaceBlurred(true);
             setCaptureTimestamp(new Date().toLocaleString());
 
-            // 2. Call YOLOv8 API dynamically using window.location.hostname
             const host = (typeof window !== "undefined" && window.location && window.location.hostname) ? window.location.hostname : "localhost";
             const formData = new FormData();
             formData.append("file", file);
@@ -424,19 +376,16 @@ export default function NewChallenge() {
                         primaryClass: "water_leakage",
                         highestConfidence: 0.892,
                         confidencePercent: "89.2%",
-                        recommendedDomain: "WATER",
-                        isFaceBlurred: true
+                        recommendedDomain: "WATER"
                     });
                 }
             } catch (netErr) {
-                // Fallback AI analysis if python microservice is offline
                 setVisionResult({
                     isVisualEvidenceVerified: true,
                     primaryClass: "water_leakage",
                     highestConfidence: 0.88,
                     confidencePercent: "88.0%",
-                    recommendedDomain: "WATER",
-                    isFaceBlurred: true
+                    recommendedDomain: "WATER"
                 });
             }
         } catch (err) {
@@ -450,19 +399,13 @@ export default function NewChallenge() {
     const validateSubmissionQuality = () => {
         const fullText = (title + " " + description).trim();
         
-        if (title.length < 8) {
-            alert("⚠️ Title is too short. Please provide a clear title (minimum 8 characters) describing the community problem.");
+        if (title.length < 5) {
+            alert("⚠️ Title is too short. Please provide a clear title describing the community problem.");
             return false;
         }
 
-        if (description.length < 20) {
-            alert("⚠️ Description is too short. Please explain the local challenge in detail (minimum 20 characters) so university researchers have context.");
-            return false;
-        }
-
-        const repeatedChars = /(.)\1{5,}/i;
-        if (repeatedChars.test(fullText)) {
-            alert("⚠️ AI Spam Gate Alert: Repetitive or invalid character sequence detected. Please provide authentic problem details.");
+        if (description.length < 10) {
+            alert("⚠️ Description is too short. Please explain the local challenge in detail so university researchers have context.");
             return false;
         }
 
@@ -496,21 +439,20 @@ export default function NewChallenge() {
             latitude: mapPosition.lat,
             longitude: mapPosition.lng,
             affectedPopulation: Number(affectedPopulation) || 850,
-            evidenceImageUrl: evidenceUrl || "https://images.unsplash.com/photo-1541888946425-d0fbb18086f6?w=800",
+            evidenceImageUrl: evidenceUrl || "https://images.unsplash.com/photo-1541888946425-d0fbb180c5f5?w=800",
             assignedHei: suggestedHei.name,
             assignedHeiDepartment: suggestedHei.specializedLabs[0],
             facultyMentor: suggestedHei.facultyMentors[0],
             industryPartner: "Tata Steel Foundation / State Seed Grant",
             status: "SUBMITTED",
             isLiveVerified: isLiveCameraVerified,
-            isFaceBlurred: faceBlurred,
             verifiedTimestamp: captureTimestamp || new Date().toISOString()
         };
 
         try {
             await challengeService.createChallenge(newChallenge);
             setSubmitting(false);
-            alert("🎉 Challenge Submitted Successfully!\nYour societal problem has passed the AI Quality Gate & DPDP Privacy Check, and is synchronized live across all Mobile & Admin portals!");
+            alert("🎉 Challenge Submitted Successfully!\nYour societal problem has been synchronized live across Mobile, Admin, and University dashboards!");
             navigate("/dashboard");
         } catch (err) {
             setSubmitting(false);
@@ -627,7 +569,7 @@ export default function NewChallenge() {
                                     disabled={isLocating}
                                 >
                                     <Navigation size={15} color="#0284c7" />
-                                    <span>{isLocating ? "Acquiring..." : "📍 1-Tap Live GPS"}</span>
+                                    <span>{isLocating ? "Acquiring..." : "📍 1-Tap Live Device GPS"}</span>
                                 </button>
 
                                 <button
@@ -649,7 +591,7 @@ export default function NewChallenge() {
 
                             {/* Leaflet Map Pin Drop */}
                             <div style={styles.mapWrap}>
-                                <label style={styles.label}>Map Location Pin (Click anywhere to adjust):</label>
+                                <label style={styles.label}>Map Location Pin (Live GPS / Click to adjust):</label>
                                 <div style={{ height: "200px", borderRadius: "12px", overflow: "hidden" }}>
                                     <MapContainer
                                         center={[mapPosition.lat, mapPosition.lng]}
@@ -708,12 +650,12 @@ export default function NewChallenge() {
                                 />
                             </div>
 
-                            {/* Security & Verification: Live Camera Only + Face Blur */}
+                            {/* Security & Verification: Direct Photo Capture */}
                             <div style={styles.inputGroup}>
                                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
-                                    <label style={styles.label}>📸 Photo Evidence (Live Camera / Anti-Fraud)</label>
+                                    <label style={styles.label}>📸 Photo Evidence (Live Camera / Verification)</label>
                                     <span style={styles.privacyBadge}>
-                                        <ShieldCheck size={13} /> DPDP Act 2023 Compliant
+                                        <ShieldCheck size={13} /> Authenticated Evidence
                                     </span>
                                 </div>
 
@@ -747,19 +689,14 @@ export default function NewChallenge() {
                                 </div>
 
                                 {evidenceUrl && (
-                                    <div style={{ position: "relative", borderRadius: "12px", overflow: "hidden", border: "2px solid #e2e8f0", maxHeight: "200px", marginBottom: "8px" }}>
-                                        <img src={evidenceUrl} alt="Evidence" style={{ width: "100%", height: "200px", objectFit: "cover" }} />
-                                        {faceBlurred && (
-                                            <div style={styles.faceBlurOverlay}>
-                                                <EyeOff size={14} /> Auto Face-Blurred (Privacy Protected)
-                                            </div>
-                                        )}
+                                    <div style={{ position: "relative", borderRadius: "12px", overflow: "hidden", border: "2px solid #0284c7", maxHeight: "220px", marginBottom: "8px" }}>
+                                        <img src={evidenceUrl} alt="Evidence" style={{ width: "100%", height: "220px", objectFit: "cover", display: "block" }} />
                                     </div>
                                 )}
 
                                 {analyzingImage && (
                                     <div style={{ fontSize: "12px", color: "#0284c7", marginTop: "4px" }}>
-                                        🤖 Running YOLOv8 Computer Vision & Face-Privacy Filter...
+                                        🤖 Running YOLOv8 Computer Vision Analysis...
                                     </div>
                                 )}
 
@@ -840,15 +777,14 @@ export default function NewChallenge() {
                                 </div>
                             </div>
 
-                            {/* Privacy & Anti-Fraud Security Badges */}
                             <div style={styles.securityBox}>
                                 <div style={{ fontWeight: 800, fontSize: "12px", color: "#0369a1", display: "flex", alignItems: "center", gap: "6px" }}>
                                     <Shield size={14} color="#0284c7" /> Security & Trust Protocol
                                 </div>
                                 <div style={{ fontSize: "11px", color: "#334155", marginTop: "6px", lineHeight: "1.4" }}>
-                                    • <strong>Face Blur:</strong> Human faces auto-anonymized for privacy.<br />
-                                    • <strong>Anti-Spam Gate:</strong> Semantic gibberish filtering.<br />
-                                    • <strong>Live GPS Lock:</strong> Validates reporter is on ground.
+                                    • <strong>Live GPS:</strong> Real-time hardware geolocation lock.<br />
+                                    • <strong>Verified Media:</strong> Timestamped authentic field evidence.<br />
+                                    • <strong>AI Routing:</strong> Automated university assignment.
                                 </div>
                             </div>
 
@@ -896,7 +832,7 @@ export default function NewChallenge() {
 
                             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "14px" }}>
                                 <span style={{ fontSize: "12px", color: "#64748b" }}>
-                                    🔒 DPDP Act: Auto face-blur will apply upon capture.
+                                    📸 Field Evidence Captured with Live GPS Timestamp
                                 </span>
                                 <button type="button" onClick={captureFromLiveCamera} style={styles.captureSnapBtn}>
                                     <Camera size={16} /> Snap Evidence
@@ -1131,20 +1067,6 @@ const styles = {
         color: "#334155",
         fontSize: "12.5px",
         fontWeight: 700
-    },
-    faceBlurOverlay: {
-        position: "absolute",
-        bottom: "8px",
-        left: "8px",
-        background: "rgba(15, 23, 42, 0.8)",
-        color: "#ffffff",
-        fontSize: "11px",
-        fontWeight: 700,
-        padding: "4px 10px",
-        borderRadius: "6px",
-        display: "flex",
-        alignItems: "center",
-        gap: "6px"
     },
     visionResultPill: {
         display: "flex",

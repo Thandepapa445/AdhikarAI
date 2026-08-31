@@ -71,15 +71,25 @@ export default function UniversityDashboard() {
 
     useEffect(() => {
         loadData();
+        const interval = setInterval(() => {
+            challengeService.getAllChallenges().then(data => {
+                if (data && data.length > 0) {
+                    setChallenges(data);
+                }
+            }).catch(() => {});
+        }, 4000);
+        return () => clearInterval(interval);
     }, []);
 
-    // Filter challenges relevant to this university
+    // Filter challenges relevant to this university or show all available
     const heiChallenges = useMemo(() => {
-        return challenges.filter(c =>
+        const filtered = challenges.filter(c =>
             c.assignedHei?.toLowerCase().includes(currentHei.shortName.toLowerCase().split(",")[0]) ||
             c.assignedHei?.toLowerCase().includes("bit mesra") ||
-            currentHei.domains.includes(c.domain)
+            currentHei.domains.includes(c.domain) ||
+            c.status === "SUBMITTED"
         );
+        return filtered.length > 0 ? filtered : challenges;
     }, [challenges, currentHei]);
 
     // KPIs for University
