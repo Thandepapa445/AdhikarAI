@@ -124,10 +124,126 @@ export const JHARKHAND_DISTRICTS = [
 ];
 
 export const PARTICIPATING_HEIS = [
+    // =========================================================================
+    // UTTAR PRADESH & NCR INSTITUTIONS
+    // =========================================================================
+    {
+        id: "HEI-UP-01",
+        name: "ABESIT Group of Institutions, Ghaziabad",
+        shortName: "ABESIT, Ghaziabad",
+        state: "Uttar Pradesh",
+        district: "Ghaziabad",
+        lat: 28.6360,
+        lng: 77.4470,
+        domains: ["INFRASTRUCTURE", "WATER", "PUBLIC_ADMIN", "EDUCATION", "ACCESSIBILITY", "ENERGY_ENVIRONMENT"],
+        specializedLabs: ["Smart Infrastructure & Road Materials Lab", "IoT & Rural Automation Center", "AI & e-Governance Hub"],
+        facultyMentors: ["Dr. Hemant Ahuja (Civil & Smart Infrastructure)", "Dr. Rizwan Khan (Computer Science & AI)", "Dr. Aruna Pathak (Electronics)"]
+    },
+    {
+        id: "HEI-UP-02",
+        name: "ABES Engineering College, Ghaziabad",
+        shortName: "ABES EC, Ghaziabad",
+        state: "Uttar Pradesh",
+        district: "Ghaziabad",
+        lat: 28.6338,
+        lng: 77.4485,
+        domains: ["INFRASTRUCTURE", "ENERGY_ENVIRONMENT", "WATER", "PUBLIC_ADMIN"],
+        specializedLabs: ["Structural & Transport Engineering Lab", "Renewable Energy & Solar Tech Center"],
+        facultyMentors: ["Dr. Sandeep Sharma (Transportation)", "Dr. Shailendra K. (Clean Energy)"]
+    },
+    {
+        id: "HEI-UP-03",
+        name: "Ajay Kumar Garg Engineering College (AKGEC)",
+        shortName: "AKGEC, Ghaziabad",
+        state: "Uttar Pradesh",
+        district: "Ghaziabad",
+        lat: 28.6757,
+        lng: 77.5029,
+        domains: ["INFRASTRUCTURE", "ENERGY_ENVIRONMENT", "ACCESSIBILITY", "EDUCATION"],
+        specializedLabs: ["Center of Excellence in Robotics & Automation", "Civil Structures Testbed"],
+        facultyMentors: ["Dr. P. K. Chopra (Robotics)", "Dr. Alok Verma (Civil Engg)"]
+    },
+    {
+        id: "HEI-UP-04",
+        name: "KIET Group of Institutions, Ghaziabad",
+        shortName: "KIET, Ghaziabad",
+        state: "Uttar Pradesh",
+        district: "Ghaziabad",
+        lat: 28.7532,
+        lng: 77.4970,
+        domains: ["HEALTHCARE", "AGRICULTURE", "ENERGY_ENVIRONMENT", "INFRASTRUCTURE"],
+        specializedLabs: ["Bio-Medical & Telemedicine Lab", "AgTech Prototyping Workshop"],
+        facultyMentors: ["Dr. K. S. Verma (Healthcare Tech)", "Dr. Vibhav Kumar (Agro-Automation)"]
+    },
+    {
+        id: "HEI-DL-01",
+        name: "Delhi Technological University (DTU)",
+        shortName: "DTU, Delhi",
+        state: "Delhi",
+        district: "North West Delhi",
+        lat: 28.7501,
+        lng: 77.1177,
+        domains: ["INFRASTRUCTURE", "ENERGY_ENVIRONMENT", "WATER", "PUBLIC_ADMIN", "EDUCATION"],
+        specializedLabs: ["Urban Mobility & Highway Engineering Lab", "Environmental Biotechnology Research Hub", "Smart City Innovation Cell"],
+        facultyMentors: ["Prof. S. G. Deshmukh (Supply Chain & Infra)", "Dr. A. K. Srivastav (Environmental Engg)"]
+    },
+    {
+        id: "HEI-DL-02",
+        name: "Indian Institute of Technology (IIT) Delhi",
+        shortName: "IIT Delhi",
+        state: "Delhi",
+        district: "South Delhi",
+        lat: 28.5450,
+        lng: 77.1926,
+        domains: ["INFRASTRUCTURE", "HEALTHCARE", "WATER", "ENERGY_ENVIRONMENT", "ACCESSIBILITY"],
+        specializedLabs: ["Rural Technology Action Group (RuTAG)", "Assistech Assistive Technology Lab", "Clean Water Center of Excellence"],
+        facultyMentors: ["Prof. Subir Kumar Saha (RuTAG Tech)", "Prof. M. Balakrishnan (Assistive Tech)"]
+    },
+    {
+        id: "HEI-DL-03",
+        name: "Netaji Subhas University of Technology (NSUT)",
+        shortName: "NSUT, Delhi",
+        state: "Delhi",
+        district: "South West Delhi",
+        lat: 28.6091,
+        lng: 77.0375,
+        domains: ["PUBLIC_ADMIN", "EDUCATION", "ACCESSIBILITY", "ENERGY_ENVIRONMENT"],
+        specializedLabs: ["e-Governance & Citizen Systems Lab", "Assistive Speech & AI Hub"],
+        facultyMentors: ["Dr. Sujata Sengar (AI Systems)", "Dr. Rajeev Kumar (Public Policy Tech)"]
+    },
+    {
+        id: "HEI-UP-05",
+        name: "Institute of Engineering and Technology (IET) Lucknow",
+        shortName: "IET Lucknow",
+        state: "Uttar Pradesh",
+        district: "Lucknow",
+        lat: 26.9143,
+        lng: 80.9419,
+        domains: ["INFRASTRUCTURE", "AGRICULTURE", "ENERGY_ENVIRONMENT", "WATER"],
+        specializedLabs: ["UP State Innovation & Prototyping Center", "Rural Irrigation & Hydro-Systems Lab"],
+        facultyMentors: ["Dr. Vineet Kansal (Innovation Hub)", "Dr. Seetharam K. (Water Systems)"]
+    },
+    {
+        id: "HEI-UP-06",
+        name: "Indian Institute of Technology (IIT) Kanpur",
+        shortName: "IIT Kanpur",
+        state: "Uttar Pradesh",
+        district: "Kanpur Nagar",
+        lat: 26.5123,
+        lng: 80.2329,
+        domains: ["WATER", "AGRICULTURE", "HEALTHCARE", "ENERGY_ENVIRONMENT", "INFRASTRUCTURE"],
+        specializedLabs: ["National Water Mission Testbed", "C3iHub Cyber & Governance Security Center", "Bio-Engineering Kiosk Unit"],
+        facultyMentors: ["Prof. Sachchida Nand Tripathi (Air & Water Tech)", "Prof. Sandeep Shukla (Gov Security)"]
+    },
+
+    // =========================================================================
+    // JHARKHAND INSTITUTIONS
+    // =========================================================================
     {
         id: "HEI-01",
         name: "Birla Institute of Technology (BIT) Mesra",
         shortName: "BIT Mesra, Ranchi",
+        state: "Jharkhand",
         district: "Ranchi",
         lat: 23.4123,
         lng: 85.4399,
@@ -139,6 +255,7 @@ export const PARTICIPATING_HEIS = [
         id: "HEI-02",
         name: "Indian Institute of Technology (IIT ISM) Dhanbad",
         shortName: "IIT (ISM) Dhanbad",
+        state: "Jharkhand",
         district: "Dhanbad",
         lat: 23.8144,
         lng: 86.4412,
@@ -150,6 +267,7 @@ export const PARTICIPATING_HEIS = [
         id: "HEI-03",
         name: "National Institute of Technology (NIT) Jamshedpur",
         shortName: "NIT Jamshedpur",
+        state: "Jharkhand",
         district: "East Singhbhum",
         lat: 22.7758,
         lng: 86.1436,
@@ -161,6 +279,7 @@ export const PARTICIPATING_HEIS = [
         id: "HEI-04",
         name: "Birsa Agricultural University (BAU) Ranchi",
         shortName: "BAU Ranchi",
+        state: "Jharkhand",
         district: "Ranchi",
         lat: 23.4358,
         lng: 85.3186,
@@ -172,6 +291,7 @@ export const PARTICIPATING_HEIS = [
         id: "HEI-05",
         name: "Ranchi University",
         shortName: "Ranchi University",
+        state: "Jharkhand",
         district: "Ranchi",
         lat: 23.3644,
         lng: 85.3214,
@@ -183,6 +303,7 @@ export const PARTICIPATING_HEIS = [
         id: "HEI-06",
         name: "All India Institute of Medical Sciences (AIIMS) Deoghar",
         shortName: "AIIMS Deoghar",
+        state: "Jharkhand",
         district: "Deoghar",
         lat: 24.4826,
         lng: 86.7000,
@@ -194,6 +315,7 @@ export const PARTICIPATING_HEIS = [
         id: "HEI-07",
         name: "Indian Institute of Information Technology (IIIT) Ranchi",
         shortName: "IIIT Ranchi",
+        state: "Jharkhand",
         district: "Ranchi",
         lat: 23.3325,
         lng: 85.2974,
@@ -202,6 +324,49 @@ export const PARTICIPATING_HEIS = [
         facultyMentors: ["Dr. Priya Ranjan (AI Systems)", "Dr. K. N. Sinha (Computer Science)"]
     }
 ];
+
+// =========================================================================
+// REAL-TIME HAVERSINE DISTANCE & PROXIMITY ROUTING ENGINE
+// =========================================================================
+
+export function calculateDistanceKm(lat1, lon1, lat2, lon2) {
+    if (!lat1 || !lon1 || !lat2 || !lon2) return 9999;
+    const R = 6371; // Earth radius in km
+    const dLat = (lat2 - lat1) * (Math.PI / 180);
+    const dLon = (lon2 - lon1) * (Math.PI / 180);
+    const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
+        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return Math.round(R * c * 10) / 10; // Round to 1 decimal place
+}
+
+export function findNearestMatchedHei(lat, lng, domain) {
+    if (!lat || !lng) return PARTICIPATING_HEIS[0];
+
+    const ranked = PARTICIPATING_HEIS.map(hei => {
+        const distKm = calculateDistanceKm(lat, lng, hei.lat, hei.lng);
+        const isDomainExpert = hei.domains && hei.domains.includes(domain);
+        return {
+            ...hei,
+            distanceKm: distKm,
+            isDomainExpert
+        };
+    });
+
+    // 1. Sort by proximity first
+    ranked.sort((a, b) => a.distanceKm - b.distanceKm);
+
+    // 2. Check if a domain expert university is within 80km of the problem location
+    const nearbyExperts = ranked.filter(h => h.isDomainExpert && h.distanceKm < 80);
+    if (nearbyExperts.length > 0) {
+        return nearbyExperts[0];
+    }
+
+    // 3. Otherwise return closest university
+    return ranked[0];
+}
 
 export const INDUSTRY_CSR_PARTNERS = [
     {

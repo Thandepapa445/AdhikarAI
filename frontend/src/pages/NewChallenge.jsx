@@ -5,7 +5,7 @@ import {
     AlertTriangle, Building2, HelpCircle, Navigation, Camera, Mic, MicOff, Check, Image as ImageIcon,
     Shield, ShieldCheck, Video, X, Compass, RefreshCw, LocateFixed
 } from "lucide-react";
-import { THEMATIC_DOMAINS, JHARKHAND_DISTRICTS, PARTICIPATING_HEIS } from "../data/jharkhandData";
+import { THEMATIC_DOMAINS, JHARKHAND_DISTRICTS, PARTICIPATING_HEIS, findNearestMatchedHei, calculateDistanceKm } from "../data/jharkhandData";
 import { challengeService } from "../services/api";
 import NavBar from "../components/NavBar";
 import MobileBottomNav from "../components/MobileBottomNav";
@@ -221,48 +221,43 @@ export default function NewChallenge() {
         acquireLiveLocation(false);
     }, []);
 
-    // Live AI NLP Keyword Classifier as user types
+    // Live AI NLP Keyword Classifier & Nearest HEI Spatial Proximity Router
     useEffect(() => {
         const text = (title + " " + description).toLowerCase();
-        if (text.length < 5) return;
-
-        let detected = "WATER";
+        let detected = domain;
         let conf = 85;
 
         if (text.includes("water") || text.includes("fluoride") || text.includes("arsenic") || text.includes("drinking") || text.includes("handpump")) {
             detected = "WATER";
             conf = 94;
-            setSuggestedHei(PARTICIPATING_HEIS.find(h => h.id === "HEI-01") || PARTICIPATING_HEIS[0]);
-        } else if (text.includes("lac") || text.includes("crop") || text.includes("farmer") || text.includes("storage") || text.includes("kisan")) {
+        } else if (text.includes("lac") || text.includes("crop") || text.includes("farmer") || text.includes("storage") || text.includes("kisan") || text.includes("agriculture")) {
             detected = "AGRICULTURE";
             conf = 92;
-            setSuggestedHei(PARTICIPATING_HEIS.find(h => h.id === "HEI-03") || PARTICIPATING_HEIS[0]);
         } else if (text.includes("mine") || text.includes("coal") || text.includes("ash") || text.includes("overburden") || text.includes("quarry")) {
             detected = "MINING_REHAB";
             conf = 96;
-            setSuggestedHei(PARTICIPATING_HEIS.find(h => h.id === "HEI-02") || PARTICIPATING_HEIS[0]);
         } else if (text.includes("health") || text.includes("hospital") || text.includes("clinic") || text.includes("sickle cell") || text.includes("doctor")) {
             detected = "HEALTHCARE";
             conf = 91;
-            setSuggestedHei(PARTICIPATING_HEIS.find(h => h.id === "HEI-05") || PARTICIPATING_HEIS[0]);
         } else if (text.includes("school") || text.includes("education") || text.includes("santhali") || text.includes("student") || text.includes("teacher")) {
             detected = "EDUCATION";
             conf = 88;
-            setSuggestedHei(PARTICIPATING_HEIS.find(h => h.id === "HEI-06") || PARTICIPATING_HEIS[0]);
         } else if (text.includes("solar") || text.includes("micro-grid") || text.includes("electricity") || text.includes("energy")) {
             detected = "ENERGY_ENVIRONMENT";
             conf = 89;
-            setSuggestedHei(PARTICIPATING_HEIS.find(h => h.id === "HEI-04") || PARTICIPATING_HEIS[0]);
-        } else if (text.includes("road") || text.includes("culvert") || text.includes("bridge") || text.includes("pothole") || text.includes("infrastructure")) {
+        } else if (text.includes("road") || text.includes("culvert") || text.includes("bridge") || text.includes("pothole") || text.includes("infrastructure") || text.includes("highway") || text.includes("traffic")) {
             detected = "INFRASTRUCTURE";
-            conf = 90;
-            setSuggestedHei(PARTICIPATING_HEIS.find(h => h.id === "HEI-04") || PARTICIPATING_HEIS[0]);
+            conf = 94;
         }
 
         setAiDomainSuggestion(detected);
         setAiConfidence(conf);
         setDomain(detected);
-    }, [title, description]);
+
+        // Dynamically find nearest university to this exact GPS location!
+        const nearestHei = findNearestMatchedHei(mapPosition.lat, mapPosition.lng, detected);
+        setSuggestedHei(nearestHei);
+    }, [title, description, mapPosition.lat, mapPosition.lng, domain]);
 
     // 1-Tap Live GPS Button Trigger
     const handleDetectGPS = () => {
@@ -821,12 +816,24 @@ export default function NewChallenge() {
                             </div>
 
                             <div style={styles.aiRow}>
-                                <span style={styles.aiLabel}>Matched Higher Education Institution (HEI):</span>
+                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
+                                    <span style={styles.aiLabel}>🎯 Nearest Matched University (HEI):</span>
+                                    {suggestedHei.distanceKm !== undefined && (
+                                        <span style={{ fontSize: "11px", fontWeight: 800, color: "#15803d", background: "#dcfce7", padding: "1px 8px", borderRadius: "10px" }}>
+                                            📍 {suggestedHei.distanceKm} km away
+                                        </span>
+                                    )}
+                                </div>
                                 <div style={styles.heiPill}>
-                                    <Building2 size={16} color="#7c3aed" />
-                                    <div>
-                                        <div style={{ fontWeight: 700, fontSize: "12.5px" }}>{suggestedHei.name}</div>
-                                        <div style={{ fontSize: "11px", color: "#64748b" }}>{suggestedHei.specializedLabs[0]}</div>
+                                    <Building2 size={20} color="#7c3aed" style={{ minWidth: "20px" }} />
+                                    <div style={{ width: "100%" }}>
+                                        <div style={{ fontWeight: 800, fontSize: "13px", color: "#0f172a" }}>{suggestedHei.name}</div>
+                                        <div style={{ fontSize: "11.5px", color: "#475569", marginTop: "2px" }}>
+                                            🔬 <strong>Lab:</strong> {suggestedHei.specializedLabs[0]}
+                                        </div>
+                                        <div style={{ fontSize: "11px", color: "#64748b", marginTop: "1px" }}>
+                                            👨‍🏫 <strong>Mentor:</strong> {suggestedHei.facultyMentors[0]}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
