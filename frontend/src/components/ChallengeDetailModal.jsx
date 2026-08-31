@@ -135,24 +135,25 @@ export default function ChallengeDetailModal({ challenge, onClose, onUpdate }) {
                                     )}
                                 </div>
 
-                                {challenge.evidenceImageUrl && (
-                                    <div style={styles.evidenceBlock}>
-                                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
-                                            <span style={styles.evidenceLabel}>📸 Field Photograph & Evidence:</span>
-                                            <span style={{ fontSize: "10.5px", color: "#15803d", fontWeight: 700, background: "#dcfce7", border: "1px solid #86efac", padding: "2px 8px", borderRadius: "12px" }}>
-                                                🔒 DPDP Act 2023 Face Anonymized
-                                            </span>
-                                        </div>
+                                <div style={styles.evidenceBlock}>
+                                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+                                        <span style={styles.evidenceLabel}>📸 Field Photograph & Evidence:</span>
+                                        <span style={{ fontSize: "10.5px", color: "#15803d", fontWeight: 700, background: "#dcfce7", border: "1px solid #86efac", padding: "2px 8px", borderRadius: "12px" }}>
+                                            🔒 DPDP Act 2023 Face Anonymized
+                                        </span>
+                                    </div>
+                                    <div style={{ position: "relative", borderRadius: "10px", overflow: "hidden", border: "1px solid #cbd5e1" }}>
                                         <img
-                                            src={challenge.evidenceImageUrl}
+                                            src={challenge.evidenceImageUrl && challenge.evidenceImageUrl.length > 30 ? challenge.evidenceImageUrl : "https://images.unsplash.com/photo-1541888946425-d0fbb180c5f5?w=800"}
                                             alt="Evidence"
-                                            style={styles.evidenceImage}
+                                            style={{ width: "100%", height: "200px", objectFit: "cover", display: "block" }}
                                             onError={(e) => {
+                                                e.target.onerror = null;
                                                 e.target.src = "https://images.unsplash.com/photo-1541888946425-d0fbb180c5f5?w=800";
                                             }}
                                         />
                                     </div>
-                                )}
+                                </div>
 
                                 <div style={styles.submitterFooter}>
                                     <span>Submitted by: <strong>{challenge.submitterName || "Local Community"}</strong></span>

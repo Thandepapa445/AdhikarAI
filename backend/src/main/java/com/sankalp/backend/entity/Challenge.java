@@ -56,7 +56,7 @@ public class Challenge {
     @Column
     private Integer affectedPopulation;
 
-    @Column
+    @Column(columnDefinition = "TEXT")
     private String evidenceImageUrl;
 
     @Enumerated(EnumType.STRING)
