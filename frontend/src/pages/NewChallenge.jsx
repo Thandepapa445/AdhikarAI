@@ -386,8 +386,8 @@ export default function NewChallenge() {
         setShowCameraModal(false);
     };
 
-    // Capture Frame from Live Camera Viewfinder Modal
-    const captureFromLiveCamera = () => {
+    // Capture Frame from Live Camera Viewfinder Modal & Run YOLOv8 Verification
+    const captureFromLiveCamera = async () => {
         if (!videoRef.current || !canvasRef.current) return;
         const video = videoRef.current;
         const canvas = canvasRef.current;
@@ -406,42 +406,17 @@ export default function NewChallenge() {
         ctx.fillText(`📍 SANKALP AI • LIVE CAMERA EVIDENCE • ${new Date().toLocaleString()}`, 10, 472);
         ctx.restore();
 
-        const timeNow = new Date().toLocaleString();
-        setCaptureTimestamp(timeNow);
-        setIsLiveCameraVerified(true);
-
         const dataUrl = canvas.toDataURL("image/jpeg", 0.75);
-        setEvidenceUrl(dataUrl);
-
-        setVisionResult({
-            isVisualEvidenceVerified: true,
-            primaryClass: "water_leakage",
-            highestConfidence: 0.914,
-            confidencePercent: "91.4%",
-            recommendedDomain: "WATER",
-            isLiveVerified: true,
-            timestamp: timeNow
-        });
-
-        closeLiveCamera();
-    };
-
-    // Handle Direct Camera Photo Snapshot & Compression
-    const handlePhotoUpload = async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-
         setAnalyzingImage(true);
+        closeLiveCamera();
 
         try {
-            const { dataUrl } = await processAndCompressImage(file);
-            setEvidenceUrl(dataUrl);
-            setIsLiveCameraVerified(true);
-            setCaptureTimestamp(new Date().toLocaleString());
+            const blob = await (await fetch(dataUrl)).blob();
+            const formData = new FormData();
+            formData.append("file", blob, "camera_capture.jpg");
 
             const host = (typeof window !== "undefined" && window.location && window.location.hostname) ? window.location.hostname : "localhost";
-            const formData = new FormData();
-            formData.append("file", file);
+            let detectionData = null;
 
             try {
                 const res = await fetch(`http://${host}:5000/api/v1/detect`, {
@@ -449,28 +424,95 @@ export default function NewChallenge() {
                     body: formData
                 });
                 if (res.ok) {
-                    const data = await res.json();
-                    setVisionResult(data);
-                    if (data.recommendedDomain) {
-                        setDomain(data.recommendedDomain);
-                    }
-                } else {
-                    setVisionResult({
-                        isVisualEvidenceVerified: true,
-                        primaryClass: "water_leakage",
-                        highestConfidence: 0.892,
-                        confidencePercent: "89.2%",
-                        recommendedDomain: "WATER"
-                    });
+                    detectionData = await res.json();
                 }
             } catch (netErr) {
+                console.warn("YOLO vision microservice connection error", netErr);
+            }
+
+            if (detectionData && detectionData.isVisualEvidenceVerified && detectionData.totalDetections > 0) {
+                const timeNow = new Date().toLocaleString();
+                setEvidenceUrl(dataUrl);
+                setIsLiveCameraVerified(true);
+                setCaptureTimestamp(timeNow);
                 setVisionResult({
+                    ...detectionData,
                     isVisualEvidenceVerified: true,
-                    primaryClass: "water_leakage",
-                    highestConfidence: 0.88,
-                    confidencePercent: "88.0%",
-                    recommendedDomain: "WATER"
+                    isLiveVerified: true,
+                    timestamp: timeNow
                 });
+                if (detectionData.recommendedDomain) {
+                    setDomain(detectionData.recommendedDomain);
+                }
+            } else {
+                setEvidenceUrl("");
+                setIsLiveCameraVerified(false);
+                setVisionResult({
+                    isVisualEvidenceVerified: false,
+                    status: "REJECTED",
+                    message: "No recognized civic hazard (pothole, garbage, water leakage) detected in frame."
+                });
+                alert("🚫 Photo Evidence Rejected by AI Vision Gate!\n\nNo recognized civic issue was detected in this camera frame.\n\nSankalp AI strictly requires authentic photos of civic hazards (Potholes, Garbage Dumps, or Water Leakage) to prevent fake entries.\n\nPlease point your camera directly at the civic problem.");
+            }
+        } catch (err) {
+            console.error("Camera verification error", err);
+        } finally {
+            setAnalyzingImage(false);
+        }
+    };
+
+    // Handle Direct Camera Photo Snapshot & Compression + YOLOv8 Civic Gate Verification
+    const handlePhotoUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        setAnalyzingImage(true);
+        setVisionResult(null);
+
+        try {
+            const { dataUrl } = await processAndCompressImage(file);
+            const host = (typeof window !== "undefined" && window.location && window.location.hostname) ? window.location.hostname : "localhost";
+            const formData = new FormData();
+            formData.append("file", file);
+
+            let detectionData = null;
+
+            try {
+                const res = await fetch(`http://${host}:5000/api/v1/detect`, {
+                    method: "POST",
+                    body: formData
+                });
+                if (res.ok) {
+                    detectionData = await res.json();
+                }
+            } catch (netErr) {
+                console.warn("YOLO vision microservice connection error", netErr);
+            }
+
+            // Evaluate whether photo contains a verified civic hazard
+            if (detectionData && detectionData.isVisualEvidenceVerified && detectionData.totalDetections > 0) {
+                // Civic issue verified!
+                setEvidenceUrl(dataUrl);
+                setIsLiveCameraVerified(true);
+                setCaptureTimestamp(new Date().toLocaleString());
+                setVisionResult({
+                    ...detectionData,
+                    isVisualEvidenceVerified: true,
+                    status: "VERIFIED"
+                });
+                if (detectionData.recommendedDomain) {
+                    setDomain(detectionData.recommendedDomain);
+                }
+            } else {
+                // REJECT non-civic / unrelated images!
+                setEvidenceUrl("");
+                setIsLiveCameraVerified(false);
+                setVisionResult({
+                    isVisualEvidenceVerified: false,
+                    status: "REJECTED",
+                    message: "No recognized civic hazard (Pothole, Garbage Dump, Water Leakage) detected in photo."
+                });
+                alert("🚫 Photo Evidence Rejected by AI Vision Gate!\n\nNo recognized civic issue was detected in this photo.\n\nSankalp AI strictly requires authentic photos of civic hazards (Potholes, Garbage Dumps, or Water Leakage) to prevent spam.\n\nPlease upload a photo of the actual civic problem.");
             }
         } catch (err) {
             console.error("Image processing error", err);
@@ -490,6 +532,11 @@ export default function NewChallenge() {
 
         if (description.length < 10) {
             alert("⚠️ Description is too short. Please explain the local challenge in detail so university researchers have context.");
+            return false;
+        }
+
+        if (!evidenceUrl || !isLiveCameraVerified) {
+            alert("⚠️ Verified Civic Photo Evidence Required!\n\nPlease capture or upload an authentic photo of the civic problem (Potholes, Garbage Dumps, or Water Leakage) that passes YOLOv8 AI verification before submitting.");
             return false;
         }
 
@@ -806,11 +853,20 @@ export default function NewChallenge() {
                                     </div>
                                 )}
 
-                                {visionResult && (
+                                {visionResult && visionResult.isVisualEvidenceVerified && (
                                     <div style={styles.visionResultPill}>
                                         <CheckCircle2 size={16} color="#16a34a" />
                                         <div>
-                                            <strong>✓ YOLOv8 Verified:</strong> Detected <em>{visionResult.primaryClass}</em> ({visionResult.confidencePercent || "89.4%"} confidence) • <strong>GPS & Timestamp Locked</strong>.
+                                            <strong>✓ YOLOv8 Verified Civic Hazard:</strong> Detected <em style={{ textTransform: "capitalize", fontWeight: 700 }}>{visionResult.primaryClass?.replace("_", " ")}</em> ({visionResult.confidencePercent || `${(visionResult.highestConfidence * 100).toFixed(1)}%`} confidence) • <strong>Authentic Field Evidence Locked</strong>.
+                                        </div>
+                                    </div>
+                                )}
+
+                                {visionResult && !visionResult.isVisualEvidenceVerified && (
+                                    <div style={{ ...styles.visionResultPill, background: "#fef2f2", borderColor: "#fecaca", color: "#991b1b" }}>
+                                        <AlertTriangle size={16} color="#dc2626" />
+                                        <div>
+                                            <strong>❌ AI Gate Rejected:</strong> {visionResult.message || "No recognized civic hazard detected. Only authentic photos of potholes, garbage, or water leakage are accepted."}
                                         </div>
                                     </div>
                                 )}
