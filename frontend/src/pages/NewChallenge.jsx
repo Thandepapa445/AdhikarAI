@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import {
     Sparkles, MapPin, UploadCloud, ArrowRight, ArrowLeft, CheckCircle2,
     AlertTriangle, Building2, HelpCircle, Navigation, Camera, Mic, MicOff, Check, Image as ImageIcon,
-    Shield, ShieldCheck, Video, X, Compass, RefreshCw
+    Shield, ShieldCheck, Video, X, Compass, RefreshCw, LocateFixed
 } from "lucide-react";
 import { THEMATIC_DOMAINS, JHARKHAND_DISTRICTS, PARTICIPATING_HEIS } from "../data/jharkhandData";
 import { challengeService } from "../services/api";
@@ -20,17 +20,20 @@ L.Icon.Default.mergeOptions({
     shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
 });
 
-function LocationMarker({ position, setPosition }) {
+function LocationMarker({ position, setPosition, onPinDrop }) {
     useMapEvents({
         click(e) {
             setPosition(e.latlng);
+            if (onPinDrop) {
+                onPinDrop(e.latlng.lat, e.latlng.lng);
+            }
         },
     });
 
     return position ? <Marker position={position} /> : null;
 }
 
-// Client-Side Image Compressor & Watermarker (Direct Clear Photo - No Face Blur)
+// Client-Side Image Compressor & Watermarker (Direct Clear Photo)
 async function processAndCompressImage(fileOrBlob) {
     return new Promise((resolve) => {
         const reader = new FileReader();
@@ -118,47 +121,64 @@ export default function NewChallenge() {
     const [dedupWarning, setDedupWarning] = useState(null);
     const [submitting, setSubmitting] = useState(false);
 
-    // Update block options when district changes
-    const currentDistrictData = JHARKHAND_DISTRICTS.find(d => d.name === district) || JHARKHAND_DISTRICTS[0];
+    // Reverse Geocoding & Automatic Field Filler
+    const reverseGeocodeAndAutoFill = async (lat, lng, showToast = false) => {
+        try {
+            const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`);
+            if (res.ok) {
+                const data = await res.json();
+                const addr = data.address || {};
 
-    useEffect(() => {
-        if (currentDistrictData && currentDistrictData.blocks.length > 0) {
-            setBlock(currentDistrictData.blocks[0]);
+                const detectedDistrict = addr.state_district || addr.county || addr.city || addr.state || district;
+                const detectedBlock = addr.suburb || addr.town || addr.municipality || addr.subdistrict || addr.county || block;
+                const detectedPanchayat = addr.village || addr.neighbourhood || addr.residential || addr.suburb || panchayat || `${detectedBlock} Ward 1`;
+                const fullAddress = data.display_name || `${detectedPanchayat}, ${detectedBlock}, ${detectedDistrict}`;
+
+                setDistrict(detectedDistrict);
+                setBlock(detectedBlock);
+                setPanchayat(detectedPanchayat);
+                setLocationText(fullAddress);
+                const status = `✓ Auto-Filled: ${detectedPanchayat}, ${detectedDistrict} (${lat.toFixed(4)}° N, ${lng.toFixed(4)}° E)`;
+                setGpsStatusText(status);
+
+                if (showToast) {
+                    alert(`📍 Live Location Acquired & Auto-Filled!\n\n• District: ${detectedDistrict}\n• Block: ${detectedBlock}\n• Panchayat/Village: ${detectedPanchayat}\n• GPS: ${lat.toFixed(4)}° N, ${lng.toFixed(4)}° E`);
+                }
+                return true;
+            }
+        } catch (err) {
+            console.warn("Reverse geocode failed, using coordinates", err);
         }
-    }, [district]);
+        return false;
+    };
 
-    // Live Geolocation with Seamless Mobile HTTP Fallback
+    // Live Geolocation with Intelligent Auto-Fill
     const acquireLiveLocation = async (isManualClick = false) => {
         setIsLocating(true);
         let locked = false;
 
-        // 1. Try Hardware GPS (Works on HTTPS / localhost)
+        // 1. Try Native Browser Geolocation API
         if ("geolocation" in navigator) {
             try {
                 await new Promise((resolve, reject) => {
                     navigator.geolocation.getCurrentPosition(
-                        (pos) => {
+                        async (pos) => {
                             const { latitude, longitude } = pos.coords;
                             setMapPosition({ lat: latitude, lng: longitude });
-                            const loc = `📍 Live Device GPS: ${latitude.toFixed(4)}° N, ${longitude.toFixed(4)}° E`;
-                            setLocationText(loc);
-                            setGpsStatusText(loc);
                             locked = true;
-                            if (isManualClick) {
-                                alert(`📍 Live Device GPS Acquired!\nLatitude: ${latitude.toFixed(4)}° N\nLongitude: ${longitude.toFixed(4)}° E`);
-                            }
+                            await reverseGeocodeAndAutoFill(latitude, longitude, isManualClick);
                             resolve(pos);
                         },
                         (err) => reject(err),
-                        { enableHighAccuracy: true, timeout: 2500 }
+                        { enableHighAccuracy: true, timeout: 3500 }
                     );
                 });
             } catch (e) {
-                // Silently fallback to IP Geolocation on HTTP IP connections
+                // proceed to network fallback
             }
         }
 
-        // 2. If Hardware GPS is restricted over HTTP, fetch real live location via Network Geolocation
+        // 2. Network Geolocation Fallback (IP-based)
         if (!locked) {
             try {
                 const res = await fetch("https://ipwho.is/");
@@ -166,13 +186,8 @@ export default function NewChallenge() {
                     const data = await res.json();
                     if (data.latitude && data.longitude) {
                         setMapPosition({ lat: data.latitude, lng: data.longitude });
-                        const loc = `📍 Live GPS: ${data.latitude.toFixed(4)}° N, ${data.longitude.toFixed(4)}° E (${data.city || data.region || "Live Coordinates"})`;
-                        setLocationText(loc);
-                        setGpsStatusText(loc);
                         locked = true;
-                        if (isManualClick) {
-                            alert(`📍 Live Location Acquired!\nLatitude: ${data.latitude.toFixed(4)}° N\nLongitude: ${data.longitude.toFixed(4)}° E\nLocation: ${data.city || data.region || "Current Location"}`);
-                        }
+                        await reverseGeocodeAndAutoFill(data.latitude, data.longitude, isManualClick);
                     }
                 }
             } catch (ipErr) {
@@ -183,21 +198,17 @@ export default function NewChallenge() {
                         const data2 = await res2.json();
                         if (data2.latitude && data2.longitude) {
                             setMapPosition({ lat: data2.latitude, lng: data2.longitude });
-                            const loc2 = `📍 Live GPS: ${data2.latitude.toFixed(4)}° N, ${data2.longitude.toFixed(4)}° E`;
-                            setLocationText(loc2);
-                            setGpsStatusText(loc2);
                             locked = true;
+                            await reverseGeocodeAndAutoFill(data2.latitude, data2.longitude, isManualClick);
                         }
                     }
                 } catch (e2) {}
             }
         }
 
-        // 3. Fallback to district coordinates if offline
+        // 3. Fallback to default district if completely offline
         if (!locked && isManualClick) {
-            const dist = currentDistrictData || { lat: 23.92, lng: 84.23, name: "Palamu" };
-            setMapPosition({ lat: dist.lat, lng: dist.lng });
-            const fallbackMsg = `📍 District Geotagged: ${dist.name} (${dist.lat}° N, ${dist.lng}° E)`;
+            const fallbackMsg = `📍 Coordinates Set: ${district} (${mapPosition.lat.toFixed(4)}° N, ${mapPosition.lng.toFixed(4)}° E)`;
             setLocationText(fallbackMsg);
             setGpsStatusText(fallbackMsg);
         }
@@ -205,7 +216,7 @@ export default function NewChallenge() {
         setIsLocating(false);
     };
 
-    // Auto-detect on load
+    // Auto-detect & auto-fill on initial page load
     useEffect(() => {
         acquireLiveLocation(false);
     }, []);
@@ -251,13 +262,7 @@ export default function NewChallenge() {
         setAiDomainSuggestion(detected);
         setAiConfidence(conf);
         setDomain(detected);
-
-        if (district === "Palamu" && detected === "WATER") {
-            setDedupWarning("⚠️ AI Notice: Similar fluoride & ground contamination reports exist in Palamu. Your submission will be clustered to enhance research priority.");
-        } else {
-            setDedupWarning(null);
-        }
-    }, [title, description, district]);
+    }, [title, description]);
 
     // 1-Tap Live GPS Button Trigger
     const handleDetectGPS = () => {
@@ -274,7 +279,7 @@ export default function NewChallenge() {
         const msg = `📍 Jharkhand Pilot Hub Locked: Satbarwa Khurd, Palamu (23.9525° N, 84.1825° E)`;
         setLocationText(msg);
         setGpsStatusText(msg);
-        alert("🎯 Geotagged to Jharkhand Priority Pilot Zone:\nSatbarwa Khurd, Palamu District\n(23.9525° N, 84.1825° E)");
+        alert("🎯 Auto-Filled to Jharkhand Priority Pilot Zone:\n\n• District: Palamu\n• Block: Satbarwa\n• Panchayat: Satbarwa Khurd\n• GPS: 23.9525° N, 84.1825° E");
     };
 
     // Vernacular Voice Recording / Speech Input
@@ -473,8 +478,8 @@ export default function NewChallenge() {
             submitterType,
             submitterName: submitterName || "Local Submitter",
             citizenEmail: citizenEmail || "citizen.palamu@jharkhand.gov.in",
-            district,
-            block,
+            district: district || "Palamu",
+            block: block || "Satbarwa",
             panchayat: panchayat || `${block} Khurd`,
             locationText: locationText || `${panchayat || block}, ${district}`,
             lat: mapPosition.lat,
@@ -516,7 +521,7 @@ export default function NewChallenge() {
                     </button>
                     <h1 style={styles.pageTitle}>Submit Societal Challenge</h1>
                     <p style={styles.pageSub}>
-                        Crowdsource community problems from Jharkhand's 24 districts for AI routing to Universities (HEIs) & Industry CSR
+                        Crowdsource community problems with 1-Tap AI Geolocation routing to Universities (HEIs) & Industry CSR
                     </p>
                 </div>
 
@@ -561,49 +566,10 @@ export default function NewChallenge() {
                             {/* Location & GPS Detection */}
                             <div style={styles.sectionHeading}>
                                 <span style={styles.stepBadge}>2</span>
-                                <h3>Geographic Location in Jharkhand</h3>
+                                <h3>Geographic Location (Auto-Filled via GPS)</h3>
                             </div>
 
-                            <div className="form-grid-3" style={styles.grid3}>
-                                <div style={styles.inputGroup}>
-                                    <label style={styles.label}>District *</label>
-                                    <select
-                                        value={district}
-                                        onChange={(e) => setDistrict(e.target.value)}
-                                        style={styles.select}
-                                    >
-                                        {JHARKHAND_DISTRICTS.map(d => (
-                                             <option key={d.name} value={d.name}>{d.name}</option>
-                                        ))}
-                                    </select>
-                                </div>
-
-                                <div style={styles.inputGroup}>
-                                    <label style={styles.label}>Block *</label>
-                                    <select
-                                        value={block}
-                                        onChange={(e) => setBlock(e.target.value)}
-                                        style={styles.select}
-                                    >
-                                        {currentDistrictData.blocks.map(b => (
-                                            <option key={b} value={b}>{b}</option>
-                                        ))}
-                                    </select>
-                                </div>
-
-                                <div style={styles.inputGroup}>
-                                    <label style={styles.label}>Panchayat / Village</label>
-                                    <input
-                                        type="text"
-                                        value={panchayat}
-                                        onChange={(e) => setPanchayat(e.target.value)}
-                                        placeholder="e.g. Satbarwa Khurd"
-                                        style={styles.input}
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Mobile 1-Tap GPS & Jharkhand Demo Geotag Buttons */}
+                            {/* 1-Tap Auto Location Action Buttons */}
                             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "14px" }}>
                                 <button
                                     type="button"
@@ -611,8 +577,8 @@ export default function NewChallenge() {
                                     style={styles.gpsButton}
                                     disabled={isLocating}
                                 >
-                                    <Navigation size={15} color="#0284c7" />
-                                    <span>{isLocating ? "Acquiring..." : "📍 1-Tap Live Device GPS"}</span>
+                                    <LocateFixed size={16} color="#0284c7" />
+                                    <span>{isLocating ? "Acquiring & Auto-Filling..." : "📍 Auto-Detect & Fill Location"}</span>
                                 </button>
 
                                 <button
@@ -620,29 +586,74 @@ export default function NewChallenge() {
                                     onClick={handleSetJharkhandPilotGPS}
                                     style={styles.pilotGpsButton}
                                 >
-                                    <Compass size={15} color="#16a34a" />
-                                    <span>🎯 Jharkhand Pilot GPS</span>
+                                    <Compass size={16} color="#16a34a" />
+                                    <span>🎯 Jharkhand Pilot Preset</span>
                                 </button>
                             </div>
 
                             {gpsStatusText && (
                                 <div style={styles.gpsStatusPill}>
-                                    <CheckCircle2 size={14} color="#16a34a" />
+                                    <CheckCircle2 size={15} color="#16a34a" />
                                     <span>{gpsStatusText}</span>
                                 </div>
                             )}
 
+                            <div className="form-grid-3" style={styles.grid3}>
+                                <div style={styles.inputGroup}>
+                                    <label style={styles.label}>District / City *</label>
+                                    <select
+                                        value={district}
+                                        onChange={(e) => setDistrict(e.target.value)}
+                                        style={styles.select}
+                                    >
+                                        {!JHARKHAND_DISTRICTS.some(d => d.name.toLowerCase() === district.toLowerCase()) && (
+                                            <option value={district}>📍 {district} (Detected via GPS)</option>
+                                        )}
+                                        {JHARKHAND_DISTRICTS.map(d => (
+                                             <option key={d.name} value={d.name}>{d.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div style={styles.inputGroup}>
+                                    <label style={styles.label}>Block / Sub-District *</label>
+                                    <input
+                                        type="text"
+                                        value={block}
+                                        onChange={(e) => setBlock(e.target.value)}
+                                        placeholder="e.g. Satbarwa or Local Block"
+                                        required
+                                        style={styles.input}
+                                    />
+                                </div>
+
+                                <div style={styles.inputGroup}>
+                                    <label style={styles.label}>Panchayat / Village / Area</label>
+                                    <input
+                                        type="text"
+                                        value={panchayat}
+                                        onChange={(e) => setPanchayat(e.target.value)}
+                                        placeholder="e.g. Satbarwa Khurd or Village"
+                                        style={styles.input}
+                                    />
+                                </div>
+                            </div>
+
                             {/* Leaflet Map Pin Drop */}
                             <div style={styles.mapWrap}>
-                                <label style={styles.label}>Map Location Pin (Live GPS / Click to adjust):</label>
-                                <div style={{ height: "200px", borderRadius: "12px", overflow: "hidden" }}>
+                                <label style={styles.label}>Interactive Location Map (Click anywhere on map to auto-update address):</label>
+                                <div style={{ height: "200px", borderRadius: "12px", overflow: "hidden", border: "1px solid #cbd5e1" }}>
                                     <MapContainer
                                         center={[mapPosition.lat, mapPosition.lng]}
-                                        zoom={10}
+                                        zoom={11}
                                         style={{ height: "100%", width: "100%" }}
                                     >
                                         <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-                                        <LocationMarker position={mapPosition} setPosition={setMapPosition} />
+                                        <LocationMarker
+                                            position={mapPosition}
+                                            setPosition={setMapPosition}
+                                            onPinDrop={(lat, lng) => reverseGeocodeAndAutoFill(lat, lng, false)}
+                                        />
                                     </MapContainer>
                                 </div>
                                 <div style={{ fontSize: "11px", color: "#64748b", marginTop: "4px" }}>
@@ -680,7 +691,7 @@ export default function NewChallenge() {
                                         }}
                                     >
                                         {isRecording ? <MicOff size={14} /> : <Mic size={14} />}
-                                        <span>{isRecording ? "Listening..." : "🎙️ Speak in Hindi / Santhali"}</span>
+                                        <span>{isRecording ? "Listening..." : "🎙️ Speak in Hindi / Vernacular"}</span>
                                     </button>
                                 </div>
                                 <textarea
@@ -825,20 +836,11 @@ export default function NewChallenge() {
                                     <Shield size={14} color="#0284c7" /> Security & Trust Protocol
                                 </div>
                                 <div style={{ fontSize: "11px", color: "#334155", marginTop: "6px", lineHeight: "1.4" }}>
-                                    • <strong>Live GPS:</strong> Real-time hardware geolocation lock.<br />
+                                    • <strong>1-Tap GPS:</strong> Real-time reverse-geocoded auto-fill.<br />
                                     • <strong>Verified Media:</strong> Timestamped authentic field evidence.<br />
                                     • <strong>AI Routing:</strong> Automated university assignment.
                                 </div>
                             </div>
-
-                            {dedupWarning && (
-                                <div style={styles.dedupBox}>
-                                    <AlertTriangle size={16} color="#d97706" style={{ minWidth: "16px" }} />
-                                    <div style={{ fontSize: "11.5px", color: "#92400e", lineHeight: 1.4 }}>
-                                        {dedupWarning}
-                                    </div>
-                                </div>
-                            )}
 
                             <div style={styles.infoBox}>
                                 <strong>💡 NEP 2020 Solution Protocol:</strong>
@@ -1018,7 +1020,7 @@ const styles = {
         background: "#e0f2fe",
         color: "#0284c7",
         border: "1px solid #bae6fd",
-        padding: "10px",
+        padding: "11px 10px",
         borderRadius: "10px",
         fontSize: "12px",
         fontWeight: 700,
@@ -1033,7 +1035,7 @@ const styles = {
         background: "#f0fdf4",
         color: "#16a34a",
         border: "1px solid #bbf7d0",
-        padding: "10px",
+        padding: "11px 10px",
         borderRadius: "10px",
         fontSize: "12px",
         fontWeight: 700,
@@ -1048,7 +1050,7 @@ const styles = {
         color: "#15803d",
         fontSize: "11.5px",
         fontWeight: 600,
-        padding: "6px 10px",
+        padding: "7px 12px",
         borderRadius: "8px",
         marginBottom: "12px"
     },
@@ -1200,15 +1202,6 @@ const styles = {
         border: "1.5px solid #bae6fd",
         borderRadius: "12px",
         padding: "12px",
-        marginBottom: "14px"
-    },
-    dedupBox: {
-        display: "flex",
-        gap: "8px",
-        background: "#fffbeb",
-        border: "1px solid #fde68a",
-        padding: "10px",
-        borderRadius: "8px",
         marginBottom: "14px"
     },
     infoBox: {
