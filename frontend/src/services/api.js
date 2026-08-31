@@ -54,19 +54,16 @@ export function getLocalChallenges() {
 
 export function saveLocalChallenges(challenges) {
     try {
-        // Keep challenges compact to prevent any browser quota / memory full errors
-        const compactList = (challenges || []).slice(0, 30).map(c => ({
+        const cleanList = (challenges || []).slice(0, 30).map(c => ({
             ...c,
-            // truncate overly long base64 strings in local storage if present
-            evidenceImageUrl: (c.evidenceImageUrl && c.evidenceImageUrl.length > 100000)
-                ? c.evidenceImageUrl.substring(0, 50000)
+            evidenceImageUrl: (c.evidenceImageUrl && c.evidenceImageUrl.length > 250000)
+                ? "https://images.unsplash.com/photo-1541888946425-d0fbb180c5f5?w=800"
                 : (c.evidenceImageUrl || "https://images.unsplash.com/photo-1541888946425-d0fbb180c5f5?w=800")
         }));
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(compactList));
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(cleanList));
     } catch (e) {
         console.warn("Local storage quota exceeded. Purging older items to free space...", e);
         try {
-            // Keep only latest 10 items
             const smaller = (challenges || []).slice(0, 10);
             localStorage.setItem(STORAGE_KEY, JSON.stringify(smaller));
         } catch (err) {

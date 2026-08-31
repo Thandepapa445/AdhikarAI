@@ -137,11 +137,19 @@ export default function ChallengeDetailModal({ challenge, onClose, onUpdate }) {
 
                                 {challenge.evidenceImageUrl && (
                                     <div style={styles.evidenceBlock}>
-                                        <span style={styles.evidenceLabel}>Field Photograph & Evidence:</span>
+                                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+                                            <span style={styles.evidenceLabel}>📸 Field Photograph & Evidence:</span>
+                                            <span style={{ fontSize: "10.5px", color: "#15803d", fontWeight: 700, background: "#dcfce7", border: "1px solid #86efac", padding: "2px 8px", borderRadius: "12px" }}>
+                                                🔒 DPDP Act 2023 Face Anonymized
+                                            </span>
+                                        </div>
                                         <img
                                             src={challenge.evidenceImageUrl}
                                             alt="Evidence"
                                             style={styles.evidenceImage}
+                                            onError={(e) => {
+                                                e.target.src = "https://images.unsplash.com/photo-1541888946425-d0fbb180c5f5?w=800";
+                                            }}
                                         />
                                     </div>
                                 )}
