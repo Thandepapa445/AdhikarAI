@@ -1,17 +1,24 @@
 import axios from "axios";
 import { INITIAL_SEED_CHALLENGES } from "../data/jharkhandData";
 
-const API_BASE_URL = "http://localhost:8080/api";
+// Dynamically resolve backend host so both phone (via Wi-Fi IP) and laptop (localhost) hit the same Spring Boot server!
+const getApiBaseUrl = () => {
+    if (typeof window !== "undefined" && window.location && window.location.hostname) {
+        return `http://${window.location.hostname}:8080/api`;
+    }
+    return "http://localhost:8080/api";
+};
 
 const api = axios.create({
-    baseURL: API_BASE_URL,
+    baseURL: getApiBaseUrl(),
     headers: {
         "Content-Type": "application/json",
     },
-    timeout: 3000,
+    timeout: 4000,
 });
 
 api.interceptors.request.use((config) => {
+    config.baseURL = getApiBaseUrl(); // dynamically update base url
     const token = localStorage.getItem("sankalp_token");
     if (token) {
         config.headers.Authorization = `Bearer ${token}`;
@@ -37,15 +44,34 @@ export function getLocalChallenges() {
     } catch (e) {
         console.error("Local storage read error", e);
     }
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(INITIAL_SEED_CHALLENGES));
+    try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(INITIAL_SEED_CHALLENGES));
+    } catch (e) {
+        // quota safety
+    }
     return INITIAL_SEED_CHALLENGES;
 }
 
 export function saveLocalChallenges(challenges) {
     try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(challenges));
+        // Keep challenges compact to prevent any browser quota / memory full errors
+        const compactList = (challenges || []).slice(0, 30).map(c => ({
+            ...c,
+            // truncate overly long base64 strings in local storage if present
+            evidenceImageUrl: (c.evidenceImageUrl && c.evidenceImageUrl.length > 100000)
+                ? c.evidenceImageUrl.substring(0, 50000)
+                : (c.evidenceImageUrl || "https://images.unsplash.com/photo-1541888946425-d0fbb180c5f5?w=800")
+        }));
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(compactList));
     } catch (e) {
-        console.error("Local storage save error", e);
+        console.warn("Local storage quota exceeded. Purging older items to free space...", e);
+        try {
+            // Keep only latest 10 items
+            const smaller = (challenges || []).slice(0, 10);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(smaller));
+        } catch (err) {
+            console.error("Failed to write to local storage", err);
+        }
     }
 }
 
@@ -59,8 +85,13 @@ export const challengeService = {
         try {
             const res = await api.get("/challenges");
             if (Array.isArray(res.data) && res.data.length > 0) {
-                saveLocalChallenges(res.data);
-                return res.data;
+                // Merge backend challenges with local state
+                const localList = getLocalChallenges();
+                const backendIds = new Set(res.data.map(c => String(c.id)));
+                const uniqueLocal = localList.filter(c => !backendIds.has(String(c.id)));
+                const merged = [...res.data, ...uniqueLocal];
+                saveLocalChallenges(merged);
+                return merged;
             }
         } catch (err) {
             // Fallback gracefully to local dataset
@@ -102,14 +133,30 @@ export const challengeService = {
         saveLocalChallenges(updated);
 
         try {
-            const res = await api.post("/challenges", fullChallenge);
+            // Send to Spring Boot Backend
+            const res = await api.post("/challenges", {
+                title: fullChallenge.title,
+                description: fullChallenge.description,
+                domain: fullChallenge.domain,
+                urgency: fullChallenge.urgency,
+                submitterType: fullChallenge.submitterType,
+                submitterName: fullChallenge.submitterName,
+                district: fullChallenge.district,
+                block: fullChallenge.block,
+                panchayat: fullChallenge.panchayat,
+                locationText: fullChallenge.locationText,
+                latitude: Number(fullChallenge.lat || fullChallenge.latitude || 23.92),
+                longitude: Number(fullChallenge.lng || fullChallenge.longitude || 84.23),
+                affectedPopulation: Number(fullChallenge.affectedPopulation || 500),
+                evidenceImageUrl: fullChallenge.evidenceImageUrl || "https://images.unsplash.com/photo-1541888946425-d0fbb180c5f5?w=800"
+            });
             if (res.data) {
-                const merged = [res.data, ...list.filter(c => c.id !== res.data.id)];
+                const merged = [res.data, ...list.filter(c => c.id !== res.data.id && c.id !== newId)];
                 saveLocalChallenges(merged);
                 return res.data;
             }
         } catch (err) {
-            console.warn("Backend not available, challenge stored locally.");
+            console.warn("Backend sync pending, challenge saved in local reactive queue.", err?.message);
         }
 
         return fullChallenge;

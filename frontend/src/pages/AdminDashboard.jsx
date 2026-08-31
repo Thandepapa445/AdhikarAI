@@ -56,6 +56,15 @@ export default function AdminDashboard() {
 
     useEffect(() => {
         loadData();
+        // Background live synchronization polling between Phone and Laptop
+        const interval = setInterval(() => {
+            challengeService.getAllChallenges().then(data => {
+                if (data && data.length > 0) {
+                    setChallenges(data);
+                }
+            }).catch(() => {});
+        }, 4000);
+        return () => clearInterval(interval);
     }, [activeTab]);
 
     useEffect(() => {
