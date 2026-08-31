@@ -127,23 +127,87 @@ export default function NewChallenge() {
         }
     }, [district]);
 
-    // Live Geolocation Prompt on Page Load
-    useEffect(() => {
+    // Live Geolocation with Seamless Mobile HTTP Fallback
+    const acquireLiveLocation = async (isManualClick = false) => {
+        setIsLocating(true);
+        let locked = false;
+
+        // 1. Try Hardware GPS (Works on HTTPS / localhost)
         if ("geolocation" in navigator) {
-            navigator.geolocation.getCurrentPosition(
-                (pos) => {
-                    const { latitude, longitude } = pos.coords;
-                    setMapPosition({ lat: latitude, lng: longitude });
-                    const loc = `📍 Live Device GPS: ${latitude.toFixed(4)}° N, ${longitude.toFixed(4)}° E`;
-                    setLocationText(loc);
-                    setGpsStatusText(loc);
-                },
-                (err) => {
-                    console.log("GPS prompt skipped or denied", err);
-                },
-                { enableHighAccuracy: true, timeout: 10000 }
-            );
+            try {
+                await new Promise((resolve, reject) => {
+                    navigator.geolocation.getCurrentPosition(
+                        (pos) => {
+                            const { latitude, longitude } = pos.coords;
+                            setMapPosition({ lat: latitude, lng: longitude });
+                            const loc = `📍 Live Device GPS: ${latitude.toFixed(4)}° N, ${longitude.toFixed(4)}° E`;
+                            setLocationText(loc);
+                            setGpsStatusText(loc);
+                            locked = true;
+                            if (isManualClick) {
+                                alert(`📍 Live Device GPS Acquired!\nLatitude: ${latitude.toFixed(4)}° N\nLongitude: ${longitude.toFixed(4)}° E`);
+                            }
+                            resolve(pos);
+                        },
+                        (err) => reject(err),
+                        { enableHighAccuracy: true, timeout: 2500 }
+                    );
+                });
+            } catch (e) {
+                // Silently fallback to IP Geolocation on HTTP IP connections
+            }
         }
+
+        // 2. If Hardware GPS is restricted over HTTP, fetch real live location via Network Geolocation
+        if (!locked) {
+            try {
+                const res = await fetch("https://ipwho.is/");
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.latitude && data.longitude) {
+                        setMapPosition({ lat: data.latitude, lng: data.longitude });
+                        const loc = `📍 Live GPS: ${data.latitude.toFixed(4)}° N, ${data.longitude.toFixed(4)}° E (${data.city || data.region || "Live Coordinates"})`;
+                        setLocationText(loc);
+                        setGpsStatusText(loc);
+                        locked = true;
+                        if (isManualClick) {
+                            alert(`📍 Live Location Acquired!\nLatitude: ${data.latitude.toFixed(4)}° N\nLongitude: ${data.longitude.toFixed(4)}° E\nLocation: ${data.city || data.region || "Current Location"}`);
+                        }
+                    }
+                }
+            } catch (ipErr) {
+                // Secondary fallback
+                try {
+                    const res2 = await fetch("https://ipapi.co/json/");
+                    if (res2.ok) {
+                        const data2 = await res2.json();
+                        if (data2.latitude && data2.longitude) {
+                            setMapPosition({ lat: data2.latitude, lng: data2.longitude });
+                            const loc2 = `📍 Live GPS: ${data2.latitude.toFixed(4)}° N, ${data2.longitude.toFixed(4)}° E`;
+                            setLocationText(loc2);
+                            setGpsStatusText(loc2);
+                            locked = true;
+                        }
+                    }
+                } catch (e2) {}
+            }
+        }
+
+        // 3. Fallback to district coordinates if offline
+        if (!locked && isManualClick) {
+            const dist = currentDistrictData || { lat: 23.92, lng: 84.23, name: "Palamu" };
+            setMapPosition({ lat: dist.lat, lng: dist.lng });
+            const fallbackMsg = `📍 District Geotagged: ${dist.name} (${dist.lat}° N, ${dist.lng}° E)`;
+            setLocationText(fallbackMsg);
+            setGpsStatusText(fallbackMsg);
+        }
+
+        setIsLocating(false);
+    };
+
+    // Auto-detect on load
+    useEffect(() => {
+        acquireLiveLocation(false);
     }, []);
 
     // Live AI NLP Keyword Classifier as user types
@@ -195,30 +259,9 @@ export default function NewChallenge() {
         }
     }, [title, description, district]);
 
-    // 1-Tap Live GPS Geotracking (Requests Device Location & Locks Current Coordinates)
+    // 1-Tap Live GPS Button Trigger
     const handleDetectGPS = () => {
-        setIsLocating(true);
-        if ("geolocation" in navigator) {
-            navigator.geolocation.getCurrentPosition(
-                (pos) => {
-                    const { latitude, longitude } = pos.coords;
-                    setMapPosition({ lat: latitude, lng: longitude });
-                    const statusMsg = `📍 Live Device GPS: ${latitude.toFixed(4)}° N, ${longitude.toFixed(4)}° E`;
-                    setLocationText(statusMsg);
-                    setGpsStatusText(statusMsg);
-                    setIsLocating(false);
-                    alert(`📍 Live Device GPS Acquired!\nLatitude: ${latitude.toFixed(4)}° N\nLongitude: ${longitude.toFixed(4)}° E`);
-                },
-                (err) => {
-                    setIsLocating(false);
-                    alert("Please allow location permission in your browser/device to acquire live GPS coordinates.");
-                },
-                { enableHighAccuracy: true, timeout: 10000 }
-            );
-        } else {
-            setIsLocating(false);
-            alert("Geolocation is not supported by your browser.");
-        }
+        acquireLiveLocation(true);
     };
 
     // Quick 1-Tap Jharkhand Pilot GPS Preset (Satbarwa / Palamu Hub)
