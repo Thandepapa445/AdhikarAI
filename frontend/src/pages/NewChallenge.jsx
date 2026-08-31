@@ -271,17 +271,51 @@ export default function NewChallenge() {
         acquireLiveLocation(true);
     };
 
+    // Quick 1-Tap Ghaziabad / ABESIT Campus Preset
+    const handleSetGhaziabadGPS = () => {
+        const coords = { lat: 28.6360, lng: 77.4470 };
+        setMapPosition(coords);
+        setDistrict("Ghaziabad");
+        setBlock("Vijay Nagar / Crossings");
+        setPanchayat("Near ABESIT Campus, NH-09");
+        const fullAddr = "NH-09, Near ABESIT Campus, Vijay Nagar, Ghaziabad, Uttar Pradesh (28.6360° N, 77.4470° E)";
+        setLocationText(fullAddr);
+        const status = "✓ Auto-Filled: Ghaziabad (ABESIT Hub) • 28.6360° N, 77.4470° E";
+        setGpsStatusText(status);
+        const nearest = findNearestMatchedHei(coords.lat, coords.lng, domain);
+        setSuggestedHei(nearest);
+        alert("🎯 Auto-Filled to Ghaziabad Hub:\n\n• District: Ghaziabad\n• Block: Vijay Nagar\n• Location: Near ABESIT Campus, NH-09\n• Nearest University: ABESIT Group of Institutions (0.0 km away)\n• GPS: 28.6360° N, 77.4470° E");
+    };
+
+    // Quick 1-Tap Delhi / DTU Campus Preset
+    const handleSetDelhiGPS = () => {
+        const coords = { lat: 28.7501, lng: 77.1177 };
+        setMapPosition(coords);
+        setDistrict("North West Delhi");
+        setBlock("Rohini / Bawana");
+        setPanchayat("Shahbad Daulatpur (DTU Campus)");
+        const fullAddr = "Main Bawana Road, Shahbad Daulatpur, Delhi (28.7501° N, 77.1177° E)";
+        setLocationText(fullAddr);
+        const status = "✓ Auto-Filled: Delhi (DTU Hub) • 28.7501° N, 77.1177° E";
+        setGpsStatusText(status);
+        const nearest = findNearestMatchedHei(coords.lat, coords.lng, domain);
+        setSuggestedHei(nearest);
+        alert("🎯 Auto-Filled to Delhi Hub:\n\n• District: North West Delhi\n• Block: Rohini\n• Location: DTU Campus, Shahbad Daulatpur\n• Nearest University: Delhi Technological University (0.0 km away)\n• GPS: 28.7501° N, 77.1177° E");
+    };
+
     // Quick 1-Tap Jharkhand Pilot GPS Preset (Satbarwa / Palamu Hub)
     const handleSetJharkhandPilotGPS = () => {
+        const pilotCoords = { lat: 23.9525, lng: 84.1825 };
+        setMapPosition(pilotCoords);
         setDistrict("Palamu");
         setBlock("Satbarwa");
         setPanchayat("Satbarwa Khurd");
-        const pilotCoords = { lat: 23.9525, lng: 84.1825 };
-        setMapPosition(pilotCoords);
-        const msg = `📍 Jharkhand Pilot Hub Locked: Satbarwa Khurd, Palamu (23.9525° N, 84.1825° E)`;
+        const msg = `📍 Jharkhand Pilot Hub: Satbarwa Khurd, Palamu (23.9525° N, 84.1825° E)`;
         setLocationText(msg);
         setGpsStatusText(msg);
-        alert("🎯 Auto-Filled to Jharkhand Priority Pilot Zone:\n\n• District: Palamu\n• Block: Satbarwa\n• Panchayat: Satbarwa Khurd\n• GPS: 23.9525° N, 84.1825° E");
+        const nearest = findNearestMatchedHei(pilotCoords.lat, pilotCoords.lng, domain);
+        setSuggestedHei(nearest);
+        alert("🎯 Auto-Filled to Jharkhand Priority Pilot Zone:\n\n• District: Palamu\n• Block: Satbarwa\n• Panchayat: Satbarwa Khurd\n• Nearest University: BIT Mesra / BAU Ranchi\n• GPS: 23.9525° N, 84.1825° E");
     };
 
     // Vernacular Voice Recording / Speech Input
@@ -572,7 +606,7 @@ export default function NewChallenge() {
                             </div>
 
                             {/* 1-Tap Auto Location Action Buttons */}
-                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "14px" }}>
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", marginBottom: "8px" }}>
                                 <button
                                     type="button"
                                     onClick={handleDetectGPS}
@@ -580,7 +614,27 @@ export default function NewChallenge() {
                                     disabled={isLocating}
                                 >
                                     <LocateFixed size={16} color="#0284c7" />
-                                    <span>{isLocating ? "Acquiring & Auto-Filling..." : "📍 Auto-Detect & Fill Location"}</span>
+                                    <span>{isLocating ? "Acquiring & Auto-Filling..." : "📍 Detect Device GPS"}</span>
+                                </button>
+
+                                <button
+                                    type="button"
+                                    onClick={handleSetGhaziabadGPS}
+                                    style={{ ...styles.pilotGpsButton, background: "#f5f3ff", borderColor: "#ddd6fe", color: "#6d28d9" }}
+                                >
+                                    <Building2 size={16} color="#7c3aed" />
+                                    <span>🎯 Ghaziabad (ABESIT Hub)</span>
+                                </button>
+                            </div>
+
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", marginBottom: "14px" }}>
+                                <button
+                                    type="button"
+                                    onClick={handleSetDelhiGPS}
+                                    style={{ ...styles.pilotGpsButton, background: "#eff6ff", borderColor: "#bfdbfe", color: "#1d4ed8" }}
+                                >
+                                    <Compass size={16} color="#2563eb" />
+                                    <span>🎯 Delhi NCR (DTU Hub)</span>
                                 </button>
 
                                 <button
@@ -589,7 +643,7 @@ export default function NewChallenge() {
                                     style={styles.pilotGpsButton}
                                 >
                                     <Compass size={16} color="#16a34a" />
-                                    <span>🎯 Jharkhand Pilot Preset</span>
+                                    <span>🎯 Jharkhand Pilot Hub</span>
                                 </button>
                             </div>
 
