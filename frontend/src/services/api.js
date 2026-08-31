@@ -1,12 +1,9 @@
 import axios from "axios";
 import { INITIAL_SEED_CHALLENGES } from "../data/jharkhandData";
 
-// Dynamically resolve backend host so both phone (via Wi-Fi IP) and laptop (localhost) hit the same Spring Boot server!
+// Dynamically resolve backend via Vite reverse proxy for 100% reliable cross-device communication
 const getApiBaseUrl = () => {
-    if (typeof window !== "undefined" && window.location && window.location.hostname) {
-        return `http://${window.location.hostname}:8080/api`;
-    }
-    return "http://localhost:8080/api";
+    return "/api";
 };
 
 const api = axios.create({
@@ -14,7 +11,7 @@ const api = axios.create({
     headers: {
         "Content-Type": "application/json",
     },
-    timeout: 4000,
+    timeout: 8000,
 });
 
 api.interceptors.request.use((config) => {
