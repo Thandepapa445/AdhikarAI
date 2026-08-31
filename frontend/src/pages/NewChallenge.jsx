@@ -129,9 +129,9 @@ export default function NewChallenge() {
                 const data = await res.json();
                 const addr = data.address || {};
 
-                const detectedDistrict = addr.state_district || addr.county || addr.city || addr.state || district;
-                const detectedBlock = addr.suburb || addr.town || addr.municipality || addr.subdistrict || addr.county || block;
-                const detectedPanchayat = addr.village || addr.neighbourhood || addr.residential || addr.suburb || panchayat || `${detectedBlock} Ward 1`;
+                const detectedDistrict = addr.state_district || addr.county || addr.city || addr.state || "Ghaziabad";
+                const detectedBlock = addr.suburb || addr.town || addr.municipality || addr.subdistrict || addr.county || "Local Block";
+                const detectedPanchayat = addr.village || addr.neighbourhood || addr.residential || addr.suburb || `${detectedBlock} Ward 1`;
                 const fullAddress = data.display_name || `${detectedPanchayat}, ${detectedBlock}, ${detectedDistrict}`;
 
                 setDistrict(detectedDistrict);
@@ -141,14 +141,21 @@ export default function NewChallenge() {
                 const status = `✓ Auto-Filled: ${detectedPanchayat}, ${detectedDistrict} (${lat.toFixed(4)}° N, ${lng.toFixed(4)}° E)`;
                 setGpsStatusText(status);
 
+                // Update nearest HEI to this exact spot
+                const nearest = findNearestMatchedHei(lat, lng, domain);
+                setSuggestedHei(nearest);
+
                 if (showToast) {
-                    alert(`📍 Live Location Acquired & Auto-Filled!\n\n• District: ${detectedDistrict}\n• Block: ${detectedBlock}\n• Panchayat/Village: ${detectedPanchayat}\n• GPS: ${lat.toFixed(4)}° N, ${lng.toFixed(4)}° E`);
+                    alert(`📍 Live Location Acquired & Auto-Filled!\n\n• District: ${detectedDistrict}\n• Block: ${detectedBlock}\n• Village/Area: ${detectedPanchayat}\n• Nearest University: ${nearest.name} (${nearest.distanceKm} km away)\n• GPS: ${lat.toFixed(4)}° N, ${lng.toFixed(4)}° E`);
                 }
                 return true;
             }
         } catch (err) {
             console.warn("Reverse geocode failed, using coordinates", err);
         }
+
+        const nearest = findNearestMatchedHei(lat, lng, domain);
+        setSuggestedHei(nearest);
         return false;
     };
 
@@ -595,19 +602,15 @@ export default function NewChallenge() {
 
                             <div className="form-grid-3" style={styles.grid3}>
                                 <div style={styles.inputGroup}>
-                                    <label style={styles.label}>District / City *</label>
-                                    <select
+                                    <label style={styles.label}>District / City (Auto-Filled via GPS) *</label>
+                                    <input
+                                        type="text"
                                         value={district}
                                         onChange={(e) => setDistrict(e.target.value)}
-                                        style={styles.select}
-                                    >
-                                        {!JHARKHAND_DISTRICTS.some(d => d.name.toLowerCase() === district.toLowerCase()) && (
-                                            <option value={district}>📍 {district} (Detected via GPS)</option>
-                                        )}
-                                        {JHARKHAND_DISTRICTS.map(d => (
-                                             <option key={d.name} value={d.name}>{d.name}</option>
-                                        ))}
-                                    </select>
+                                        placeholder="e.g. Gautam Buddha Nagar / Ghaziabad / Ranchi"
+                                        required
+                                        style={styles.input}
+                                    />
                                 </div>
 
                                 <div style={styles.inputGroup}>
