@@ -122,3 +122,5 @@ ai-services/*-test.webp
 **/node_modules/
 # Expo local files
 mobile-app/.expo/
+# Competitor reference folder
+jannirikshan-sih26043-main/
