@@ -4,7 +4,7 @@ class AppConstants {
   // Backend and AI Endpoints
   // Use 10.0.2.2 for Android Emulator, or your laptop Wi-Fi IP for physical mobile devices
   static const String defaultHost = "192.168.1.41";
-  static const String apiBaseUrl = "http://$defaultHost:8080/api";
+  static const String apiBaseUrl = "http://$defaultHost:8085/api";
   static const String aiServiceUrl = "http://$defaultHost:5000/api/v1";
 
   // App Metadata

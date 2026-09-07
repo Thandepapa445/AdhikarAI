@@ -6,7 +6,7 @@ import {
     AlertTriangle, Sparkles, SlidersHorizontal, ChevronRight, Eye,
     Lightbulb, BookOpen, Layers, Laptop, Cpu
 } from "lucide-react";
-import { THEMATIC_DOMAINS, PARTICIPATING_HEIS } from "../data/indiaData";
+import { THEMATIC_DOMAINS, PARTICIPATING_HEIS, INDUSTRY_CSR_PARTNERS, STAGES_OF_INNOVATION } from "../data/indiaData";
 import { challengeService, getLocalChallenges, saveLocalChallenges } from "../services/api";
 import ChallengeDetailModal from "../components/ChallengeDetailModal";
 

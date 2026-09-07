@@ -5,7 +5,7 @@ import {
     Briefcase, CheckCircle2, ChevronRight, AlertTriangle, ArrowUpRight,
     TrendingUp, ShieldCheck, FileCheck2, Lightbulb, RefreshCw
 } from "lucide-react";
-import { THEMATIC_DOMAINS, PARTICIPATING_HEIS, INDIA_STATES_AND_REGIONS } from "../data/indiaData";
+import { THEMATIC_DOMAINS, PARTICIPATING_HEIS, INDIA_STATES_AND_REGIONS, STAGES_OF_INNOVATION, INDUSTRY_CSR_PARTNERS } from "../data/indiaData";
 import { challengeService, getLocalChallenges } from "../services/api";
 import NavBar from "../components/NavBar";
 import ChallengeDetailModal from "../components/ChallengeDetailModal";
