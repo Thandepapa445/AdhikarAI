@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { THEMATIC_DOMAINS, JHARKHAND_DISTRICTS, PARTICIPATING_HEIS } from "../data/jharkhandData";
+import { THEMATIC_DOMAINS, PARTICIPATING_HEIS, INDIA_STATES_AND_REGIONS } from "../data/indiaData";
 import { MapPin, Building, Eye, Users, Award, Filter } from "lucide-react";
 
 // Fix Leaflet Default Icon
@@ -13,7 +13,7 @@ L.Icon.Default.mergeOptions({
     shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
 });
 
-const DEFAULT_CENTER = [23.6102, 85.2799]; // Jharkhand Center
+const DEFAULT_CENTER = [21.7679, 78.8718]; // India Center
 
 // Custom Map Marker Icons
 function createChallengeIcon(domain, status) {
@@ -95,6 +95,13 @@ export default function CommunityInnovationMap({ challenges = [], onSelectChalle
     const [selectedStatus, setSelectedStatus] = useState("ALL");
     const [showHeis, setShowHeis] = useState(true);
 
+    const dynamicDistricts = Array.from(
+        new Set([
+            ...challenges.map(c => c.district).filter(Boolean),
+            ...INDIA_STATES_AND_REGIONS.flatMap(s => s.districts)
+        ])
+    ).sort();
+
     const filteredChallenges = challenges.filter(c => {
         const matchDomain = selectedDomain === "ALL" || c.domain === selectedDomain;
         const matchDistrict = selectedDistrict === "ALL" || c.district === selectedDistrict;
@@ -127,9 +134,9 @@ export default function CommunityInnovationMap({ challenges = [], onSelectChalle
                         onChange={(e) => setSelectedDistrict(e.target.value)}
                         style={styles.select}
                     >
-                        <option value="ALL">All 24 Districts</option>
-                        {JHARKHAND_DISTRICTS.map(d => (
-                            <option key={d.name} value={d.name}>{d.name}</option>
+                        <option value="ALL">All Regions / Districts</option>
+                        {dynamicDistricts.map(d => (
+                            <option key={d} value={d}>{d}</option>
                         ))}
                     </select>
 
@@ -195,11 +202,11 @@ export default function CommunityInnovationMap({ challenges = [], onSelectChalle
                                     </div>
                                     <h4 style={styles.popupTitle}>{challenge.title}</h4>
                                     <p style={styles.popupMeta}>
-                                        📍 {challenge.panchayat || "Panchayat"}, {challenge.block}, {challenge.district}
+                                        📍 {[challenge.panchayat, challenge.block, challenge.district, challenge.state].filter(Boolean).join(", ")}
                                     </p>
                                     <div style={styles.popupImpact}>
                                         <Users size={13} color="#16a34a" />
-                                        <span>Affects <strong>{challenge.affectedPopulation ? challenge.affectedPopulation.toLocaleString() : "500+"} villagers</strong></span>
+                                        <span>Affects <strong>{challenge.affectedPopulation ? challenge.affectedPopulation.toLocaleString() : "500+"} citizens</strong></span>
                                     </div>
                                     {challenge.assignedHei && (
                                         <div style={styles.popupHei}>
@@ -233,7 +240,7 @@ export default function CommunityInnovationMap({ challenges = [], onSelectChalle
                                         PARTICIPATING UNIVERSITY (HEI)
                                     </div>
                                     <h4 style={styles.popupTitle}>{hei.name}</h4>
-                                    <p style={styles.popupMeta}>📍 {hei.district}, Jharkhand</p>
+                                    <p style={styles.popupMeta}>📍 {hei.district}, {hei.state || "India"}</p>
                                     <div style={{ fontSize: "11.5px", color: "#475569", marginTop: "4px" }}>
                                         <strong>Specialized Labs:</strong>
                                         <ul style={{ paddingLeft: "16px", marginTop: "3px" }}>

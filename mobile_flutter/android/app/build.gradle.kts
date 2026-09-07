@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "com.sankalp.citizen"
+    namespace = "com.adhikar.citizen"
     compileSdk = 36
 
     compileOptions {
@@ -14,7 +14,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.sankalp.citizen"
+        applicationId = "com.adhikar.citizen"
         minSdk = flutter.minSdkVersion
         targetSdk = 36
         versionCode = flutter.versionCode

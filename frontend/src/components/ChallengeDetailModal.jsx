@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { X, CheckCircle, Clock, MapPin, Building, Users, Briefcase, Award, ThumbsUp, AlertTriangle, FileText, CheckCircle2, ChevronRight } from "lucide-react";
-import { STAGES_OF_INNOVATION, THEMATIC_DOMAINS } from "../data/jharkhandData";
+import { STAGES_OF_INNOVATION, THEMATIC_DOMAINS } from "../data/indiaData";
 import { challengeService } from "../services/api";
 
 export default function ChallengeDetailModal({ challenge, onClose, onUpdate }) {

@@ -24,15 +24,15 @@ class _MapViewScreenState extends State<MapViewScreen> {
     final provider = Provider.of<ChallengeProvider>(context);
     final challenges = provider.challenges;
 
-    // Center on first challenge or default Jharkhand/NCR coordinates
-    LatLng centerPos = const LatLng(23.9525, 84.1825);
+    // Center on first challenge or default Pan-India coordinates (Delhi/National Center)
+    LatLng centerPos = const LatLng(28.6139, 77.2090);
     if (challenges.isNotEmpty) {
       centerPos = LatLng(challenges.first.latitude, challenges.first.longitude);
     }
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text("GIS Spatial Intelligence Map"),
+        title: const Text("National Spatial Intelligence Map"),
         actions: [
           IconButton(
             icon: const Icon(Icons.my_location),
@@ -48,7 +48,7 @@ class _MapViewScreenState extends State<MapViewScreen> {
             mapController: _mapController,
             options: MapOptions(
               initialCenter: centerPos,
-              initialZoom: 9.5,
+              initialZoom: 7.5,
               onTap: (_, __) {
                 setState(() {
                   _selectedChallenge = null;
@@ -58,7 +58,7 @@ class _MapViewScreenState extends State<MapViewScreen> {
             children: [
               TileLayer(
                 urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                userAgentPackageName: 'com.sankalp.citizen',
+                userAgentPackageName: 'com.adhikar.citizen',
               ),
               MarkerLayer(
                 markers: challenges.map((c) {
@@ -106,34 +106,6 @@ class _MapViewScreenState extends State<MapViewScreen> {
             ],
           ),
 
-          // Preset Jump Bar
-          Positioned(
-            top: 12,
-            left: 12,
-            right: 12,
-            child: Container(
-              height: 38,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                children: AppConstants.campusPresets.map((preset) {
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: ActionChip(
-                      backgroundColor: Colors.white,
-                      label: Text(
-                        "📍 ${preset['label']}",
-                        style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
-                      ),
-                      onPressed: () {
-                        _mapController.move(LatLng(preset['lat'], preset['lng']), 12.5);
-                      },
-                    ),
-                  );
-                }).toList(),
-              ),
-            ),
-          ),
-
           // Selected Challenge Overlay Card
           if (_selectedChallenge != null)
             Positioned(
@@ -150,7 +122,7 @@ class _MapViewScreenState extends State<MapViewScreen> {
                     BoxShadow(
                       color: Colors.black.withOpacity(0.12),
                       blurRadius: 16,
-                      offset: const Offset(0, 6),
+                      offset: const Offset(0, 4),
                     ),
                   ],
                 ),
@@ -164,45 +136,60 @@ class _MapViewScreenState extends State<MapViewScreen> {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF0284C7).withOpacity(0.12),
+                            color: const Color(0xFFE0F2FE),
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: Text(
-                            "Stage: ${_selectedChallenge!.status}",
-                            style: const TextStyle(color: Color(0xFF0284C7), fontSize: 11, fontWeight: FontWeight.w800),
+                            "#${_selectedChallenge!.id}",
+                            style: const TextStyle(
+                              color: Color(0xFF0284C7),
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                            ),
                           ),
                         ),
                         IconButton(
                           icon: const Icon(Icons.close, size: 18),
                           padding: EdgeInsets.zero,
                           constraints: const BoxConstraints(),
-                          onPressed: () {
-                            setState(() {
-                              _selectedChallenge = null;
-                            });
-                          },
+                          onPressed: () => setState(() => _selectedChallenge = null),
                         ),
                       ],
                     ),
                     const SizedBox(height: 6),
                     Text(
                       _selectedChallenge!.title,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF0F172A),
+                      ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: Color(0xFF0F172A)),
                     ),
                     const SizedBox(height: 4),
-                    Text(
-                      "📍 ${_selectedChallenge!.panchayat}, ${_selectedChallenge!.block}",
-                      style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                    Row(
+                      children: [
+                        const Icon(Icons.location_on, size: 14, color: Color(0xFF64748B)),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            "${_selectedChallenge!.panchayat ?? _selectedChallenge!.block}, ${_selectedChallenge!.district}",
+                            style: const TextStyle(fontSize: 12, color: Color(0xFF64748B), fontWeight: FontWeight.w600),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 10),
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.primaryBlue,
                           padding: const EdgeInsets.symmetric(vertical: 10),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                         ),
                         onPressed: () {
                           Navigator.of(context).push(
@@ -211,7 +198,7 @@ class _MapViewScreenState extends State<MapViewScreen> {
                             ),
                           );
                         },
-                        child: const Text("View 8-Stage Progress Details", style: TextStyle(fontSize: 12.5)),
+                        child: const Text("View Full Lifecycle", style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
                       ),
                     ),
                   ],

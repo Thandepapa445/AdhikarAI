@@ -10,6 +10,7 @@ export default function NavBar({ activeTab, setActiveTab }) {
     const isHome = location.pathname === "/" || location.pathname === "/dashboard";
 
     const handleLogout = () => {
+        localStorage.removeItem("adhikar_token");
         localStorage.removeItem("sankalp_token");
         navigate("/login");
     };
@@ -20,11 +21,11 @@ export default function NavBar({ activeTab, setActiveTab }) {
                 <div style={styles.topGovContainer}>
                     <div style={styles.govTag}>
                         <span style={styles.govEmblem}>🇮🇳</span>
-                        <span>Government of Jharkhand • Department of Higher, Technical Education & Skill Development</span>
+                        <span>National Citizen Innovation & Grievance Ecosystem • Government of India & State Portals</span>
                     </div>
                     <div style={styles.nepBadge}>
                         <Award size={13} style={{ marginRight: 4 }} />
-                        <span>NEP 2020 Experiential Social Innovation Initiative</span>
+                        <span>NEP 2020 Experiential Social Innovation & R&D Initiative</span>
                     </div>
                 </div>
             </div>
@@ -38,10 +39,10 @@ export default function NavBar({ activeTab, setActiveTab }) {
                         </div>
                         <div>
                             <div className="brand-title-text" style={styles.brandTitle}>
-                                Sankalp <span style={styles.brandHighlight}>AI</span>
+                                Adhikar <span style={styles.brandHighlight}>AI</span>
                             </div>
                             <div className="brand-subtitle-text" style={styles.brandSubtitle}>
-                                Jharkhand Societal Innovation & HEI Collaboration Portal
+                                National Citizen Innovation & Grievance Redressal Ecosystem
                             </div>
                         </div>
                     </Link>
@@ -59,7 +60,7 @@ export default function NavBar({ activeTab, setActiveTab }) {
                             }}
                         >
                             <Layers size={17} />
-                            <span>My Challenges</span>
+                            <span>My Grievances</span>
                         </button>
 
                         <button
@@ -73,7 +74,7 @@ export default function NavBar({ activeTab, setActiveTab }) {
                             }}
                         >
                             <MapPin size={17} />
-                            <span>Jharkhand Map</span>
+                            <span>National Map</span>
                         </button>
 
                         <button
@@ -141,19 +142,19 @@ export default function NavBar({ activeTab, setActiveTab }) {
                                     </div>
                                     <div style={styles.notifItem}>
                                         <div style={{ fontSize: 13, fontWeight: 600, color: "#0284c7" }}>
-                                            BIT Mesra • Water FabLab
+                                            DTU Delhi • Urban Mobility Lab
                                         </div>
                                         <div style={{ fontSize: 12, color: "#475569" }}>
-                                            Prototype filter test results uploaded for Satbarwa Panchayat. Verification requested.
+                                            Cold-mix polymer patch deployed for Pothole #ADH-2026-1041. Field verification requested.
                                         </div>
                                         <div style={{ fontSize: 10, color: "#94a3b8", marginTop: 3 }}>2 hours ago</div>
                                     </div>
                                     <div style={styles.notifItem}>
                                         <div style={{ fontSize: 13, fontWeight: 600, color: "#16a34a" }}>
-                                            Tata Steel Foundation
+                                            National Innovation Fund
                                         </div>
                                         <div style={{ fontSize: 12, color: "#475569" }}>
-                                            ₹3.5 Lakhs Pilot Grant approved for Khunti Lac Scraping project.
+                                            ₹3.5 Lakhs Pilot Grant approved for low-cost water filtration project.
                                         </div>
                                         <div style={{ fontSize: 10, color: "#94a3b8", marginTop: 3 }}>Yesterday</div>
                                     </div>
@@ -162,10 +163,10 @@ export default function NavBar({ activeTab, setActiveTab }) {
                         </div>
 
                         <div style={styles.userProfile}>
-                            <div style={styles.avatar}>GP</div>
+                            <div style={styles.avatar}>IN</div>
                             <div style={styles.userInfo}>
-                                <div style={styles.userName}>Citizen / PRI</div>
-                                <div style={styles.userRole}>Satbarwa Panchayat</div>
+                                <div style={styles.userName}>Citizen / Resident</div>
+                                <div style={styles.userRole}>Adhikar Network</div>
                             </div>
                         </div>
 
@@ -276,7 +277,10 @@ const styles = {
         fontSize: "12.5px",
         fontWeight: 600,
         color: "#475569",
-        textDecoration: "none"
+        textDecoration: "none",
+        background: "none",
+        border: "none",
+        cursor: "pointer"
     },
     activeNavLink: {
         background: "#e0f2fe",
@@ -338,7 +342,8 @@ const styles = {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        position: "relative"
+        position: "relative",
+        cursor: "pointer"
     },
     notifBadge: {
         position: "absolute",
@@ -418,6 +423,7 @@ const styles = {
         padding: "7px",
         borderRadius: "8px",
         background: "#f8fafc",
-        border: "1px solid #e2e8f0"
+        border: "1px solid #e2e8f0",
+        cursor: "pointer"
     }
 };

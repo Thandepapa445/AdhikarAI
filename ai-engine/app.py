@@ -11,39 +11,57 @@ app = Flask(__name__)
 CORS(app)
 
 # ==============================================================================
-# 1. LOAD COMPUTER VISION (YOLOv8) MODEL
+# 1. LOAD 4-CLASS YOLOv8 COMPUTER VISION MODEL
 # ==============================================================================
 BASE_DIR = os.path.dirname(__file__)
-MODEL_PATH = os.path.join(BASE_DIR, "models", "pothole_garbage_water_yolov8.pt")
-print(f"Loading Sankalp AI YOLOv8 Vision Model from {MODEL_PATH}...")
+MODEL_PATH = os.path.join(BASE_DIR, "weights", "best.pt")
+print(f"Loading Adhikar AI 4-Class YOLOv8 Vision Model from {MODEL_PATH}...")
 
 try:
     from ultralytics import YOLO
     vision_model = YOLO(MODEL_PATH)
-    print("✓ YOLOv8 Vision Model loaded successfully.")
+    print("✓ Adhikar AI 4-Class YOLOv8 Vision Model loaded successfully. Classes:", vision_model.names)
 except Exception as e:
     print(f"Warning: YOLO Model file not loaded: {e}")
     vision_model = None
 
-# Class Mapping to Jharkhand & National Thematic Domains
+# Class Mapping to National Thematic Domains & Civic Departments
 DOMAIN_MAPPING = {
-    "water_leakage": {
-        "domain": "WATER",
-        "domainName": "Water Resources & Management",
-        "defaultUrgency": "HIGH",
-        "suggestedHei": "BIT Mesra (Clean Water FabLab)"
-    },
     "pothole": {
         "domain": "INFRASTRUCTURE",
-        "domainName": "Rural & Urban Infrastructure",
-        "defaultUrgency": "MEDIUM",
-        "suggestedHei": "ABESIT / NIT Jamshedpur (Infrastructure Lab)"
+        "domainName": "Roads & Urban/Rural Infrastructure",
+        "defaultUrgency": "HIGH",
+        "category": "Roads & Transportation",
+        "recommendedDepartment": "Public Works Department (PWD)",
+        "triageType": "CIVIC_DIRECT",
+        "suggestedHei": "Delhi Technological University (DTU) / ABESIT"
     },
     "garbage": {
         "domain": "HEALTHCARE",
-        "domainName": "Healthcare & Sanitation",
+        "domainName": "Sanitation & Public Health",
         "defaultUrgency": "MEDIUM",
-        "suggestedHei": "AIIMS Deoghar (Community Health Division)"
+        "category": "Sanitation & Waste Management",
+        "recommendedDepartment": "Municipal Solid Waste Management",
+        "triageType": "CIVIC_DIRECT",
+        "suggestedHei": "AIIMS New Delhi / IIT Bombay (CTARA)"
+    },
+    "broken_street_light": {
+        "domain": "INFRASTRUCTURE",
+        "domainName": "Roads & Urban/Rural Infrastructure",
+        "defaultUrgency": "MEDIUM",
+        "category": "Electrical & Public Lighting",
+        "recommendedDepartment": "State Electricity Board / Lighting Division",
+        "triageType": "CIVIC_DIRECT",
+        "suggestedHei": "IISc Bengaluru / COEP Tech Pune"
+    },
+    "fallen_tree": {
+        "domain": "ENERGY_ENVIRONMENT",
+        "domainName": "Clean Energy & Environmental Safety",
+        "defaultUrgency": "CRITICAL",
+        "category": "Environment & Emergency Clearance",
+        "recommendedDepartment": "Urban Forestry & Disaster Relief Unit",
+        "triageType": "CIVIC_DIRECT",
+        "suggestedHei": "IIT Delhi / BIT Mesra"
     }
 }
 
@@ -62,7 +80,7 @@ def analyze_image_safety(image: Image.Image):
 
         # 1. Blank or single-color image
         if std < 12.0:
-            return False, "BLANK_OR_CORRUPTED", "The uploaded photo appears blank or solid color. Please upload a clear photo of the civic issue."
+            return False, "BLANK_OR_CORRUPTED", "The uploaded photo appears blank or solid color. Please upload a clear photo of the civic problem."
 
         # 2. Pitch black photo
         if mean < 12.0:
@@ -77,11 +95,136 @@ def analyze_image_safety(image: Image.Image):
         return True, "SAFE", f"Pass: {str(e)}"
 
 # ==============================================================================
-# 3. COMPREHENSIVE UNIVERSITY CAPABILITY DATABASE (MULTI-FACTOR MATRIX)
+# 3. COMPREHENSIVE PAN-INDIA UNIVERSITY CAPABILITY DATABASE
 # ==============================================================================
 UNIVERSITY_CAPABILITY_DATABASE = [
+    # --- NORTH REGION ---
     {
         "id": 1,
+        "name": "Indian Institute of Technology (IIT) Delhi",
+        "shortName": "IIT Delhi",
+        "state": "Delhi NCR",
+        "city": "South Delhi",
+        "latitude": 28.5450,
+        "longitude": 77.1926,
+        "specializedLab": "Smart Mobility & Sustainable Infrastructure Lab",
+        "facultyMentor": "Prof. Geetam Tiwari (Transport & Urban Infra)",
+        "domains": ["INFRASTRUCTURE", "ENERGY_ENVIRONMENT", "WATER", "ACCESSIBILITY", "PUBLIC_ADMIN"],
+        "keywords": ["road", "pothole", "traffic", "mobility", "pollution", "air quality", "smart city", "infrastructure", "street light"],
+        "domainScores": { "INFRASTRUCTURE": 0.99, "ENERGY_ENVIRONMENT": 0.96, "WATER": 0.90, "ACCESSIBILITY": 0.92 },
+        "rating": 4.95
+    },
+    {
+        "id": 2,
+        "name": "Delhi Technological University (DTU), Delhi",
+        "shortName": "DTU Delhi",
+        "state": "Delhi NCR",
+        "city": "North West Delhi",
+        "latitude": 28.7499,
+        "longitude": 77.1170,
+        "specializedLab": "Urban Mobility & Clean Energy Innovation Hub",
+        "facultyMentor": "Prof. S. K. Garg (Urban Tech & Energy)",
+        "domains": ["ENERGY_ENVIRONMENT", "INFRASTRUCTURE", "WATER", "HEALTHCARE"],
+        "keywords": ["road", "pothole", "solar", "waste", "garbage", "energy", "ev", "drainage", "fallen tree"],
+        "domainScores": { "ENERGY_ENVIRONMENT": 0.98, "INFRASTRUCTURE": 0.97, "WATER": 0.88, "HEALTHCARE": 0.84 },
+        "rating": 4.88
+    },
+    {
+        "id": 3,
+        "name": "ABESIT Group of Institutions, Ghaziabad",
+        "shortName": "ABESIT Ghaziabad",
+        "state": "Uttar Pradesh",
+        "city": "Ghaziabad",
+        "latitude": 28.6360,
+        "longitude": 77.4470,
+        "specializedLab": "Smart Transportation & Pavement Engineering Lab",
+        "facultyMentor": "Dr. Hemant Ahuja (Civil & Smart Infrastructure)",
+        "domains": ["INFRASTRUCTURE", "PUBLIC_ADMIN", "ENERGY_ENVIRONMENT", "WATER"],
+        "keywords": ["road", "pothole", "highway", "traffic", "bridge", "street light", "transport", "smart city", "drainage"],
+        "domainScores": { "INFRASTRUCTURE": 0.98, "PUBLIC_ADMIN": 0.90, "ENERGY_ENVIRONMENT": 0.85, "WATER": 0.80 },
+        "rating": 4.80
+    },
+    {
+        "id": 4,
+        "name": "Indian Institute of Technology (IIT) Kanpur",
+        "shortName": "IIT Kanpur",
+        "state": "Uttar Pradesh",
+        "city": "Kanpur",
+        "latitude": 26.5123,
+        "longitude": 80.2329,
+        "specializedLab": "Ganga River Basin Management & Clean Water Center",
+        "facultyMentor": "Prof. Vinod Tare (Clean Water & Basin Tech)",
+        "domains": ["WATER", "ENERGY_ENVIRONMENT", "INFRASTRUCTURE", "AGRICULTURE"],
+        "keywords": ["water", "filtration", "ganga", "river", "effluent", "air quality", "sensor", "irrigation"],
+        "domainScores": { "WATER": 0.99, "ENERGY_ENVIRONMENT": 0.94, "INFRASTRUCTURE": 0.88, "AGRICULTURE": 0.86 },
+        "rating": 4.96
+    },
+
+    # --- SOUTH REGION ---
+    {
+        "id": 5,
+        "name": "Indian Institute of Science (IISc), Bengaluru",
+        "shortName": "IISc Bengaluru",
+        "state": "Karnataka",
+        "city": "Bengaluru Urban",
+        "latitude": 13.0219,
+        "longitude": 77.5671,
+        "specializedLab": "Center for Sustainable Technologies & Water Research",
+        "facultyMentor": "Prof. Pradeep Mujumdar (Water Resources Modeling)",
+        "domains": ["WATER", "ENERGY_ENVIRONMENT", "HEALTHCARE", "AGRICULTURE"],
+        "keywords": ["water", "groundwater", "filtration", "solar", "sanitation", "sustainability", "climate"],
+        "domainScores": { "WATER": 0.99, "ENERGY_ENVIRONMENT": 0.98, "HEALTHCARE": 0.90, "AGRICULTURE": 0.88 },
+        "rating": 4.98
+    },
+    {
+        "id": 6,
+        "name": "Indian Institute of Technology (IIT) Madras",
+        "shortName": "IIT Madras",
+        "state": "Tamil Nadu",
+        "city": "Chennai",
+        "latitude": 12.9915,
+        "longitude": 80.2337,
+        "specializedLab": "International Centre for Clean Water (ICCW)",
+        "facultyMentor": "Prof. T. Pradeep (Nano-Materials for Water)",
+        "domains": ["WATER", "INFRASTRUCTURE", "HEALTHCARE", "ACCESSIBILITY"],
+        "keywords": ["water", "arsenic", "fluoride", "filtration", "desalination", "pavement", "assistive"],
+        "domainScores": { "WATER": 0.99, "INFRASTRUCTURE": 0.94, "HEALTHCARE": 0.91, "ACCESSIBILITY": 0.89 },
+        "rating": 4.97
+    },
+    {
+        "id": 7,
+        "name": "National Institute of Technology (NIT) Tiruchirappalli",
+        "shortName": "NIT Trichy",
+        "state": "Tamil Nadu",
+        "city": "Tiruchirappalli",
+        "latitude": 10.7589,
+        "longitude": 78.8132,
+        "specializedLab": "Transportation & Pavement Infrastructure Center",
+        "facultyMentor": "Dr. G. Swaminathan (Civil Infrastructure)",
+        "domains": ["INFRASTRUCTURE", "ENERGY_ENVIRONMENT", "WATER"],
+        "keywords": ["road", "pothole", "bridge", "asphalt", "highway", "traffic", "concrete"],
+        "domainScores": { "INFRASTRUCTURE": 0.97, "ENERGY_ENVIRONMENT": 0.89, "WATER": 0.84 },
+        "rating": 4.86
+    },
+
+    # --- EAST REGION ---
+    {
+        "id": 8,
+        "name": "Indian Institute of Technology (IIT) Kharagpur",
+        "shortName": "IIT Kharagpur",
+        "state": "West Bengal",
+        "city": "Paschim Medinipur",
+        "latitude": 22.3149,
+        "longitude": 87.3105,
+        "specializedLab": "Precision Agriculture & Rural Development Lab",
+        "facultyMentor": "Prof. V. M. Chowdary (Agri-Water Systems)",
+        "domains": ["AGRICULTURE", "WATER", "INFRASTRUCTURE", "ENERGY_ENVIRONMENT"],
+        "keywords": ["agriculture", "farmer", "crop", "soil", "irrigation", "cold storage", "water", "drainage"],
+        "domainScores": { "AGRICULTURE": 0.99, "WATER": 0.94, "INFRASTRUCTURE": 0.89, "ENERGY_ENVIRONMENT": 0.87 },
+        "rating": 4.95
+    },
+    {
+        "id": 9,
         "name": "BIT Mesra, Ranchi",
         "shortName": "BIT Mesra",
         "state": "Jharkhand",
@@ -91,105 +234,109 @@ UNIVERSITY_CAPABILITY_DATABASE = [
         "specializedLab": "Clean Water & Rural Innovation FabLab",
         "facultyMentor": "Dr. Arvind Sharma (Water & Environmental Engg)",
         "domains": ["WATER", "INFRASTRUCTURE", "ENERGY_ENVIRONMENT"],
-        "keywords": ["water", "filtration", "arsenic", "fluoride", "drinking water", "dam", "irrigation", "drainage", "handpump", "borewell"],
-        "domainScores": { "WATER": 0.96, "INFRASTRUCTURE": 0.88, "ENERGY_ENVIRONMENT": 0.85, "AGRICULTURE": 0.72 },
-        "rating": 4.9
+        "keywords": ["water", "filtration", "arsenic", "fluoride", "drinking water", "handpump", "borewell", "fallen tree"],
+        "domainScores": { "WATER": 0.97, "INFRASTRUCTURE": 0.89, "ENERGY_ENVIRONMENT": 0.86, "AGRICULTURE": 0.75 },
+        "rating": 4.88
     },
     {
-        "id": 2,
-        "name": "ABESIT Group of Institutions, Ghaziabad",
-        "shortName": "ABESIT",
-        "state": "Uttar Pradesh",
-        "city": "Ghaziabad",
-        "latitude": 28.6360,
-        "longitude": 77.4470,
-        "specializedLab": "Smart Transportation & AI Infrastructure Lab",
-        "facultyMentor": "Dr. Rizwan Khan (AI & Infrastructure Systems)",
-        "domains": ["INFRASTRUCTURE", "PUBLIC_ADMIN", "ENERGY_ENVIRONMENT"],
-        "keywords": ["road", "pothole", "highway", "traffic", "bridge", "street light", "transport", "smart city", "drainage"],
-        "domainScores": { "INFRASTRUCTURE": 0.98, "PUBLIC_ADMIN": 0.89, "ENERGY_ENVIRONMENT": 0.84, "WATER": 0.76 },
-        "rating": 4.8
-    },
-    {
-        "id": 3,
-        "name": "Delhi Technological University (DTU), Delhi",
-        "shortName": "DTU",
-        "state": "Delhi",
-        "city": "Delhi NCR",
-        "latitude": 28.7499,
-        "longitude": 77.1170,
-        "specializedLab": "Urban Mobility & Clean Energy Innovation Hub",
-        "facultyMentor": "Prof. S. K. Garg (Urban Tech & Energy)",
-        "domains": ["ENERGY_ENVIRONMENT", "INFRASTRUCTURE", "WATER"],
-        "keywords": ["solar", "pollution", "air quality", "energy", "ev", "electric", "solid waste", "effluent", "drainage"],
-        "domainScores": { "ENERGY_ENVIRONMENT": 0.97, "INFRASTRUCTURE": 0.92, "WATER": 0.84, "HEALTHCARE": 0.78 },
-        "rating": 4.9
-    },
-    {
-        "id": 4,
+        "id": 10,
         "name": "IIT (ISM) Dhanbad",
-        "shortName": "IIT ISM",
+        "shortName": "IIT ISM Dhanbad",
         "state": "Jharkhand",
         "city": "Dhanbad",
         "latitude": 23.8144,
         "longitude": 86.4412,
-        "specializedLab": "Mining Rehabilitation & Geo-Environmental Lab",
-        "facultyMentor": "Prof. D. C. Panigrahi (Mining & Geo-Tech)",
-        "domains": ["MINING_REHAB", "ENERGY_ENVIRONMENT", "INFRASTRUCTURE"],
-        "keywords": ["mine", "coal", "subsidence", "rehabilitation", "quarry", "dust", "flyash", "overburden", "erosion"],
-        "domainScores": { "MINING_REHAB": 0.99, "ENERGY_ENVIRONMENT": 0.91, "INFRASTRUCTURE": 0.86, "WATER": 0.79 },
-        "rating": 4.95
+        "specializedLab": "Mining Rehabilitation & Environmental Geo-Tech Lab",
+        "facultyMentor": "Prof. D. C. Panigrahi (Geo-Tech & Environment)",
+        "domains": ["ENERGY_ENVIRONMENT", "INFRASTRUCTURE", "WATER"],
+        "keywords": ["mine", "coal", "subsidence", "flyash", "rehabilitation", "quarry", "dust"],
+        "domainScores": { "ENERGY_ENVIRONMENT": 0.98, "INFRASTRUCTURE": 0.90, "WATER": 0.85 },
+        "rating": 4.90
+    },
+
+    # --- WEST REGION ---
+    {
+        "id": 11,
+        "name": "Indian Institute of Technology (IIT) Bombay",
+        "shortName": "IIT Bombay",
+        "state": "Maharashtra",
+        "city": "Mumbai Suburban",
+        "latitude": 19.1334,
+        "longitude": 72.9133,
+        "specializedLab": "Centre for Technology Alternatives for Rural Areas (CTARA)",
+        "facultyMentor": "Prof. Satish Agnihotri (CTARA & Rural Tech)",
+        "domains": ["INFRASTRUCTURE", "HEALTHCARE", "ENERGY_ENVIRONMENT", "WATER"],
+        "keywords": ["rural", "sanitation", "garbage", "waste", "road", "water", "urban systems", "housing"],
+        "domainScores": { "INFRASTRUCTURE": 0.98, "HEALTHCARE": 0.96, "ENERGY_ENVIRONMENT": 0.93, "WATER": 0.91 },
+        "rating": 4.97
     },
     {
-        "id": 5,
-        "name": "NIT Jamshedpur",
-        "shortName": "NIT Jsr",
-        "state": "Jharkhand",
-        "city": "Jamshedpur",
-        "latitude": 22.7766,
-        "longitude": 86.1444,
-        "specializedLab": "Sustainable Pavement & Low-Cost Materials Lab",
-        "facultyMentor": "Dr. M. K. Paswan (Civil & Structural Engg)",
-        "domains": ["INFRASTRUCTURE", "MINING_REHAB", "WATER"],
-        "keywords": ["pothole", "asphalt", "culvert", "rural road", "bridge", "flyash brick", "structure", "crack"],
-        "domainScores": { "INFRASTRUCTURE": 0.97, "MINING_REHAB": 0.87, "WATER": 0.82, "ENERGY_ENVIRONMENT": 0.79 },
+        "id": 12,
+        "name": "College of Engineering Pune (COEP)",
+        "shortName": "COEP Tech Pune",
+        "state": "Maharashtra",
+        "city": "Pune",
+        "latitude": 18.5293,
+        "longitude": 73.8565,
+        "specializedLab": "Smart City & Intelligent Transportation Lab",
+        "facultyMentor": "Dr. M. S. Ranadive (Civil & Transportation)",
+        "domains": ["INFRASTRUCTURE", "ENERGY_ENVIRONMENT", "PUBLIC_ADMIN"],
+        "keywords": ["traffic", "smart city", "lighting", "street light", "road", "pothole", "sensors"],
+        "domainScores": { "INFRASTRUCTURE": 0.96, "ENERGY_ENVIRONMENT": 0.88, "PUBLIC_ADMIN": 0.85 },
         "rating": 4.85
     },
     {
-        "id": 6,
-        "name": "Birsa Agricultural University (BAU), Ranchi",
-        "shortName": "BAU Ranchi",
-        "state": "Jharkhand",
-        "city": "Ranchi",
-        "latitude": 23.4411,
-        "longitude": 85.3188,
-        "specializedLab": "Precision AgriTech & Bio-Organic Pest Lab",
-        "facultyMentor": "Dr. Rekha Kumari (Agronomy & Soil Science)",
-        "domains": ["AGRICULTURE", "ENERGY_ENVIRONMENT", "WATER"],
-        "keywords": ["crop", "fertilizer", "pest", "paddy", "soil", "drought", "seeds", "harvest", "cold storage", "irrigation"],
-        "domainScores": { "AGRICULTURE": 0.98, "WATER": 0.86, "ENERGY_ENVIRONMENT": 0.83, "HEALTHCARE": 0.72 },
-        "rating": 4.8
+        "id": 13,
+        "name": "BITS Pilani (Pilani Campus)",
+        "shortName": "BITS Pilani",
+        "state": "Rajasthan",
+        "city": "Jhunjhunu",
+        "latitude": 28.3639,
+        "longitude": 75.5870,
+        "specializedLab": "Desert Water Purification & Clean Energy Center",
+        "facultyMentor": "Prof. Rajiv Gupta (Civil & Environmental)",
+        "domains": ["WATER", "ENERGY_ENVIRONMENT", "PUBLIC_ADMIN", "EDUCATION"],
+        "keywords": ["water", "brackish", "desalination", "solar", "iot", "sensor", "roads"],
+        "domainScores": { "WATER": 0.96, "ENERGY_ENVIRONMENT": 0.93, "PUBLIC_ADMIN": 0.86 },
+        "rating": 4.92
+    },
+
+    # --- CENTRAL REGION ---
+    {
+        "id": 14,
+        "name": "MANIT Bhopal",
+        "shortName": "MANIT Bhopal",
+        "state": "Madhya Pradesh",
+        "city": "Bhopal",
+        "latitude": 23.2167,
+        "longitude": 77.4083,
+        "specializedLab": "Rural Road Development & Geosynthetics Lab",
+        "facultyMentor": "Dr. M. D. Goel (Structural & Pavements)",
+        "domains": ["INFRASTRUCTURE", "WATER", "ENERGY_ENVIRONMENT"],
+        "keywords": ["road", "pothole", "pavement", "soil", "water", "irrigation"],
+        "domainScores": { "INFRASTRUCTURE": 0.96, "WATER": 0.88, "ENERGY_ENVIRONMENT": 0.84 },
+        "rating": 4.84
     },
     {
-        "id": 7,
-        "name": "AIIMS Deoghar",
-        "shortName": "AIIMS Deoghar",
-        "state": "Jharkhand",
-        "city": "Deoghar",
-        "latitude": 24.4826,
-        "longitude": 86.7001,
-        "specializedLab": "Tribal Healthcare & Vector-Borne Diagnostics Center",
-        "facultyMentor": "Dr. Ananya Ray (Community Medicine & Tele-Health)",
-        "domains": ["HEALTHCARE", "ACCESSIBILITY", "WATER"],
-        "keywords": ["health", "hospital", "doctor", "disease", "malaria", "dengue", "sickle cell", "sanitation", "ambulance", "medicine"],
-        "domainScores": { "HEALTHCARE": 0.99, "ACCESSIBILITY": 0.90, "WATER": 0.85, "EDUCATION": 0.75 },
-        "rating": 4.9
+        "id": 15,
+        "name": "AIIMS New Delhi",
+        "shortName": "AIIMS New Delhi",
+        "state": "Delhi NCR",
+        "city": "South Delhi",
+        "latitude": 28.5672,
+        "longitude": 77.2100,
+        "specializedLab": "Centre for Community Medicine & Telehealth Diagnostics",
+        "facultyMentor": "Dr. Sanjay K. Rai (Community Medicine)",
+        "domains": ["HEALTHCARE", "ACCESSIBILITY"],
+        "keywords": ["health", "hospital", "sanitation", "garbage", "disease", "epidemic", "telemedicine", "hygiene"],
+        "domainScores": { "HEALTHCARE": 0.99, "ACCESSIBILITY": 0.94, "WATER": 0.88 },
+        "rating": 4.99
     }
 ]
 
 def calculate_haversine_distance(lat1, lon1, lat2, lon2):
     if None in (lat1, lon1, lat2, lon2):
-        return 999.0
+        return 25.0
     R = 6371.0 # Earth radius in km
     dlat = math.radians(lat2 - lat1)
     dlon = math.radians(lon2 - lon1)
@@ -201,15 +348,14 @@ def calculate_haversine_distance(lat1, lon1, lat2, lon2):
 # 4. INTELLIGENT NLP DOMAIN CLASSIFIER
 # ==============================================================================
 THEMATIC_DOMAINS = [
-    {"id": "WATER", "name": "Water Resources & Management", "keywords": ["water", "drinking", "pipeline", "fluoride", "arsenic", "handpump", "borewell", "leakage", "tanker", "contamination", "jal", "pani"]},
-    {"id": "AGRICULTURE", "name": "Agriculture & Rural Livelihoods", "keywords": ["crop", "farmer", "agriculture", "fertilizer", "pest", "paddy", "soil", "harvest", "drought", "kisan", "kheti"]},
-    {"id": "HEALTHCARE", "name": "Healthcare & Sanitation", "keywords": ["hospital", "health", "doctor", "disease", "medicine", "malaria", "sanitation", "garbage", "trash", "waste", "swasthya", "aspatal"]},
-    {"id": "ENERGY_ENVIRONMENT", "name": "Clean Energy & Environment", "keywords": ["solar", "electricity", "power", "grid", "transformer", "pollution", "air quality", "energy", "bijli"]},
-    {"id": "MINING_REHAB", "name": "Mining & Environmental Rehabilitation", "keywords": ["mining", "mine", "coal", "subsidence", "quarry", "dust", "rehabilitation", "flyash", "khadaan"]},
-    {"id": "INFRASTRUCTURE", "name": "Rural & Urban Infrastructure", "keywords": ["road", "pothole", "bridge", "drainage", "culvert", "street light", "transport", "crater", "sadak", "gaddha"]},
-    {"id": "EDUCATION", "name": "Education & Skill Development", "keywords": ["school", "education", "student", "teacher", "classroom", "books", "skill", "training", "shiksha"]},
+    {"id": "INFRASTRUCTURE", "name": "Roads & Urban/Rural Infrastructure", "keywords": ["road", "pothole", "bridge", "drainage", "culvert", "street light", "crater", "asphalt", "sadak", "gaddha", "lighting"]},
+    {"id": "HEALTHCARE", "name": "Sanitation & Public Health", "keywords": ["garbage", "trash", "waste", "dump", "hospital", "health", "doctor", "disease", "sanitation", "kachra", "safai", "aspatal"]},
+    {"id": "WATER", "name": "Water Resources & Management", "keywords": ["water", "drinking", "pipeline", "fluoride", "arsenic", "handpump", "borewell", "leakage", "tanker", "contamination", "jal", "pani", "drain"]},
+    {"id": "ENERGY_ENVIRONMENT", "name": "Clean Energy & Environmental Safety", "keywords": ["tree", "fallen tree", "branch", "solar", "electricity", "power", "grid", "transformer", "pollution", "air quality", "bijli", "ped"]},
+    {"id": "AGRICULTURE", "name": "Agriculture & Rural Livelihoods", "keywords": ["crop", "farmer", "agriculture", "fertilizer", "pest", "paddy", "soil", "harvest", "drought", "kisan", "kheti", "mandi"]},
+    {"id": "EDUCATION", "name": "Education & Skill Development", "keywords": ["school", "education", "student", "teacher", "classroom", "books", "skill", "training", "shiksha", "vidyalaya"]},
     {"id": "ACCESSIBILITY", "name": "Accessibility & Assistive Technology", "keywords": ["disability", "wheelchair", "ramp", "braille", "assistive", "elderly", "hearing", "divyang"]},
-    {"id": "PUBLIC_ADMIN", "name": "Public Administration & e-Governance", "keywords": ["ration", "pension", "portal", "panchayat", "certificate", "aadhaar", "governance", "prashasan"]}
+    {"id": "PUBLIC_ADMIN", "name": "Public Administration & Civic Governance", "keywords": ["ration", "pension", "portal", "panchayat", "municipality", "certificate", "scheme", "subsidy", "governance", "prashasan"]}
 ]
 
 def classify_text_to_domain(text: str):
@@ -225,19 +371,19 @@ def classify_text_to_domain(text: str):
 
     if max_matches == 0:
         best_domain = "INFRASTRUCTURE"
-        confidence = 0.78
+        confidence = 0.80
     else:
-        confidence = min(0.96, 0.82 + (max_matches * 0.04))
+        confidence = min(0.97, 0.84 + (max_matches * 0.04))
 
     domain_info = next((d for d in THEMATIC_DOMAINS if d["id"] == best_domain), THEMATIC_DOMAINS[0])
     
     # Calculate Urgency
     urgency = "MEDIUM"
     urgency_score = 0.65
-    if any(w in t for w in ["fatal", "death", "epidemic", "poison", "critical", "danger", "hazard", "immediate", "emergency"]):
+    if any(w in t for w in ["fatal", "death", "epidemic", "poison", "critical", "danger", "hazard", "immediate", "emergency", "fallen tree", "accident"]):
         urgency = "CRITICAL"
         urgency_score = 0.95
-    elif any(w in t for w in ["severe", "acute", "heavy", "broken", "blocked", "suffering", "sick", "high risk"]):
+    elif any(w in t for w in ["severe", "acute", "heavy", "broken", "blocked", "suffering", "sick", "high risk", "pothole"]):
         urgency = "HIGH"
         urgency_score = 0.85
     elif any(w in t for w in ["upgrade", "plan", "request", "future", "minor"]):
@@ -262,21 +408,22 @@ def classify_text_to_domain(text: str):
 def health():
     return jsonify({
         "status": "online",
-        "service": "Sankalp AI Multi-Modal Societal Intelligence Engine",
+        "service": "Adhikar AI Pan-India Multi-Modal Engine",
         "modelLoaded": vision_model is not None,
-        "classes": ["pothole", "garbage", "water_leakage"],
-        "capabilities": ["Computer Vision", "NLP Classification", "HEI Multi-Factor Matching", "Geodesic Duplicate Clustering", "Image Safety Guardrail"]
+        "classes": list(vision_model.names.values()) if vision_model else ["pothole", "garbage", "broken_street_light", "fallen_tree"],
+        "totalClasses": len(vision_model.names) if vision_model else 4,
+        "capabilities": ["4-Class YOLOv8 Vision", "NLP Domain Classification", "Pan-India HEI Multi-Factor Matching", "100m Geodesic Deduplication", "Image Safety Guardrail"]
     })
 
-# 1. Computer Vision & Visual Safety Audit
+# 1. Computer Vision & Visual Safety Audit (4-Class YOLOv8)
 @app.route("/api/v1/detect", methods=["POST"])
 def detect_visual_evidence():
-    if "file" not in request.files and not request.json:
+    file = request.files.get("file") or request.files.get("image")
+    if not file and not request.json:
         return jsonify({"error": "No image file or URL provided"}), 400
 
     try:
-        if "file" in request.files:
-            file = request.files["file"]
+        if file:
             img_bytes = file.read()
             image = Image.open(io.BytesIO(img_bytes)).convert("RGB")
         else:
@@ -303,25 +450,31 @@ def detect_visual_evidence():
                 "highestConfidence": 0.88,
                 "confidencePercent": "88.0%",
                 "recommendedDomain": "INFRASTRUCTURE",
-                "suggestedHei": "ABESIT / BIT Mesra"
+                "category": "Roads & Transportation",
+                "recommendedDepartment": "Public Works Department (PWD)",
+                "triageType": "CIVIC_DIRECT",
+                "suggestedHei": "Delhi Technological University (DTU)"
             })
 
-        # STAGE 2: YOLOv8 Civic Hazard Inference
+        # STAGE 2: YOLOv8 4-Class Civic Hazard Inference
         results = vision_model.predict(source=image, conf=0.15, save=False)
         detections = []
 
         for result in results:
             for box in result.boxes:
                 class_id = int(box.cls[0].item())
-                class_name = vision_model.names[class_id]
+                class_name = vision_model.names.get(class_id, f"class_{class_id}")
                 conf = float(box.conf[0].item())
                 bbox = [round(x, 2) for x in box.xyxy[0].tolist()]
 
                 domain_rec = DOMAIN_MAPPING.get(class_name, {
                     "domain": "INFRASTRUCTURE",
-                    "domainName": "Rural & Urban Infrastructure",
+                    "domainName": "Roads & Urban/Rural Infrastructure",
                     "defaultUrgency": "MEDIUM",
-                    "suggestedHei": "BIT Mesra"
+                    "category": "Civic Infrastructure",
+                    "recommendedDepartment": "Municipal Administration",
+                    "triageType": "CIVIC_DIRECT",
+                    "suggestedHei": "DTU Delhi / ABESIT"
                 })
 
                 detections.append({
@@ -332,6 +485,9 @@ def detect_visual_evidence():
                     "bbox": bbox,
                     "recommendedDomain": domain_rec["domain"],
                     "domainName": domain_rec["domainName"],
+                    "category": domain_rec["category"],
+                    "recommendedDepartment": domain_rec["recommendedDepartment"],
+                    "triageType": domain_rec["triageType"],
                     "suggestedHei": domain_rec["suggestedHei"]
                 })
 
@@ -345,6 +501,9 @@ def detect_visual_evidence():
             "highestConfidence": primary_detection["confidence"] if primary_detection else 0.0,
             "confidencePercent": f"{primary_detection['confidence'] * 100:.1f}%" if primary_detection else "0%",
             "recommendedDomain": primary_detection["recommendedDomain"] if primary_detection else None,
+            "category": primary_detection["category"] if primary_detection else None,
+            "recommendedDepartment": primary_detection["recommendedDepartment"] if primary_detection else None,
+            "triageType": primary_detection["triageType"] if primary_detection else None,
             "suggestedHei": primary_detection["suggestedHei"] if primary_detection else None,
             "allDetections": detections
         })
@@ -361,7 +520,7 @@ def analyze_challenge():
     analysis = classify_text_to_domain(text)
     return jsonify(analysis)
 
-# 3. Intelligent University Multi-Factor Capability Matcher
+# 3. Intelligent University Multi-Factor Capability Matcher (Pan-India)
 @app.route("/api/v1/match-university", methods=["POST"])
 def match_university():
     data = request.json or {}
@@ -420,8 +579,8 @@ def match_university():
     return jsonify({
         "topMatch": ranked_universities[0],
         "allRankedUniversities": ranked_universities[:4],
-        "algorithm": "Sankalp Multi-Factor Spatial-Semantic Capability Matcher",
-        "factors": ["Domain Affinity (45%)", "Specialized Lab Alignment (30%)", "Haversine Distance (15%)", "Institutional Capacity (10%)"]
+        "algorithm": "Adhikar AI Pan-India Spatial-Semantic Capability Matcher",
+        "factors": ["Domain Affinity (45%)", "Specialized Lab Alignment (30%)", "Haversine Distance (15%)", "Institutional Rating (10%)"]
     })
 
 # 4. Geodesic Duplicate & Regional Crisis Clustering
@@ -453,7 +612,7 @@ def check_duplicate():
                 "distanceMeters": round(dist_km * 1000, 1),
                 "similarityScore": f"{min(96.0, round(overlap * 100 + 40, 1))}%",
                 "action": "CLUSTER_WITH_MASTER",
-                "clusterMessage": f"📍 Geodesic Duplicate Detected ({round(dist_km*1000)}m away). Aggregated into Regional Societal Crisis #{item.get('id')}."
+                "clusterMessage": f"📍 Geodesic Duplicate Detected ({round(dist_km*1000)}m away). Aggregated into Master Grievance #{item.get('id')}."
             })
 
     return jsonify({

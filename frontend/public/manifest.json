@@ -1,7 +1,7 @@
 {
-  "name": "Sankalp AI - Jharkhand Citizen Innovation Portal",
-  "short_name": "Sankalp AI",
-  "description": "Jharkhand Societal Innovation & University Collaboration Mobile Portal (NEP 2020)",
+  "name": "Adhikar AI - National Citizen Innovation & Grievance Portal",
+  "short_name": "Adhikar AI",
+  "description": "National Citizen Innovation, Grievance Redressal & University Collaboration Mobile Portal (NEP 2020)",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0f172a",

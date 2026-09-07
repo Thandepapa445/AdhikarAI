@@ -6,7 +6,7 @@ import {
     AlertTriangle, Sparkles, SlidersHorizontal, ChevronRight, Eye,
     Lightbulb, BookOpen, Layers, Laptop, Cpu
 } from "lucide-react";
-import { THEMATIC_DOMAINS, PARTICIPATING_HEIS, INDUSTRY_CSR_PARTNERS, STAGES_OF_INNOVATION } from "../data/jharkhandData";
+import { THEMATIC_DOMAINS, PARTICIPATING_HEIS } from "../data/indiaData";
 import { challengeService, getLocalChallenges, saveLocalChallenges } from "../services/api";
 import ChallengeDetailModal from "../components/ChallengeDetailModal";
 
@@ -14,7 +14,7 @@ export default function UniversityDashboard() {
     const navigate = useNavigate();
 
     // Default logged in HEI
-    const [currentHei, setCurrentHei] = useState(PARTICIPATING_HEIS[0]); // BIT Mesra, Ranchi
+    const [currentHei, setCurrentHei] = useState(PARTICIPATING_HEIS[0]); // IIT Delhi / Premier HEI
     const [activeTab, setActiveTab] = useState("assigned-projects");
     const [challenges, setChallenges] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -33,32 +33,32 @@ export default function UniversityDashboard() {
         {
             id: "TEAM-01",
             name: "HydroTech Innovators",
-            challengeId: "JH-2026-0101",
+            challengeId: "ADH-2026-1045",
             lead: "Aman Verma (B.Tech Civil & Env, 4th Year)",
             members: ["Pooja Soren (B.Tech Chemical)", "Rahul Singh (B.Tech Mechanical)", "Neha Gupta (M.Tech Water Engg)"],
             mentor: "Dr. Arvind Sharma",
             lab: "Clean Water & Geo-Hydrology FabLab",
-            csrGrant: "Tata Steel Foundation (₹3.5L)"
+            csrGrant: "National Clean Water CSR (₹3.5L)"
         },
         {
             id: "TEAM-02",
-            name: "KrishiShakti Agro Innovators",
-            challengeId: "JH-2026-0102",
-            lead: "Sanjay Mahato (B.Tech Mechanical)",
-            members: ["Rani Kumari (B.Tech Electronics)", "Amit Oraon (B.Tech Agro-Tech)"],
-            mentor: "Dr. Manoj Gupta & Dr. Birsa Hansda",
-            lab: "Agri-Machinery Prototyping Workshop",
-            csrGrant: "Jharkhand AgTech Incubator (₹2.8L)"
+            name: "Smart Infra & Asphalt Innovators",
+            challengeId: "ADH-2026-1041",
+            lead: "Sanjay Mahato (B.Tech Civil)",
+            members: ["Rani Kumari (B.Tech Electronics)", "Amit Roy (B.Tech Material Science)"],
+            mentor: "Prof. S. K. Garg",
+            lab: "Urban Mobility & Smart Infrastructure Lab",
+            csrGrant: "Smart Cities Mission (₹2.8L)"
         },
         {
             id: "TEAM-03",
-            name: "BhashaSetu EdTech Team",
-            challengeId: "JH-2026-0105",
+            name: "Swachh Bharat Clean Tech Team",
+            challengeId: "ADH-2026-1042",
             lead: "Suman Murmu (B.Tech CS & AI)",
-            members: ["Anil Hembrom (B.Tech IT)", "Priyanka Roy (M.A. Tribal Studies)"],
-            mentor: "Dr. Rameshwar Oraon",
-            lab: "Tribal Languages & Vernacular EdTech Lab",
-            csrGrant: "Tata Steel Foundation (EdTech)"
+            members: ["Anil Hembrom (B.Tech IT)", "Priyanka Roy (M.Tech Environmental)"],
+            mentor: "Dr. Hemant Ahuja",
+            lab: "Smart Infrastructure & Road Materials Lab",
+            csrGrant: "Urban Local Body Fund (₹2.0L)"
         }
     ]);
 
@@ -132,7 +132,7 @@ export default function UniversityDashboard() {
                                 {currentHei.name} <span style={styles.heiTag}>HEI Innovation Portal</span>
                             </div>
                             <div style={styles.heiSub}>
-                                NEP 2020 Multidisciplinary R&D, Prototyping & Student Innovation Center • Govt. of Jharkhand
+                                NEP 2020 Multidisciplinary R&D, Prototyping & Student Innovation Center • Adhikar AI
                             </div>
                         </div>
                     </div>
@@ -447,7 +447,7 @@ export default function UniversityDashboard() {
                                         </div>
                                     </div>
                                     <div style={{ fontSize: "12.5px", color: "#475569", marginTop: 8, lineHeight: 1.5 }}>
-                                        Equipped for prototype validation, rapid prototyping, sensor calibration, and sample quality compliance before field deployment in Jharkhand Panchayats.
+                                        Equipped for prototype validation, rapid prototyping, sensor calibration, and quality compliance before field deployment in Indian communities and Panchayats.
                                     </div>
                                 </div>
                             ))}

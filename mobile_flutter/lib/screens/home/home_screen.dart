@@ -52,11 +52,11 @@ class _HomeScreenState extends State<HomeScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: const [
                 Text(
-                  "SANKALP AI",
+                  "ADHIKAR AI",
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Colors.white),
                 ),
                 Text(
-                  "Citizen Innovation Portal",
+                  "National Innovation & Grievance Portal",
                   style: TextStyle(fontSize: 10.5, color: Color(0xFF94A3B8), fontWeight: FontWeight.w600),
                 ),
               ],

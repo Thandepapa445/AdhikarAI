@@ -5,8 +5,8 @@ import { Sparkles, ArrowRight } from "lucide-react";
 export default function Login() {
     const navigate = useNavigate();
 
-    const [email, setEmail] = useState("satbarwa.panchayat@jharkhand.gov.in");
-    const [password, setPassword] = useState("Panchayat@2026");
+    const [email, setEmail] = useState("citizen@adhikar.in");
+    const [password, setPassword] = useState("Adhikar@2026");
     const [role, setRole] = useState("CITIZEN");
     const [loading, setLoading] = useState(false);
 
@@ -19,9 +19,10 @@ export default function Login() {
         e.preventDefault();
         setLoading(true);
 
+        localStorage.setItem("adhikar_token", "mock_jwt_token_" + Date.now());
         localStorage.setItem("sankalp_token", "mock_jwt_token_" + Date.now());
-        localStorage.setItem("sankalp_user_email", email);
-        localStorage.setItem("sankalp_user_role", role);
+        localStorage.setItem("adhikar_user_email", email);
+        localStorage.setItem("adhikar_user_role", role);
 
         setTimeout(() => {
             setLoading(false);
@@ -39,7 +40,7 @@ export default function Login() {
         <div style={styles.container}>
             <div style={styles.card}>
                 <div style={styles.govBadge}>
-                    <span>🇮🇳 Government of Jharkhand • NEP 2020</span>
+                    <span>🇮🇳 National Innovation & Grievance Portal • NEP 2020</span>
                 </div>
 
                 <div style={styles.logoBadge}>
@@ -47,10 +48,10 @@ export default function Login() {
                 </div>
 
                 <h1 style={styles.brandTitle}>
-                    Sankalp <span style={{ color: "#0284c7" }}>AI</span>
+                    Adhikar <span style={{ color: "#0284c7" }}>AI</span>
                 </h1>
                 <p style={styles.brandSubtitle}>
-                    Jharkhand Societal Innovation & University Collaboration Portal
+                    National Citizen Innovation & Grievance Redressal Ecosystem
                 </p>
 
                 {/* Quick Role Demo Selector */}
@@ -59,17 +60,17 @@ export default function Login() {
                     <div style={styles.roleGrid}>
                         <button
                             type="button"
-                            onClick={() => handleRoleSelect("CITIZEN", "satbarwa.panchayat@jharkhand.gov.in")}
+                            onClick={() => handleRoleSelect("CITIZEN", "citizen@adhikar.in")}
                             style={{
                                 ...styles.roleBtn,
                                 ...(role === "CITIZEN" ? styles.activeRoleBtn : {})
                             }}
                         >
-                            🌾 Citizen / Gram Panchayat
+                            🌾 Citizen / Resident
                         </button>
                         <button
                             type="button"
-                            onClick={() => handleRoleSelect("HEI_FACULTY", "arvind.sharma@bitmesra.ac.in")}
+                            onClick={() => handleRoleSelect("HEI_FACULTY", "faculty@iitd.ac.in")}
                             style={{
                                 ...styles.roleBtn,
                                 ...(role === "HEI_FACULTY" ? styles.activeRoleBtn : {})
@@ -79,13 +80,13 @@ export default function Login() {
                         </button>
                         <button
                             type="button"
-                            onClick={() => handleRoleSelect("NODAL_OFFICER", "nodal.innovation@jharkhand.gov.in")}
+                            onClick={() => handleRoleSelect("NODAL_OFFICER", "admin@adhikar.gov.in")}
                             style={{
                                 ...styles.roleBtn,
                                 ...(role === "NODAL_OFFICER" ? styles.activeRoleBtn : {})
                             }}
                         >
-                            🏛️ State Nodal Officer (Admin)
+                            🏛️ Nodal Officer (Admin)
                         </button>
                     </div>
                 </div>
@@ -99,7 +100,7 @@ export default function Login() {
                             onChange={(e) => setEmail(e.target.value)}
                             required
                             style={styles.input}
-                            placeholder="name@jharkhand.gov.in"
+                            placeholder="name@adhikar.in"
                         />
                     </div>
 

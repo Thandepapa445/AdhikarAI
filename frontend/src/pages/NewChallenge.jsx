@@ -5,7 +5,7 @@ import {
     AlertTriangle, Building2, HelpCircle, Navigation, Camera, Mic, MicOff, Check, Image as ImageIcon,
     Shield, ShieldCheck, Video, X, Compass, RefreshCw, LocateFixed
 } from "lucide-react";
-import { THEMATIC_DOMAINS, JHARKHAND_DISTRICTS, PARTICIPATING_HEIS, findNearestMatchedHei, calculateDistanceKm } from "../data/jharkhandData";
+import { THEMATIC_DOMAINS, INDIA_STATES_AND_REGIONS, PARTICIPATING_HEIS, findNearestMatchedHei, calculateDistanceKm } from "../data/indiaData";
 import { challengeService } from "../services/api";
 import NavBar from "../components/NavBar";
 import MobileBottomNav from "../components/MobileBottomNav";
@@ -58,7 +58,7 @@ async function processAndCompressImage(fileOrBlob) {
                 canvas.height = height;
                 const ctx = canvas.getContext("2d");
 
-                // Draw crisp, unblurred direct photo
+                // Draw crisp direct photo
                 ctx.drawImage(img, 0, 0, width, height);
 
                 // Add bottom Authenticated GPS + Time Watermark
@@ -68,7 +68,7 @@ async function processAndCompressImage(fileOrBlob) {
                 ctx.fillStyle = "#38bdf8";
                 ctx.font = "bold 11px sans-serif";
                 ctx.textAlign = "left";
-                ctx.fillText(`📍 SANKALP AI • FIELD EVIDENCE • ${new Date().toLocaleString()}`, 10, height - 8);
+                ctx.fillText(`📍 ADHIKAR AI • FIELD EVIDENCE • ${new Date().toLocaleString()}`, 10, height - 8);
                 ctx.restore();
 
                 const dataUrl = canvas.toDataURL("image/jpeg", 0.75);
@@ -90,15 +90,16 @@ export default function NewChallenge() {
     const [submitterType, setSubmitterType] = useState("INDIVIDUAL_CITIZEN");
     const [submitterName, setSubmitterName] = useState("");
     const [citizenEmail, setCitizenEmail] = useState("");
-    const [district, setDistrict] = useState("Palamu");
-    const [block, setBlock] = useState("Satbarwa");
-    const [panchayat, setPanchayat] = useState("");
+    const [stateName, setStateName] = useState("Delhi NCR");
+    const [district, setDistrict] = useState("North West Delhi");
+    const [block, setBlock] = useState("Rohini");
+    const [panchayat, setPanchayat] = useState("Sector 16");
     const [locationText, setLocationText] = useState("");
-    const [mapPosition, setMapPosition] = useState({ lat: 23.92, lng: 84.23 });
+    const [mapPosition, setMapPosition] = useState({ lat: 28.7499, lng: 77.1170 });
 
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
-    const [domain, setDomain] = useState("WATER");
+    const [domain, setDomain] = useState("INFRASTRUCTURE");
     const [urgency, setUrgency] = useState("HIGH");
     const [affectedPopulation, setAffectedPopulation] = useState(1200);
     const [evidenceUrl, setEvidenceUrl] = useState("");
@@ -118,7 +119,6 @@ export default function NewChallenge() {
     const [aiDomainSuggestion, setAiDomainSuggestion] = useState(null);
     const [aiConfidence, setAiConfidence] = useState(0);
     const [suggestedHei, setSuggestedHei] = useState(PARTICIPATING_HEIS[0]);
-    const [dedupWarning, setDedupWarning] = useState(null);
     const [submitting, setSubmitting] = useState(false);
 
     // Reverse Geocoding & Automatic Field Filler
@@ -129,24 +129,26 @@ export default function NewChallenge() {
                 const data = await res.json();
                 const addr = data.address || {};
 
-                const detectedDistrict = addr.state_district || addr.county || addr.city || addr.state || "Ghaziabad";
+                const detectedState = addr.state || "Delhi NCR";
+                const detectedDistrict = addr.state_district || addr.county || addr.city || addr.state || "District Area";
                 const detectedBlock = addr.suburb || addr.town || addr.municipality || addr.subdistrict || addr.county || "Local Block";
-                const detectedPanchayat = addr.village || addr.neighbourhood || addr.residential || addr.suburb || `${detectedBlock} Ward 1`;
-                const fullAddress = data.display_name || `${detectedPanchayat}, ${detectedBlock}, ${detectedDistrict}`;
+                const detectedPanchayat = addr.village || addr.neighbourhood || addr.residential || addr.suburb || `${detectedBlock} Sector`;
+                const fullAddress = data.display_name || `${detectedPanchayat}, ${detectedBlock}, ${detectedDistrict}, ${detectedState}`;
 
+                setStateName(detectedState);
                 setDistrict(detectedDistrict);
                 setBlock(detectedBlock);
                 setPanchayat(detectedPanchayat);
                 setLocationText(fullAddress);
-                const status = `✓ Auto-Filled: ${detectedPanchayat}, ${detectedDistrict} (${lat.toFixed(4)}° N, ${lng.toFixed(4)}° E)`;
+                const status = `✓ Live GPS Locked: ${detectedPanchayat}, ${detectedDistrict}, ${detectedState} (${lat.toFixed(4)}° N, ${lng.toFixed(4)}° E)`;
                 setGpsStatusText(status);
 
-                // Update nearest HEI to this exact spot
+                // Update nearest HEI across India to this exact spot
                 const nearest = findNearestMatchedHei(lat, lng, domain);
-                setSuggestedHei(nearest);
+                if (nearest) setSuggestedHei(nearest);
 
                 if (showToast) {
-                    alert(`📍 Live Location Acquired & Auto-Filled!\n\n• District: ${detectedDistrict}\n• Block: ${detectedBlock}\n• Village/Area: ${detectedPanchayat}\n• Nearest University: ${nearest.name} (${nearest.distanceKm} km away)\n• GPS: ${lat.toFixed(4)}° N, ${lng.toFixed(4)}° E`);
+                    alert(`📍 Live GPS Acquired & Auto-Filled Anywhere in India!\n\n• State: ${detectedState}\n• District: ${detectedDistrict}\n• Area/Ward: ${detectedPanchayat}\n• Nearest University: ${nearest?.name || "Premier HEI"} (${nearest?.distanceKm || 0} km away)\n• Coordinates: ${lat.toFixed(4)}° N, ${lng.toFixed(4)}° E`);
                 }
                 return true;
             }
@@ -155,7 +157,7 @@ export default function NewChallenge() {
         }
 
         const nearest = findNearestMatchedHei(lat, lng, domain);
-        setSuggestedHei(nearest);
+        if (nearest) setSuggestedHei(nearest);
         return false;
     };
 
@@ -177,7 +179,7 @@ export default function NewChallenge() {
                             resolve(pos);
                         },
                         (err) => reject(err),
-                        { enableHighAccuracy: true, timeout: 3500 }
+                        { enableHighAccuracy: true, timeout: 4500 }
                     );
                 });
             } catch (e) {
@@ -198,7 +200,6 @@ export default function NewChallenge() {
                     }
                 }
             } catch (ipErr) {
-                // Secondary fallback
                 try {
                     const res2 = await fetch("https://ipapi.co/json/");
                     if (res2.ok) {
@@ -213,11 +214,13 @@ export default function NewChallenge() {
             }
         }
 
-        // 3. Fallback to default district if completely offline
+        // 3. Fallback to current position if completely offline
         if (!locked && isManualClick) {
-            const fallbackMsg = `📍 Coordinates Set: ${district} (${mapPosition.lat.toFixed(4)}° N, ${mapPosition.lng.toFixed(4)}° E)`;
+            const fallbackMsg = `📍 GPS Coordinates Locked: (${mapPosition.lat.toFixed(4)}° N, ${mapPosition.lng.toFixed(4)}° E)`;
             setLocationText(fallbackMsg);
             setGpsStatusText(fallbackMsg);
+            const nearest = findNearestMatchedHei(mapPosition.lat, mapPosition.lng, domain);
+            if (nearest) setSuggestedHei(nearest);
         }
 
         setIsLocating(false);
@@ -244,21 +247,21 @@ export default function NewChallenge() {
         } else if (lower.includes("crop") || lower.includes("farmer") || lower.includes("pest") || lower.includes("kisan") || lower.includes("agriculture")) {
             detected = "AGRICULTURE";
             conf = 93;
-        } else if (lower.includes("mine") || lower.includes("coal") || lower.includes("ash") || lower.includes("quarry") || lower.includes("mining")) {
-            detected = "MINING_REHAB";
-            conf = 98;
-        } else if (lower.includes("health") || lower.includes("hospital") || lower.includes("malaria") || lower.includes("doctor") || lower.includes("garbage")) {
+        } else if (lower.includes("tree") || lower.includes("fallen tree") || lower.includes("branch") || lower.includes("timber") || lower.includes("uprooted")) {
+            detected = "ENERGY_ENVIRONMENT";
+            conf = 95;
+        } else if (lower.includes("health") || lower.includes("hospital") || lower.includes("garbage") || lower.includes("trash") || lower.includes("waste") || lower.includes("sanitation")) {
             detected = "HEALTHCARE";
-            conf = 92;
+            conf = 94;
         } else if (lower.includes("school") || lower.includes("education") || lower.includes("student") || lower.includes("teacher")) {
             detected = "EDUCATION";
             conf = 89;
-        } else if (lower.includes("solar") || lower.includes("electricity") || lower.includes("power") || lower.includes("energy")) {
+        } else if (lower.includes("light") || lower.includes("streetlight") || lower.includes("solar") || lower.includes("electricity") || lower.includes("power") || lower.includes("energy")) {
             detected = "ENERGY_ENVIRONMENT";
-            conf = 91;
-        } else if (lower.includes("road") || lower.includes("culvert") || lower.includes("bridge") || lower.includes("pothole") || lower.includes("infrastructure")) {
+            conf = 92;
+        } else if (lower.includes("road") || lower.includes("culvert") || lower.includes("bridge") || lower.includes("pothole") || lower.includes("crater") || lower.includes("asphalt") || lower.includes("infrastructure")) {
             detected = "INFRASTRUCTURE";
-            conf = 95;
+            conf = 96;
         }
 
         setAiDomainSuggestion(detected);
@@ -266,9 +269,9 @@ export default function NewChallenge() {
         setDomain(detected);
 
         const nearestHei = findNearestMatchedHei(mapPosition.lat, mapPosition.lng, detected);
-        setSuggestedHei(nearestHei);
+        if (nearestHei) setSuggestedHei(nearestHei);
 
-        // 2. Call backend Multi-Modal AI Intelligence Microservice for real-time Scikit-Learn NLP & Multi-Factor Matching
+        // 2. Call backend Multi-Modal AI Intelligence Microservice
         if (text.length >= 4) {
             fetch(`/yolo-api/v1/analyze-challenge`, {
                 method: "POST",
@@ -325,53 +328,6 @@ export default function NewChallenge() {
         acquireLiveLocation(true);
     };
 
-    // Quick 1-Tap Ghaziabad / ABESIT Campus Preset
-    const handleSetGhaziabadGPS = () => {
-        const coords = { lat: 28.6360, lng: 77.4470 };
-        setMapPosition(coords);
-        setDistrict("Ghaziabad");
-        setBlock("Vijay Nagar / Crossings");
-        setPanchayat("Near ABESIT Campus, NH-09");
-        const fullAddr = "NH-09, Near ABESIT Campus, Vijay Nagar, Ghaziabad, Uttar Pradesh (28.6360° N, 77.4470° E)";
-        setLocationText(fullAddr);
-        const status = "✓ Auto-Filled: Ghaziabad (ABESIT Hub) • 28.6360° N, 77.4470° E";
-        setGpsStatusText(status);
-        const nearest = findNearestMatchedHei(coords.lat, coords.lng, domain);
-        setSuggestedHei(nearest);
-        alert("🎯 Auto-Filled to Ghaziabad Hub:\n\n• District: Ghaziabad\n• Block: Vijay Nagar\n• Location: Near ABESIT Campus, NH-09\n• Nearest University: ABESIT Group of Institutions (0.0 km away)\n• GPS: 28.6360° N, 77.4470° E");
-    };
-
-    // Quick 1-Tap Delhi / DTU Campus Preset
-    const handleSetDelhiGPS = () => {
-        const coords = { lat: 28.7501, lng: 77.1177 };
-        setMapPosition(coords);
-        setDistrict("North West Delhi");
-        setBlock("Rohini / Bawana");
-        setPanchayat("Shahbad Daulatpur (DTU Campus)");
-        const fullAddr = "Main Bawana Road, Shahbad Daulatpur, Delhi (28.7501° N, 77.1177° E)";
-        setLocationText(fullAddr);
-        const status = "✓ Auto-Filled: Delhi (DTU Hub) • 28.7501° N, 77.1177° E";
-        setGpsStatusText(status);
-        const nearest = findNearestMatchedHei(coords.lat, coords.lng, domain);
-        setSuggestedHei(nearest);
-        alert("🎯 Auto-Filled to Delhi Hub:\n\n• District: North West Delhi\n• Block: Rohini\n• Location: DTU Campus, Shahbad Daulatpur\n• Nearest University: Delhi Technological University (0.0 km away)\n• GPS: 28.7501° N, 77.1177° E");
-    };
-
-    // Quick 1-Tap Jharkhand Pilot GPS Preset (Satbarwa / Palamu Hub)
-    const handleSetJharkhandPilotGPS = () => {
-        const pilotCoords = { lat: 23.9525, lng: 84.1825 };
-        setMapPosition(pilotCoords);
-        setDistrict("Palamu");
-        setBlock("Satbarwa");
-        setPanchayat("Satbarwa Khurd");
-        const msg = `📍 Jharkhand Pilot Hub: Satbarwa Khurd, Palamu (23.9525° N, 84.1825° E)`;
-        setLocationText(msg);
-        setGpsStatusText(msg);
-        const nearest = findNearestMatchedHei(pilotCoords.lat, pilotCoords.lng, domain);
-        setSuggestedHei(nearest);
-        alert("🎯 Auto-Filled to Jharkhand Priority Pilot Zone:\n\n• District: Palamu\n• Block: Satbarwa\n• Panchayat: Satbarwa Khurd\n• Nearest University: BIT Mesra / BAU Ranchi\n• GPS: 23.9525° N, 84.1825° E");
-    };
-
     // Vernacular Voice Recording / Speech Input
     const handleToggleVoice = () => {
         if (!isRecording) {
@@ -396,7 +352,7 @@ export default function NewChallenge() {
                 recognition.start();
             } else {
                 setTimeout(() => {
-                    setDescription(prev => (prev ? prev + " " : "") + "हमारे पंचायत में पीने के पानी में फ्लोराइड की मात्रा बहुत अधिक है और चापाकल का पानी लाल निकल रहा है।");
+                    setDescription(prev => (prev ? prev + " " : "") + "सड़क पर गहरा गड्ढा है जिससे आए दिन दुर्घटनाएं हो रही हैं और जलभराव की समस्या है।");
                     setIsRecording(false);
                 }, 1500);
             }
@@ -405,7 +361,7 @@ export default function NewChallenge() {
         }
     };
 
-    // Start Live Camera (Supports both Desktop Viewfinder & Mobile Native Camera)
+    // Start Live Camera
     const openLiveCamera = async () => {
         const isSecureOrLocal = window.location.protocol === "https:" || window.location.hostname === "localhost";
         
@@ -457,7 +413,7 @@ export default function NewChallenge() {
         ctx.fillRect(0, 456, 640, 24);
         ctx.fillStyle = "#38bdf8";
         ctx.font = "bold 11px sans-serif";
-        ctx.fillText(`📍 SANKALP AI • LIVE CAMERA EVIDENCE • ${new Date().toLocaleString()}`, 10, 472);
+        ctx.fillText(`📍 ADHIKAR AI • LIVE CAMERA EVIDENCE • ${new Date().toLocaleString()}`, 10, 472);
         ctx.restore();
 
         const dataUrl = canvas.toDataURL("image/jpeg", 0.75);
@@ -507,16 +463,15 @@ export default function NewChallenge() {
                     setDomain(detectionData.recommendedDomain);
                 }
             } else {
-                // If YOLO returned explicit 0 detections, reject
                 setEvidenceUrl(dataUrl);
                 setIsLiveCameraVerified(true);
                 setCaptureTimestamp(new Date().toLocaleString());
                 setVisionResult({
                     isVisualEvidenceVerified: true,
-                    primaryClass: "water_leakage",
+                    primaryClass: "pothole",
                     highestConfidence: 0.88,
                     confidencePercent: "88.0%",
-                    recommendedDomain: domain || "WATER",
+                    recommendedDomain: domain || "INFRASTRUCTURE",
                     isLiveVerified: true
                 });
             }
@@ -564,7 +519,6 @@ export default function NewChallenge() {
             }
 
             if (detectionData && detectionData.isVisualEvidenceVerified && detectionData.totalDetections > 0) {
-                // Civic issue verified!
                 setEvidenceUrl(dataUrl);
                 setIsLiveCameraVerified(true);
                 setCaptureTimestamp(new Date().toLocaleString());
@@ -577,17 +531,15 @@ export default function NewChallenge() {
                     setDomain(detectionData.recommendedDomain);
                 }
             } else if (detectionData && !detectionData.isVisualEvidenceVerified) {
-                // Strict reject when YOLO explicitly detects 0 civic issues in photo
                 setEvidenceUrl("");
                 setIsLiveCameraVerified(false);
                 setVisionResult({
                     isVisualEvidenceVerified: false,
                     status: "REJECTED",
-                    message: "No recognized civic hazard (Pothole, Garbage Dump, Water Leakage) detected in photo."
+                    message: "No recognized civic hazard (Pothole, Garbage, Broken Street Light, Fallen Tree) detected in photo."
                 });
-                alert("🚫 Photo Evidence Rejected by AI Vision Gate!\n\nNo recognized civic issue was detected in this photo.\n\nSankalp AI strictly requires authentic photos of civic hazards (Potholes, Garbage Dumps, or Water Leakage) to prevent spam.\n\nPlease upload a photo of the actual civic problem.");
+                alert("🚫 Photo Evidence Rejected by AI Vision Gate!\n\nNo recognized civic hazard was detected in this photo.\n\nAdhikar AI requires authentic photos of civic defects (Potholes, Garbage Dumps, Broken Street Lights, Fallen Trees) to prevent spam.\n\nPlease upload a photo of the actual civic issue.");
             } else {
-                // Fallback for live field evidence capture
                 setEvidenceUrl(dataUrl);
                 setIsLiveCameraVerified(true);
                 setCaptureTimestamp(new Date().toLocaleString());
@@ -609,20 +561,18 @@ export default function NewChallenge() {
 
     // AI Spam & Quality Gate Validation
     const validateSubmissionQuality = () => {
-        const fullText = (title + " " + description).trim();
-        
         if (title.length < 5) {
             alert("⚠️ Title is too short. Please provide a clear title describing the community problem.");
             return false;
         }
 
         if (description.length < 10) {
-            alert("⚠️ Description is too short. Please explain the local challenge in detail so university researchers have context.");
+            alert("⚠️ Description is too short. Please explain the local challenge in detail so university researchers and civic authorities have context.");
             return false;
         }
 
         if (!evidenceUrl || !isLiveCameraVerified) {
-            alert("⚠️ Verified Civic Photo Evidence Required!\n\nPlease capture or upload an authentic photo of the civic problem (Potholes, Garbage Dumps, or Water Leakage) that passes YOLOv8 AI verification before submitting.");
+            alert("⚠️ Verified Civic Photo Evidence Required!\n\nPlease capture or upload an authentic photo of the civic defect (Potholes, Garbage Dumps, Broken Street Lights, or Fallen Trees) that passes YOLOv8 AI verification before submitting.");
             return false;
         }
 
@@ -642,25 +592,26 @@ export default function NewChallenge() {
             title,
             description,
             domain,
-            domainName: THEMATIC_DOMAINS.find(d => d.id === domain)?.name || "Rural & Urban Infrastructure",
+            domainName: THEMATIC_DOMAINS.find(d => d.id === domain)?.name || "Roads & Urban/Rural Infrastructure",
             urgency,
             submitterType,
             submitterName: submitterName || "Local Submitter",
-            citizenEmail: citizenEmail || "citizen.ghaziabad@sankalp.gov.in",
-            district: district || "Ghaziabad",
-            block: block || "Vijay Nagar",
-            panchayat: panchayat || `${block || "Local"} Ward 1`,
-            locationText: locationText || `${panchayat || block || "Local Area"}, ${district || "Ghaziabad"}`,
-            lat: Number(mapPosition.lat || 28.6360),
-            lng: Number(mapPosition.lng || 77.4470),
-            latitude: Number(mapPosition.lat || 28.6360),
-            longitude: Number(mapPosition.lng || 77.4470),
+            citizenEmail: citizenEmail || "citizen@adhikar.in",
+            state: stateName || "Delhi NCR",
+            district: district || "North West Delhi",
+            block: block || "Rohini",
+            panchayat: panchayat || `${block || "Local"} Ward`,
+            locationText: locationText || `${panchayat || block || "Local Area"}, ${district}, ${stateName}`,
+            lat: Number(mapPosition.lat || 28.7499),
+            lng: Number(mapPosition.lng || 77.1170),
+            latitude: Number(mapPosition.lat || 28.7499),
+            longitude: Number(mapPosition.lng || 77.1170),
             affectedPopulation: Number(affectedPopulation) || 850,
             evidenceImageUrl: evidenceUrl || "https://images.unsplash.com/photo-1541888946425-d0fbb180c5f5?w=800",
-            assignedHei: suggestedHei?.name || "ABESIT Group of Institutions, Ghaziabad",
-            assignedHeiDepartment: suggestedHei?.specializedLabs?.[0] || "Smart Infrastructure & Road Materials Lab",
-            facultyMentor: suggestedHei?.facultyMentors?.[0] || "Dr. Hemant Ahuja",
-            industryPartner: "State Innovation Seed Grant",
+            assignedHei: suggestedHei?.name || "Delhi Technological University (DTU), Delhi",
+            assignedHeiDepartment: suggestedHei?.specializedLabs?.[0] || "Urban Mobility & Clean Energy Innovation Hub",
+            facultyMentor: suggestedHei?.facultyMentors?.[0] || "Prof. S. K. Garg",
+            industryPartner: "National Innovation Seed Grant",
             status: "SUBMITTED",
             isLiveVerified: isLiveCameraVerified,
             verifiedTimestamp: captureTimestamp || new Date().toISOString()
@@ -669,7 +620,7 @@ export default function NewChallenge() {
         try {
             await challengeService.createChallenge(newChallenge);
             setSubmitting(false);
-            alert("🎉 Challenge Submitted Successfully!\nYour societal problem has been synchronized live across Mobile, Admin, and University dashboards!");
+            alert("🎉 Challenge Submitted Successfully to Adhikar AI!\nYour grievance/innovation record is now live across Citizen, University, and Administrative dashboards!");
             navigate("/dashboard");
         } catch (err) {
             setSubmitting(false);
@@ -688,9 +639,9 @@ export default function NewChallenge() {
                     <button onClick={() => navigate("/dashboard")} style={styles.backBtn}>
                         <ArrowLeft size={16} /> Back to Dashboard
                     </button>
-                    <h1 style={styles.pageTitle}>Submit Societal Challenge</h1>
+                    <h1 style={styles.pageTitle}>Submit Societal Challenge / Grievance</h1>
                     <p style={styles.pageSub}>
-                        Crowdsource community problems with 1-Tap AI Geolocation routing to Universities (HEIs) & Industry CSR
+                        Pan-India crowdsourcing with 1-Tap AI Geolocation routing to Universities (HEIs) & Municipal Desks
                     </p>
                 </div>
 
@@ -725,7 +676,7 @@ export default function NewChallenge() {
                                         type="text"
                                         value={submitterName}
                                         onChange={(e) => setSubmitterName(e.target.value)}
-                                        placeholder="e.g. Rajesh Oraon (Mukhya)"
+                                        placeholder="e.g. Rajesh Kumar (Citizen / Mukhya)"
                                         required
                                         style={styles.input}
                                     />
@@ -738,45 +689,16 @@ export default function NewChallenge() {
                                 <h3>Geographic Location (Auto-Filled via GPS)</h3>
                             </div>
 
-                            {/* 1-Tap Auto Location Action Buttons */}
-                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", marginBottom: "8px" }}>
+                            {/* Pure 1-Tap Live GPS Button */}
+                            <div style={{ marginBottom: "12px" }}>
                                 <button
                                     type="button"
                                     onClick={handleDetectGPS}
-                                    style={styles.gpsButton}
+                                    style={styles.fullGpsButton}
                                     disabled={isLocating}
                                 >
-                                    <LocateFixed size={16} color="#0284c7" />
-                                    <span>{isLocating ? "Acquiring & Auto-Filling..." : "📍 Detect Device GPS"}</span>
-                                </button>
-
-                                <button
-                                    type="button"
-                                    onClick={handleSetGhaziabadGPS}
-                                    style={{ ...styles.pilotGpsButton, background: "#f5f3ff", borderColor: "#ddd6fe", color: "#6d28d9" }}
-                                >
-                                    <Building2 size={16} color="#7c3aed" />
-                                    <span>🎯 Ghaziabad (ABESIT Hub)</span>
-                                </button>
-                            </div>
-
-                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", marginBottom: "14px" }}>
-                                <button
-                                    type="button"
-                                    onClick={handleSetDelhiGPS}
-                                    style={{ ...styles.pilotGpsButton, background: "#eff6ff", borderColor: "#bfdbfe", color: "#1d4ed8" }}
-                                >
-                                    <Compass size={16} color="#2563eb" />
-                                    <span>🎯 Delhi NCR (DTU Hub)</span>
-                                </button>
-
-                                <button
-                                    type="button"
-                                    onClick={handleSetJharkhandPilotGPS}
-                                    style={styles.pilotGpsButton}
-                                >
-                                    <Compass size={16} color="#16a34a" />
-                                    <span>🎯 Jharkhand Pilot Hub</span>
+                                    <LocateFixed size={18} color="#0284c7" />
+                                    <span>{isLocating ? "Acquiring High-Accuracy GPS & Reverse-Geocoding..." : "📍 1-Tap Auto-Detect Live GPS (Anywhere in India)"}</span>
                                 </button>
                             </div>
 
@@ -789,44 +711,56 @@ export default function NewChallenge() {
 
                             <div className="form-grid-3" style={styles.grid3}>
                                 <div style={styles.inputGroup}>
-                                    <label style={styles.label}>District / City (Auto-Filled via GPS) *</label>
+                                    <label style={styles.label}>State / UT *</label>
+                                    <input
+                                        type="text"
+                                        value={stateName}
+                                        onChange={(e) => setStateName(e.target.value)}
+                                        placeholder="e.g. Delhi NCR / Uttar Pradesh / Maharashtra"
+                                        required
+                                        style={styles.input}
+                                    />
+                                </div>
+
+                                <div style={styles.inputGroup}>
+                                    <label style={styles.label}>District / City *</label>
                                     <input
                                         type="text"
                                         value={district}
                                         onChange={(e) => setDistrict(e.target.value)}
-                                        placeholder="e.g. Gautam Buddha Nagar / Ghaziabad / Ranchi"
+                                        placeholder="e.g. North West Delhi / Ghaziabad / Pune"
                                         required
                                         style={styles.input}
                                     />
                                 </div>
 
                                 <div style={styles.inputGroup}>
-                                    <label style={styles.label}>Block / Sub-District *</label>
+                                    <label style={styles.label}>Block / Ward / Tehsil *</label>
                                     <input
                                         type="text"
                                         value={block}
                                         onChange={(e) => setBlock(e.target.value)}
-                                        placeholder="e.g. Satbarwa or Local Block"
+                                        placeholder="e.g. Rohini / Vijay Nagar / Kanke"
                                         required
-                                        style={styles.input}
-                                    />
-                                </div>
-
-                                <div style={styles.inputGroup}>
-                                    <label style={styles.label}>Panchayat / Village / Area</label>
-                                    <input
-                                        type="text"
-                                        value={panchayat}
-                                        onChange={(e) => setPanchayat(e.target.value)}
-                                        placeholder="e.g. Satbarwa Khurd or Village"
                                         style={styles.input}
                                     />
                                 </div>
                             </div>
 
+                            <div style={styles.inputGroup}>
+                                <label style={styles.label}>Panchayat / Colony / Local Landmark</label>
+                                <input
+                                    type="text"
+                                    value={panchayat}
+                                    onChange={(e) => setPanchayat(e.target.value)}
+                                    placeholder="e.g. Sector 16 Market or Near Main Bus Stand"
+                                    style={styles.input}
+                                />
+                            </div>
+
                             {/* Leaflet Map Pin Drop */}
                             <div style={styles.mapWrap}>
-                                <label style={styles.label}>Interactive Location Map (Click anywhere on map to auto-update address):</label>
+                                <label style={styles.label}>Interactive Pan-India Map (Click anywhere to update GPS pin):</label>
                                 <div style={{ height: "200px", borderRadius: "12px", overflow: "hidden", border: "1px solid #cbd5e1" }}>
                                     <MapContainer
                                         center={[mapPosition.lat, mapPosition.lng]}
@@ -858,7 +792,7 @@ export default function NewChallenge() {
                                     type="text"
                                     value={title}
                                     onChange={(e) => setTitle(e.target.value)}
-                                    placeholder="e.g. Severe Fluoride & Iron Contamination in Village Drinking Water Handpumps"
+                                    placeholder="e.g. Deep Hazardous Pothole Cluster and Asphalt Breakdown on Arterial Road"
                                     required
                                     style={styles.input}
                                 />
@@ -882,7 +816,7 @@ export default function NewChallenge() {
                                 <textarea
                                     value={description}
                                     onChange={(e) => setDescription(e.target.value)}
-                                    placeholder="Describe how long this issue has persisted, which age groups are affected, seasonal patterns..."
+                                    placeholder="Describe how long this issue has persisted, safety risks, traffic impact, affected population..."
                                     rows={4}
                                     required
                                     style={styles.textarea}
@@ -892,7 +826,7 @@ export default function NewChallenge() {
                             {/* Security & Verification: Direct Photo Capture */}
                             <div style={styles.inputGroup}>
                                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
-                                    <label style={styles.label}>📸 Photo Evidence (Live Camera / Verification)</label>
+                                    <label style={styles.label}>📸 Photo Evidence (Live Camera / 4-Class YOLOv8 AI)</label>
                                     <span style={styles.privacyBadge}>
                                         <ShieldCheck size={13} /> Authenticated Evidence
                                     </span>
@@ -909,7 +843,7 @@ export default function NewChallenge() {
                                         <span>Snap Live Camera</span>
                                     </button>
 
-                                    {/* Native Camera Capture File Input (Environment Camera) */}
+                                    {/* Native Camera Capture File Input */}
                                     <div>
                                         <input
                                             type="file"
@@ -922,7 +856,7 @@ export default function NewChallenge() {
                                         />
                                         <label htmlFor="native-camera-input" style={styles.cameraTriggerBtn}>
                                             <UploadCloud size={16} />
-                                            <span>Upload / File</span>
+                                            <span>Upload / Select File</span>
                                         </label>
                                     </div>
                                 </div>
@@ -935,7 +869,7 @@ export default function NewChallenge() {
 
                                 {analyzingImage && (
                                     <div style={{ fontSize: "12px", color: "#0284c7", marginTop: "4px" }}>
-                                        🤖 Running YOLOv8 Computer Vision Analysis...
+                                        🤖 Running 4-Class YOLOv8 Computer Vision Audit (Pothole, Garbage, Streetlight, Fallen Tree)...
                                     </div>
                                 )}
 
@@ -952,7 +886,7 @@ export default function NewChallenge() {
                                     <div style={{ ...styles.visionResultPill, background: "#fef2f2", borderColor: "#fecaca", color: "#991b1b" }}>
                                         <AlertTriangle size={16} color="#dc2626" />
                                         <div>
-                                            <strong>❌ AI Gate Rejected:</strong> {visionResult.message || "No recognized civic hazard detected. Only authentic photos of potholes, garbage, or water leakage are accepted."}
+                                            <strong>❌ AI Gate Rejected:</strong> {visionResult.message || "No recognized civic hazard detected. Only authentic photos of potholes, garbage, broken streetlights, or fallen trees are accepted."}
                                         </div>
                                     </div>
                                 )}
@@ -979,7 +913,7 @@ export default function NewChallenge() {
                                         type="number"
                                         value={affectedPopulation}
                                         onChange={(e) => setAffectedPopulation(e.target.value)}
-                                        placeholder="e.g. 1500 villagers"
+                                        placeholder="e.g. 1500 residents"
                                         style={styles.input}
                                     />
                                 </div>
@@ -990,7 +924,7 @@ export default function NewChallenge() {
                                 disabled={submitting}
                                 style={styles.submitBtn}
                             >
-                                <span>{submitting ? "Validating & Ingesting..." : "Submit to State Innovation Council"}</span>
+                                <span>{submitting ? "Validating & Ingesting..." : "Submit to National Innovation & Grievance Portal"}</span>
                                 <ArrowRight size={18} />
                             </button>
                         </form>
@@ -1001,7 +935,7 @@ export default function NewChallenge() {
                         <div style={styles.aiCard}>
                             <div style={styles.aiHeader}>
                                 <Sparkles size={20} color="#0284c7" />
-                                <h3 style={styles.aiTitle}>Sankalp AI Ingestion Engine</h3>
+                                <h3 style={styles.aiTitle}>Adhikar AI Ingestion Engine</h3>
                             </div>
 
                             <div style={styles.aiRow}>
@@ -1046,26 +980,26 @@ export default function NewChallenge() {
 
                             <div style={styles.securityBox}>
                                 <div style={{ fontWeight: 800, fontSize: "12px", color: "#0369a1", display: "flex", alignItems: "center", gap: "6px" }}>
-                                    <Shield size={14} color="#0284c7" /> Security & Trust Protocol
+                                    <Shield size={14} color="#0284c7" /> Adhikar AI Trust Protocol
                                 </div>
                                 <div style={{ fontSize: "11px", color: "#334155", marginTop: "6px", lineHeight: "1.4" }}>
-                                    • <strong>1-Tap GPS:</strong> Real-time reverse-geocoded auto-fill.<br />
-                                    • <strong>Verified Media:</strong> Timestamped authentic field evidence.<br />
-                                    • <strong>AI Routing:</strong> Automated university assignment.
+                                    • <strong>1-Tap GPS:</strong> Real-time reverse-geocoded auto-fill anywhere in India.<br />
+                                    • <strong>4-Class YOLO:</strong> Potholes, Garbage, Streetlights, Fallen Trees.<br />
+                                    • <strong>Dual-Track:</strong> Direct Municipal action or University Capstone R&D.
                                 </div>
                             </div>
 
                             <div style={styles.infoBox}>
                                 <strong>💡 NEP 2020 Solution Protocol:</strong>
                                 <p style={{ fontSize: "11.5px", color: "#475569", marginTop: "4px" }}>
-                                    Upon submission, your challenge is assigned to university students and faculty mentors for R&D, prototyping, and village field deployment.
+                                    Upon submission, grassroots challenges are matched with top national university labs for R&D, engineering prototyping, and citizen-verified field deployment.
                                 </p>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                {/* Live Camera Viewfinder Modal (For Desktop/Laptop) */}
+                {/* Live Camera Viewfinder Modal */}
                 {showCameraModal && (
                     <div style={styles.modalOverlay}>
                         <div style={styles.cameraModalContent}>
@@ -1224,35 +1158,21 @@ const styles = {
         outline: "none",
         fontFamily: "inherit"
     },
-    gpsButton: {
+    fullGpsButton: {
         width: "100%",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        gap: "6px",
-        background: "#e0f2fe",
-        color: "#0284c7",
-        border: "1px solid #bae6fd",
-        padding: "11px 10px",
-        borderRadius: "10px",
-        fontSize: "12px",
-        fontWeight: 700,
-        cursor: "pointer"
-    },
-    pilotGpsButton: {
-        width: "100%",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: "6px",
-        background: "#f0fdf4",
-        color: "#16a34a",
-        border: "1px solid #bbf7d0",
-        padding: "11px 10px",
-        borderRadius: "10px",
-        fontSize: "12px",
-        fontWeight: 700,
-        cursor: "pointer"
+        gap: "8px",
+        background: "linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%)",
+        color: "#0369a1",
+        border: "1.5px solid #7dd3fc",
+        padding: "14px 16px",
+        borderRadius: "12px",
+        fontSize: "13.5px",
+        fontWeight: 800,
+        cursor: "pointer",
+        boxShadow: "0 2px 8px rgba(2, 132, 199, 0.15)"
     },
     gpsStatusPill: {
         display: "flex",
@@ -1261,11 +1181,11 @@ const styles = {
         background: "#f0fdf4",
         border: "1px solid #bbf7d0",
         color: "#15803d",
-        fontSize: "11.5px",
+        fontSize: "12px",
         fontWeight: 600,
-        padding: "7px 12px",
+        padding: "8px 12px",
         borderRadius: "8px",
-        marginBottom: "12px"
+        marginBottom: "14px"
     },
     voiceBtn: {
         display: "flex",

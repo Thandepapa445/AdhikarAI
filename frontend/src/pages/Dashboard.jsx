@@ -5,7 +5,7 @@ import {
     Briefcase, CheckCircle2, ChevronRight, AlertTriangle, ArrowUpRight,
     TrendingUp, ShieldCheck, FileCheck2, Lightbulb, RefreshCw
 } from "lucide-react";
-import { THEMATIC_DOMAINS, PARTICIPATING_HEIS, INDUSTRY_CSR_PARTNERS, STAGES_OF_INNOVATION } from "../data/jharkhandData";
+import { THEMATIC_DOMAINS, PARTICIPATING_HEIS, INDIA_STATES_AND_REGIONS } from "../data/indiaData";
 import { challengeService, getLocalChallenges } from "../services/api";
 import NavBar from "../components/NavBar";
 import ChallengeDetailModal from "../components/ChallengeDetailModal";
@@ -92,14 +92,14 @@ export default function Dashboard() {
                     <div className="hero-content" style={styles.heroContent}>
                         <div style={styles.heroBadge}>
                             <Sparkles size={14} color="#0284c7" />
-                            <span>Jharkhand NEP 2020 Experiential Social Innovation Platform</span>
+                            <span>Adhikar AI • National Citizen Innovation & Grievance Ecosystem</span>
                         </div>
                         <h1 style={styles.heroHeading}>
                             Transforming Grassroots Challenges into <br />
-                            <span style={styles.headingGradient}>University Research & Deployed Technologies</span>
+                            <span style={styles.headingGradient}>University Research & Civic Solutions</span>
                         </h1>
                         <p style={styles.heroSub}>
-                            Welcome, <strong>Satbarwa Gram Panchayat & Citizen Innovators</strong>. Submit community challenges across Water, Agriculture, Healthcare, and Clean Energy to be matched with Jharkhand Higher Education Institutions (HEIs) and supported by Industry CSR funding.
+                            Welcome, <strong>Citizen Innovators & Community Representatives</strong>. Submit local challenges across Infrastructure, Sanitation, Water, and Clean Energy to be matched with premier Universities (HEIs) and routed for administrative redressal.
                         </p>
 
                         <div style={styles.heroButtons}>
@@ -116,7 +116,7 @@ export default function Dashboard() {
                                 style={styles.secondaryCta}
                             >
                                 <MapPin size={18} />
-                                <span>Explore Jharkhand GIS Map</span>
+                                <span>Explore National GIS Map</span>
                             </button>
                         </div>
                     </div>
@@ -131,7 +131,7 @@ export default function Dashboard() {
                                 </div>
                             </div>
                             <div style={styles.kpiValue}>{totalChallenges}</div>
-                            <span style={styles.kpiSub}>Crowdsourced across Jharkhand</span>
+                            <span style={styles.kpiSub}>Crowdsourced across India</span>
                         </div>
 
                         <div style={styles.kpiCard}>
@@ -188,7 +188,7 @@ export default function Dashboard() {
                             ...(activeTab === "community-map" ? styles.activeTabBtn : {})
                         }}
                     >
-                        🗺️ Jharkhand Community GIS Map
+                        🗺️ National Community GIS Map
                     </button>
 
                     <button
@@ -388,7 +388,7 @@ export default function Dashboard() {
                 {activeTab === "showcase" && (
                     <section style={styles.contentSection}>
                         <div style={styles.showcaseIntro}>
-                            <h2 style={styles.secHeading}>Grassroots Technologies Deployed in Jharkhand Villages</h2>
+                            <h2 style={styles.secHeading}>Grassroots Technologies Deployed Across Indian Communities</h2>
                             <p style={styles.secSub}>
                                 Real-world social impact achieved through NEP 2020 student research, multidisciplinary university fablabs, and industry CSR partnerships.
                             </p>
@@ -409,11 +409,11 @@ export default function Dashboard() {
                                             <strong>Deployed Solution:</strong> {item.prototypeDetails || item.description}
                                         </p>
                                         <div style={styles.showcaseResults}>
-                                            <strong>Measured Social Outcome:</strong> {item.pilotResults || "Verified field improvement in Panchayat."}
+                                            <strong>Measured Social Outcome:</strong> {item.pilotResults || "Verified field improvement in Panchayat / Ward."}
                                         </div>
                                         <div style={styles.showcaseFooter}>
                                             <span>🎓 <strong>{item.assignedHei}</strong></span>
-                                            <span>📍 {item.panchayat}, {item.district}</span>
+                                            <span>📍 {[item.panchayat, item.district, item.state].filter(Boolean).join(", ")}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -426,7 +426,7 @@ export default function Dashboard() {
                 {activeTab === "network" && (
                     <section style={styles.contentSection}>
                         <div style={styles.showcaseIntro}>
-                            <h2 style={styles.secHeading}>Jharkhand Higher Education & Industry Ecosystem</h2>
+                            <h2 style={styles.secHeading}>National Higher Education & Industry Ecosystem</h2>
                             <p style={styles.secSub}>
                                 Universities, Institutes of National Importance, and Corporate CSR wings actively collaborating under NEP 2020.
                             </p>
@@ -441,7 +441,7 @@ export default function Dashboard() {
                                             <Building size={20} color="#7c3aed" />
                                             <div>
                                                 <h4 style={styles.heiName}>{hei.name}</h4>
-                                                <span style={styles.heiLoc}>📍 {hei.district}, Jharkhand</span>
+                                                <span style={styles.heiLoc}>📍 {hei.district}, {hei.state || "India"}</span>
                                             </div>
                                         </div>
                                         <div style={styles.heiLabsList}>

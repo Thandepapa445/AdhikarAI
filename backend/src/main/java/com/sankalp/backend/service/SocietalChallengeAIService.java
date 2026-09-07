@@ -9,35 +9,35 @@ public class SocietalChallengeAIService {
     public String predictDomain(String text) {
         String t = text.toLowerCase();
 
-        if (containsAny(t, "water", "drinking water", "fluoride", "arsenic", "contamination", "pipeline", "groundwater", "filtration", "well", "pond", "irrigation", "check dam", "handpump", "borewell")) {
+        if (containsAny(t, "water", "drinking water", "fluoride", "arsenic", "contamination", "pipeline", "groundwater", "filtration", "well", "pond", "irrigation", "check dam", "handpump", "borewell", "water leakage")) {
             return "WATER";
         }
-        if (containsAny(t, "crop", "agriculture", "farmer", "lac", "tasar", "silk", "harvest", "cold storage", "mahua", "soil", "pest", "fertilizer", "kisan", "mandi", "horticulture", "seeds", "forest produce")) {
+        if (containsAny(t, "crop", "agriculture", "farmer", "silk", "harvest", "cold storage", "soil", "pest", "fertilizer", "kisan", "mandi", "horticulture", "seeds", "forest produce")) {
             return "AGRICULTURE";
         }
-        if (containsAny(t, "health", "hospital", "clinic", "doctor", "medicine", "sickle cell", "malnutrition", "maternal", "sanitation", "toilet", "hygiene", "telemedicine", "ambulance", "phc", "diagnostic", "disease")) {
+        if (containsAny(t, "health", "hospital", "clinic", "doctor", "medicine", "sanitation", "toilet", "hygiene", "telemedicine", "ambulance", "phc", "diagnostic", "disease", "garbage", "trash", "waste")) {
             return "HEALTHCARE";
         }
-        if (containsAny(t, "solar", "energy", "electricity", "power", "grid", "micro-grid", "biomass", "forest", "fire", "pollution", "air quality", "waste to energy", "battery", "carbon")) {
+        if (containsAny(t, "solar", "energy", "electricity", "power", "grid", "micro-grid", "biomass", "forest", "fire", "pollution", "air quality", "waste to energy", "battery", "carbon", "tree", "fallen tree")) {
             return "ENERGY_ENVIRONMENT";
         }
-        if (containsAny(t, "mining", "coal", "fly ash", "overburden", "mine water", "acid mine", "rehabilitation", "subsidence", "dust suppression", "quarry")) {
+        if (containsAny(t, "mining", "coal", "fly ash", "overburden", "mine water", "rehabilitation", "subsidence", "quarry")) {
             return "MINING_REHAB";
         }
-        if (containsAny(t, "school", "education", "student", "teacher", "classroom", "skill", "vocational", "training", "santhali", "mundari", "ho", "digital learning", "computer", "library")) {
+        if (containsAny(t, "school", "education", "student", "teacher", "classroom", "skill", "vocational", "training", "digital learning", "computer", "library")) {
             return "EDUCATION";
         }
         if (containsAny(t, "accessibility", "disability", "assistive", "wheelchair", "blind", "deaf", "mobility", "prosthetic", "divyang", "ramp", "braille")) {
             return "ACCESSIBILITY";
         }
-        if (containsAny(t, "road", "bridge", "culvert", "pothole", "transport", "street light", "waste management", "garbage", "drain", "connectivity", "infrastructure")) {
+        if (containsAny(t, "road", "bridge", "culvert", "pothole", "transport", "street light", "crater", "asphalt", "connectivity", "infrastructure")) {
             return "INFRASTRUCTURE";
         }
-        if (containsAny(t, "governance", "pds", "ration", "portal", "panchayat", "land records", "mutation", "certificate", "scheme", "subsidy", "service delivery", "grievance")) {
+        if (containsAny(t, "governance", "pds", "ration", "portal", "panchayat", "municipality", "certificate", "scheme", "subsidy", "service delivery", "grievance")) {
             return "PUBLIC_ADMIN";
         }
 
-        return "WATER";
+        return "INFRASTRUCTURE";
     }
 
     public String predictUrgency(String text) {
@@ -45,7 +45,7 @@ public class SocietalChallengeAIService {
         if (containsAny(t, "critical", "emergency", "fatal", "toxic", "poisoning", "danger", "contamination", "collapse", "severe illness", "epidemic", "arsenic", "fluoride")) {
             return "CRITICAL";
         }
-        if (containsAny(t, "urgent", "immediate", "spoilage", "crop failure", "loss", "heavy damage", "broken", "blocked", "shortage")) {
+        if (containsAny(t, "urgent", "immediate", "spoilage", "crop failure", "loss", "heavy damage", "broken", "blocked", "shortage", "accident")) {
             return "HIGH";
         }
         if (containsAny(t, "upgrade", "improvement", "delay", "manual", "slow")) {
@@ -58,45 +58,46 @@ public class SocietalChallengeAIService {
         switch (domain) {
             case "WATER":
                 return Map.of(
-                        "assignedHei", "BIT Mesra, Ranchi",
-                        "department", "Civil & Environmental Engineering (Water FabLab)",
-                        "mentor", "Dr. Arvind Sharma (Water & Environmental Engg)",
-                        "industryPartner", "Tata Steel Foundation (Water Initiative) & CleanAqua MSME"
+                        "assignedHei", "IIT Madras / BIT Mesra",
+                        "department", "Clean Water & Rural Innovation FabLab",
+                        "mentor", "Prof. T. Pradeep / Dr. Arvind Sharma",
+                        "industryPartner", "National Clean Water CSR Initiative"
                 );
             case "AGRICULTURE":
                 return Map.of(
-                        "assignedHei", "Birsa Agricultural University (BAU) & NIT Jamshedpur",
-                        "department", "Department of Agricultural Engineering & FabLab",
-                        "mentor", "Dr. Birsa Hansda & Dr. Manoj Gupta",
-                        "industryPartner", "Jharkhand AgTech & Rural Innovation Incubator"
-                );
-            case "MINING_REHAB":
-                return Map.of(
-                        "assignedHei", "IIT (ISM) Dhanbad",
-                        "department", "Department of Environmental Science & Mining Tech",
-                        "mentor", "Prof. Alok Kumar & Dr. D. P. Singh",
-                        "industryPartner", "Coal India / CCL CSR Division"
+                        "assignedHei", "IIT Kharagpur & Birsa Agricultural University",
+                        "department", "Precision Agriculture & Rural Development Lab",
+                        "mentor", "Prof. V. M. Chowdary",
+                        "industryPartner", "AgTech & Rural Innovation Incubator"
                 );
             case "HEALTHCARE":
                 return Map.of(
-                        "assignedHei", "AIIMS Deoghar",
-                        "department", "Telemedicine & Remote Diagnostic Innovation Lab",
-                        "mentor", "Dr. S. K. Mahato (Community Medicine)",
-                        "industryPartner", "Tata Steel Foundation (Health Initiative)"
+                        "assignedHei", "AIIMS New Delhi / AIIMS Deoghar",
+                        "department", "Centre for Community Medicine & Telehealth",
+                        "mentor", "Dr. Sanjay K. Rai",
+                        "industryPartner", "National Health & Sanitation Mission"
+                );
+            case "ENERGY_ENVIRONMENT":
+                return Map.of(
+                        "assignedHei", "IIT Delhi / DTU Delhi",
+                        "department", "Clean Energy & Urban Environmental Lab",
+                        "mentor", "Prof. B. K. Panigrahi / Prof. S. K. Garg",
+                        "industryPartner", "Clean Energy & Urban Resilience CSR"
                 );
             case "EDUCATION":
                 return Map.of(
-                        "assignedHei", "Ranchi University & IIIT Ranchi",
-                        "department", "Tribal Language Center & AI EdTech Unit",
-                        "mentor", "Dr. Rameshwar Oraon & Dr. Priya Ranjan",
-                        "industryPartner", "Tata Steel Foundation (EdTech CSR)"
+                        "assignedHei", "IIT Bombay / BITS Pilani",
+                        "department", "Centre for Technology Alternatives & AI EdTech Unit",
+                        "mentor", "Prof. Satish Agnihotri",
+                        "industryPartner", "National Digital Literacy Grant"
                 );
+            case "INFRASTRUCTURE":
             default:
                 return Map.of(
-                        "assignedHei", "NIT Jamshedpur",
-                        "department", "Center for Sustainable Technology & Innovation",
-                        "mentor", "Dr. Manoj Gupta",
-                        "industryPartner", "Heavy Engineering Corporation (HEC) Innovation Wing"
+                        "assignedHei", "DTU Delhi / ABESIT Ghaziabad",
+                        "department", "Smart Infrastructure & Pavement Materials Lab",
+                        "mentor", "Prof. S. K. Garg / Dr. Hemant Ahuja",
+                        "industryPartner", "Smart Cities & Infrastructure Mission"
                 );
         }
     }

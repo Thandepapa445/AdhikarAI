@@ -23,13 +23,13 @@ class _NewChallengeScreenState extends State<NewChallengeScreen> {
 
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _descController = TextEditingController();
-  final TextEditingController _districtController = TextEditingController(text: "Ghaziabad");
-  final TextEditingController _blockController = TextEditingController(text: "Vijay Nagar");
-  final TextEditingController _panchayatController = TextEditingController(text: "Near ABESIT Campus");
+  final TextEditingController _districtController = TextEditingController(text: "North West Delhi");
+  final TextEditingController _blockController = TextEditingController(text: "Rohini");
+  final TextEditingController _panchayatController = TextEditingController(text: "Sector 16");
   final TextEditingController _affectedPopController = TextEditingController(text: "850");
 
-  double _lat = 28.6360;
-  double _lng = 77.4470;
+  double _lat = 28.7499;
+  double _lng = 77.1170;
   String _selectedDomain = "INFRASTRUCTURE";
   String _selectedUrgency = "HIGH";
   String _submitterType = "INDIVIDUAL_CITIZEN";
@@ -42,12 +42,13 @@ class _NewChallengeScreenState extends State<NewChallengeScreen> {
   bool _isLocating = false;
 
   // AI Live Ingestion State
-  String _aiConfidence = "94.0%";
+  String _aiConfidence = "95.0%";
   UniversityMatch? _suggestedHei;
 
   @override
   void initState() {
     super.initState();
+    _acquireGps();
     _triggerAiAnalysis();
   }
 
@@ -71,21 +72,21 @@ class _NewChallengeScreenState extends State<NewChallengeScreen> {
     String detected = _selectedDomain;
     String conf = "88.0%";
 
-    if (lower.contains("water") || lower.contains("fluoride") || lower.contains("handpump") || lower.contains("arsenic")) {
+    if (lower.contains("water") || lower.contains("fluoride") || lower.contains("handpump") || lower.contains("arsenic") || lower.contains("leakage")) {
       detected = "WATER";
       conf = "96.0%";
     } else if (lower.contains("crop") || lower.contains("farmer") || lower.contains("pest") || lower.contains("agriculture")) {
       detected = "AGRICULTURE";
       conf = "93.0%";
-    } else if (lower.contains("health") || lower.contains("hospital") || lower.contains("doctor") || lower.contains("disease")) {
+    } else if (lower.contains("health") || lower.contains("hospital") || lower.contains("garbage") || lower.contains("waste") || lower.contains("sanitation")) {
       detected = "HEALTHCARE";
-      conf = "92.0%";
-    } else if (lower.contains("mine") || lower.contains("coal") || lower.contains("quarry") || lower.contains("ash")) {
-      detected = "MINING_REHAB";
-      conf = "97.0%";
-    } else if (lower.contains("road") || lower.contains("pothole") || lower.contains("bridge") || lower.contains("culvert")) {
-      detected = "INFRASTRUCTURE";
+      conf = "94.0%";
+    } else if (lower.contains("tree") || lower.contains("fallen tree") || lower.contains("solar") || lower.contains("energy")) {
+      detected = "ENERGY_ENVIRONMENT";
       conf = "95.0%";
+    } else if (lower.contains("road") || lower.contains("pothole") || lower.contains("bridge") || lower.contains("street light") || lower.contains("infrastructure")) {
+      detected = "INFRASTRUCTURE";
+      conf = "96.0%";
     }
 
     setState(() {
@@ -109,17 +110,6 @@ class _NewChallengeScreenState extends State<NewChallengeScreen> {
     }
   }
 
-  void _applyPreset(Map<String, dynamic> preset) {
-    setState(() {
-      _districtController.text = preset['district'];
-      _blockController.text = preset['block'];
-      _panchayatController.text = preset['panchayat'];
-      _lat = preset['lat'];
-      _lng = preset['lng'];
-    });
-    _triggerAiAnalysis();
-  }
-
   Future<void> _acquireGps() async {
     setState(() => _isLocating = true);
     try {
@@ -133,17 +123,18 @@ class _NewChallengeScreenState extends State<NewChallengeScreen> {
         setState(() {
           _lat = pos.latitude;
           _lng = pos.longitude;
-          _panchayatController.text = "GPS: Lat ${_lat.toStringAsFixed(4)}, Lng ${_lng.toStringAsFixed(4)}";
+          _panchayatController.text = "GPS: ${_lat.toStringAsFixed(4)}° N, ${_lng.toStringAsFixed(4)}° E";
         });
         _triggerAiAnalysis();
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("📍 1-Tap GPS Location Acquired!"), backgroundColor: Color(0xFF16A34A)),
+          SnackBar(
+            content: Text("📍 1-Tap GPS Locked (${_lat.toStringAsFixed(4)}° N, ${_lng.toStringAsFixed(4)}° E)"),
+            backgroundColor: const Color(0xFF16A34A),
+          ),
         );
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Using default campus GPS coordinates")),
-      );
+      // fallback
     } finally {
       if (mounted) setState(() => _isLocating = false);
     }
@@ -157,7 +148,7 @@ class _NewChallengeScreenState extends State<NewChallengeScreen> {
           _selectedImage = File(picked.path);
         });
 
-        // Run YOLOv8 vision audit
+        // Run 4-Class YOLOv8 vision audit
         final visionResult = await _apiService.detectVisualEvidence(_selectedImage!);
         if (mounted && visionResult != null && visionResult.isVisualEvidenceVerified) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -179,7 +170,7 @@ class _NewChallengeScreenState extends State<NewChallengeScreen> {
     setState(() => _isSubmitting = true);
 
     final newChallenge = ChallengeModel(
-      id: "JH-2026-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}",
+      id: "ADH-2026-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}",
       title: _titleController.text.trim(),
       description: _descController.text.trim(),
       domain: _selectedDomain,
@@ -187,7 +178,7 @@ class _NewChallengeScreenState extends State<NewChallengeScreen> {
       urgency: _selectedUrgency,
       submitterType: _submitterType,
       submitterName: _submitterName,
-      citizenEmail: "citizen@jharkhand.gov.in",
+      citizenEmail: "citizen@adhikar.in",
       district: _districtController.text.trim(),
       block: _blockController.text.trim(),
       panchayat: _panchayatController.text.trim(),
@@ -200,9 +191,9 @@ class _NewChallengeScreenState extends State<NewChallengeScreen> {
           ? "https://images.unsplash.com/photo-1541888946425-d0fbb180c5f5?w=800"
           : "https://images.unsplash.com/photo-1541888946425-d0fbb180c5f5?w=800",
       upvotes: 1,
-      assignedHei: _suggestedHei?.name ?? "BIT Mesra, Ranchi",
-      assignedHeiDepartment: _suggestedHei?.specializedLab ?? "Clean Water & Rural Innovation FabLab",
-      facultyMentor: _suggestedHei?.facultyMentor ?? "Dr. Arvind Sharma",
+      assignedHei: _suggestedHei?.name ?? "Delhi Technological University (DTU), Delhi",
+      assignedHeiDepartment: _suggestedHei?.specializedLab ?? "Urban Mobility & Clean Energy Innovation Hub",
+      facultyMentor: _suggestedHei?.facultyMentor ?? "Prof. S. K. Garg",
     );
 
     final provider = Provider.of<ChallengeProvider>(context, listen: false);
@@ -212,7 +203,7 @@ class _NewChallengeScreenState extends State<NewChallengeScreen> {
       setState(() => _isSubmitting = false);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text("🚀 Challenge Ingested into State Innovation Pipeline!"),
+          content: Text("🚀 Challenge Ingested into Adhikar AI National Pipeline!"),
           backgroundColor: Color(0xFF16A34A),
         ),
       );
@@ -246,7 +237,7 @@ class _NewChallengeScreenState extends State<NewChallengeScreen> {
                   SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      "Submissions are routed directly to university engineering labs for prototyping & CSR grant co-funding.",
+                      "Submissions are routed directly to university engineering labs or municipal desks across India.",
                       style: TextStyle(fontSize: 12, color: Color(0xFF0369A1), fontWeight: FontWeight.w600),
                     ),
                   ),
@@ -256,70 +247,40 @@ class _NewChallengeScreenState extends State<NewChallengeScreen> {
 
             const SizedBox(height: 16),
 
-            // 2. 1-Tap Location Presets
-            const Text(
-              "📍 1-Tap Location Quick Presets",
-              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: Color(0xFF0F172A)),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: AppConstants.campusPresets.map((p) {
-                return Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 2),
-                    child: OutlinedButton(
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        side: const BorderSide(color: Color(0xFFCBD5E1)),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                      ),
-                      onPressed: () => _applyPreset(p),
-                      child: Text(
-                        p['label'].toString().split(' ')[0],
-                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF334155)),
-                      ),
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
-
-            const SizedBox(height: 12),
-
-            // 3. 1-Tap Live GPS Button
+            // 2. Pure 1-Tap Live GPS Button
             ElevatedButton.icon(
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF0F172A),
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                backgroundColor: const Color(0xFF0284C7),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
               icon: _isLocating
-                  ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                  : const Icon(Icons.my_location, size: 16),
+                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                  : const Icon(Icons.my_location, size: 18, color: Colors.white),
               label: Text(
-                _isLocating ? "Acquiring GPS..." : "🎯 1-Tap Auto-GPS (${_lat.toStringAsFixed(3)}°, ${_lng.toStringAsFixed(3)}°)",
-                style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700),
+                _isLocating ? "Acquiring High-Accuracy GPS..." : "📍 1-Tap Auto-Detect Live GPS (${_lat.toStringAsFixed(3)}°, ${_lng.toStringAsFixed(3)}°)",
+                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Colors.white),
               ),
               onPressed: _acquireGps,
             ),
 
             const SizedBox(height: 16),
 
-            // 4. Challenge Title
+            // 3. Challenge Title
             const Text("Challenge Title *", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
             const SizedBox(height: 6),
             TextFormField(
               controller: _titleController,
               onChanged: (_) => _triggerAiAnalysis(),
               decoration: const InputDecoration(
-                hintText: "e.g. Severe Fluoride Contamination in Village Handpumps",
+                hintText: "e.g. Deep Hazardous Pothole Cluster on Main Arterial Road",
               ),
               validator: (v) => (v == null || v.trim().length < 5) ? "Please provide a descriptive title" : null,
             ),
 
             const SizedBox(height: 14),
 
-            // 5. Challenge Description
+            // 4. Challenge Description
             const Text("Detailed Problem Description *", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
             const SizedBox(height: 6),
             TextFormField(
@@ -327,20 +288,20 @@ class _NewChallengeScreenState extends State<NewChallengeScreen> {
               maxLines: 4,
               onChanged: (_) => _triggerAiAnalysis(),
               decoration: const InputDecoration(
-                hintText: "Describe the grassroots issue, community impact, and technical requirement...",
+                hintText: "Describe the grassroots issue, community safety impact, and urgency...",
               ),
               validator: (v) => (v == null || v.trim().length < 10) ? "Please describe the problem in detail" : null,
             ),
 
             const SizedBox(height: 16),
 
-            // 6. LIVE AI Ingestion Card
+            // 5. LIVE AI Ingestion Card
             _buildAiIngestionCard(),
 
             const SizedBox(height: 16),
 
-            // 7. Evidence Photo Capture
-            const Text("📸 Field Evidence Photo (Camera / Gallery)", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+            // 6. Evidence Photo Capture
+            const Text("📸 Field Evidence Photo (4-Class YOLOv8 AI)", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
             const SizedBox(height: 8),
             if (_selectedImage != null)
               Stack(
@@ -371,7 +332,7 @@ class _NewChallengeScreenState extends State<NewChallengeScreen> {
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
-                        "📍 Lat: ${_lat.toStringAsFixed(4)}°, Lng: ${_lng.toStringAsFixed(4)}° • Authentic",
+                        "📍 Lat: ${_lat.toStringAsFixed(4)}°, Lng: ${_lng.toStringAsFixed(4)}° • Verified Evidence",
                         style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700),
                       ),
                     ),
@@ -409,14 +370,14 @@ class _NewChallengeScreenState extends State<NewChallengeScreen> {
 
             const SizedBox(height: 16),
 
-            // 8. Administrative Location Inputs
+            // 7. Administrative Location Inputs
             Row(
               children: [
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text("District", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12.5)),
+                      const Text("District / City", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12.5)),
                       const SizedBox(height: 4),
                       TextFormField(controller: _districtController),
                     ],
@@ -444,7 +405,7 @@ class _NewChallengeScreenState extends State<NewChallengeScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text("Panchayat / Village", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12.5)),
+                      const Text("Area / Landmark", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12.5)),
                       const SizedBox(height: 4),
                       TextFormField(controller: _panchayatController),
                     ],
@@ -469,7 +430,7 @@ class _NewChallengeScreenState extends State<NewChallengeScreen> {
 
             const SizedBox(height: 24),
 
-            // 9. Submit Button
+            // 8. Submit Button
             SizedBox(
               width: double.infinity,
               height: 52,
@@ -482,7 +443,7 @@ class _NewChallengeScreenState extends State<NewChallengeScreen> {
                     ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
                     : const Icon(Icons.send_rounded, size: 18),
                 label: Text(
-                  _isSubmitting ? "Ingesting Challenge..." : "Submit to State Innovation Council",
+                  _isSubmitting ? "Ingesting Challenge..." : "Submit to National Innovation Portal",
                   style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14.5),
                 ),
                 onPressed: _isSubmitting ? null : _handleSubmit,
@@ -523,7 +484,7 @@ class _NewChallengeScreenState extends State<NewChallengeScreen> {
               Icon(Icons.auto_awesome, color: Color(0xFF0284C7), size: 16),
               SizedBox(width: 6),
               Text(
-                "Sankalp AI Ingestion & Routing Engine",
+                "Adhikar AI Ingestion & Routing Engine",
                 style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
               ),
             ],
@@ -568,7 +529,7 @@ class _NewChallengeScreenState extends State<NewChallengeScreen> {
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(
-                  "⭐ ${_suggestedHei?.matchScorePercent ?? '95.0%'} Match",
+                  "⭐ ${_suggestedHei?.matchScorePercent ?? '96.0%'} Match",
                   style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: Color(0xFF7C3AED)),
                 ),
               ),
@@ -576,17 +537,17 @@ class _NewChallengeScreenState extends State<NewChallengeScreen> {
           ),
           const SizedBox(height: 6),
           Text(
-            _suggestedHei?.name ?? "BIT Mesra, Ranchi",
+            _suggestedHei?.name ?? "Delhi Technological University (DTU)",
             style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFF1E293B)),
           ),
           const SizedBox(height: 2),
           Text(
-            "🔬 Lab: ${_suggestedHei?.specializedLab ?? 'Clean Water & Rural Innovation FabLab'}",
+            "🔬 Lab: ${_suggestedHei?.specializedLab ?? 'Urban Mobility & Clean Energy Innovation Hub'}",
             style: const TextStyle(fontSize: 11.5, color: Color(0xFF475569)),
           ),
           const SizedBox(height: 2),
           Text(
-            "👨‍🏫 Mentor: ${_suggestedHei?.facultyMentor ?? 'Dr. Arvind Sharma'}",
+            "👨‍🏫 Mentor: ${_suggestedHei?.facultyMentor ?? 'Prof. S. K. Garg'}",
             style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
           ),
         ],

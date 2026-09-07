@@ -6,7 +6,7 @@ import {
     TrendingUp, FileText, ChevronRight, Layers, RefreshCw, Send,
     SlidersHorizontal, Eye, ExternalLink, ArrowRight, UserCheck
 } from "lucide-react";
-import { THEMATIC_DOMAINS, JHARKHAND_DISTRICTS, PARTICIPATING_HEIS, INDUSTRY_CSR_PARTNERS, STAGES_OF_INNOVATION } from "../data/jharkhandData";
+import { THEMATIC_DOMAINS, INDIA_STATES_AND_REGIONS, PARTICIPATING_HEIS, INDUSTRY_CSR_PARTNERS, STAGES_OF_INNOVATION } from "../data/indiaData";
 import { challengeService, getLocalChallenges, saveLocalChallenges } from "../services/api";
 import ChallengeDetailModal from "../components/ChallengeDetailModal";
 import CommunityInnovationMap from "../components/CommunityInnovationMap";
@@ -30,16 +30,16 @@ export default function AdminDashboard() {
 
     // Assign HEI Modal state
     const [assigningChallenge, setAssigningChallenge] = useState(null);
-    const [selectedHeiId, setSelectedHeiId] = useState("HEI-01");
+    const [selectedHeiId, setSelectedHeiId] = useState("HEI-IN-01");
     const [selectedCsrId, setSelectedCsrId] = useState("IND-01");
     const [nodalNote, setNodalNote] = useState("");
 
     // Audit Log State
     const [auditLogs, setAuditLogs] = useState([
-        { id: 1, time: "10 mins ago", event: "Challenge #JH-0101 verified by Satbarwa Panchayat", officer: "System / Citizen Verification", type: "RESOLVED" },
-        { id: 2, time: "2 hours ago", event: "BIT Mesra uploaded Nano-Filter lab test reports", officer: "Dr. Arvind Sharma", type: "TESTING" },
-        { id: 3, time: "Yesterday", event: "Tata Steel CSR allocated ₹3.5 Lakhs Grant to Khunti Lac Project", officer: "CSR Nodal Officer", type: "GRANT" },
-        { id: 4, time: "2 days ago", event: "AI Deduplication clustered 3 water challenges in Palamu", officer: "Sankalp AI Engine", type: "AI_CLUSTER" }
+        { id: 1, time: "10 mins ago", event: "Challenge #ADH-2026-1041 verified by Field Officer", officer: "System / Citizen Verification", type: "RESOLVED" },
+        { id: 2, time: "2 hours ago", event: "DTU Delhi uploaded polymer patch lab test reports", officer: "Prof. S. K. Garg", type: "TESTING" },
+        { id: 3, time: "Yesterday", event: "National Innovation Fund allocated ₹3.5 Lakhs Grant", officer: "Nodal Officer", type: "GRANT" },
+        { id: 4, time: "2 days ago", event: "AI Deduplication clustered 2 infrastructure challenges", officer: "Adhikar AI Engine", type: "AI_CLUSTER" }
     ]);
 
     const loadData = async () => {
@@ -53,6 +53,15 @@ export default function AdminDashboard() {
             setLoading(false);
         }
     };
+
+    const allDistricts = useMemo(() => {
+        return Array.from(
+            new Set([
+                ...challenges.map(c => c.district).filter(Boolean),
+                ...INDIA_STATES_AND_REGIONS.flatMap(s => s.districts)
+            ])
+        ).sort();
+    }, [challenges]);
 
     useEffect(() => {
         loadData();
@@ -166,10 +175,10 @@ export default function AdminDashboard() {
                         </div>
                         <div>
                             <div style={styles.adminTitle}>
-                                Sankalp AI <span style={{ color: "#38bdf8" }}>Admin & Nodal Command Center</span>
+                                Adhikar AI <span style={{ color: "#38bdf8" }}>Admin & Nodal Command Center</span>
                             </div>
                             <div style={styles.adminSub}>
-                                State Innovation Council • Higher & Technical Education Department, Govt. of Jharkhand
+                                National Innovation & Grievance Governance Portal • Inter-Ministerial & State Councils
                             </div>
                         </div>
                     </div>
@@ -261,7 +270,7 @@ export default function AdminDashboard() {
                             </div>
                         </div>
                         <div style={{ ...styles.kpiVal, color: "#0d9488" }}>{totalBeneficiaries.toLocaleString()}+</div>
-                        <span style={styles.kpiSub}>Jharkhand Villagers</span>
+                        <span style={styles.kpiSub}>Citizens Impacted</span>
                     </div>
                 </section>
 
@@ -338,9 +347,9 @@ export default function AdminDashboard() {
                                     onChange={(e) => setFilterDistrict(e.target.value)}
                                     style={styles.select}
                                 >
-                                    <option value="ALL">All 24 Districts</option>
-                                    {JHARKHAND_DISTRICTS.map(d => (
-                                        <option key={d.name} value={d.name}>{d.name}</option>
+                                    <option value="ALL">All Regions / Districts</option>
+                                    {allDistricts.map(d => (
+                                        <option key={d} value={d}>{d}</option>
                                     ))}
                                 </select>
 
@@ -557,7 +566,7 @@ export default function AdminDashboard() {
                                             <div style={styles.heiGovAvatar}>🎓</div>
                                             <div>
                                                 <h3 style={styles.heiGovName}>{hei.name}</h3>
-                                                <span style={styles.heiGovLoc}>📍 {hei.district}, Jharkhand</span>
+                                                <span style={styles.heiGovLoc}>📍 {hei.district}, {hei.state || "India"}</span>
                                             </div>
                                             <div style={styles.heiActiveCountBadge}>
                                                 <strong>{heiProjects.length}</strong> Active Projects
@@ -623,20 +632,23 @@ export default function AdminDashboard() {
                 {activeTab === "district-intelligence" && (
                     <section>
                         <div style={styles.districtGrid}>
-                            {JHARKHAND_DISTRICTS.map(dist => {
+                            {INDIA_STATES_AND_REGIONS.flatMap(st => st.districts.map(dName => ({ name: dName, state: st.state }))).map(dist => {
                                 const distChallenges = challenges.filter(c => c.district === dist.name);
                                 const solvedCount = distChallenges.filter(c => c.status === "RESOLVED").length;
 
                                 return (
-                                    <div key={dist.name} style={styles.districtCard}>
+                                    <div key={`${dist.state}-${dist.name}`} style={styles.districtCard}>
                                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                                            <h4 style={{ fontSize: "15px", fontWeight: 800, color: "#0f172a" }}>{dist.name}</h4>
+                                            <div>
+                                                <h4 style={{ fontSize: "15px", fontWeight: 800, color: "#0f172a" }}>{dist.name}</h4>
+                                                <span style={{ fontSize: "11px", color: "#64748b" }}>{dist.state}</span>
+                                            </div>
                                             <span style={{ fontSize: "12px", fontWeight: 700, color: "#0284c7", background: "#e0f2fe", padding: "2px 8px", borderRadius: "10px" }}>
                                                 {distChallenges.length} Submissions
                                             </span>
                                         </div>
                                         <div style={{ fontSize: "12px", color: "#64748b", margin: "6px 0" }}>
-                                            Blocks covered: {dist.blocks.length} | Solved Pilots: <strong>{solvedCount}</strong>
+                                            Solved Pilots: <strong>{solvedCount}</strong>
                                         </div>
                                         <div style={{ width: "100%", height: "6px", background: "#e2e8f0", borderRadius: "4px", overflow: "hidden" }}>
                                             <div style={{ width: `${distChallenges.length > 0 ? (solvedCount / distChallenges.length) * 100 : 0}%`, height: "100%", background: "#16a34a" }} />

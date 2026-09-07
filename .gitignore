@@ -93,10 +93,17 @@ env/
 
 # Model-generated files
 *.pt
+!ai-engine/weights/best.pt
 *.pth
 *.onnx
 *.h5
 *.keras
+
+# Flutter
+**/mobile_flutter/.dart_tool/
+**/mobile_flutter/.flutter-plugins*
+**/mobile_flutter/build/
+*.apk
 
 # Jupyter
 .ipynb_checkpoints/

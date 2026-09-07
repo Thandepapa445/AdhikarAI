@@ -26,7 +26,7 @@ public class ChallengeController {
             @Valid @RequestBody ChallengeRequest request,
             Authentication authentication
     ) {
-        String userEmail = authentication != null ? authentication.getName() : "citizen@jharkhand.gov.in";
+        String userEmail = authentication != null ? authentication.getName() : "citizen@adhikar.gov.in";
         Challenge created = challengeService.createChallenge(request, userEmail);
         return ResponseEntity.ok(created);
     }
@@ -38,7 +38,7 @@ public class ChallengeController {
 
     @GetMapping("/my")
     public ResponseEntity<List<Challenge>> getMyChallenges(Authentication authentication) {
-        String userEmail = authentication != null ? authentication.getName() : "citizen@jharkhand.gov.in";
+        String userEmail = authentication != null ? authentication.getName() : "citizen@adhikar.gov.in";
         return ResponseEntity.ok(challengeService.getMyChallenges(userEmail));
     }
 

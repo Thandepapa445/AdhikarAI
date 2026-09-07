@@ -1,5 +1,5 @@
 import axios from "axios";
-import { INITIAL_SEED_CHALLENGES } from "../data/jharkhandData";
+import { INITIAL_SEED_CHALLENGES } from "../data/indiaData";
 
 // Dynamically resolve backend via Vite reverse proxy for 100% reliable cross-device communication
 const getApiBaseUrl = () => {
@@ -16,7 +16,7 @@ const api = axios.create({
 
 api.interceptors.request.use((config) => {
     config.baseURL = getApiBaseUrl();
-    const token = localStorage.getItem("sankalp_token");
+    const token = localStorage.getItem("adhikar_token") || localStorage.getItem("sankalp_token");
     if (token) {
         config.headers.Authorization = `Bearer ${token}`;
     }
@@ -27,11 +27,12 @@ api.interceptors.request.use((config) => {
 // LOCAL STORAGE BACKED SYNC FOR INSTANT OFFLINE / LIVE EXPERIENCE
 // ============================================================================
 
-const STORAGE_KEY = "sankalp_jharkhand_challenges";
+const STORAGE_KEY = "adhikar_ai_challenges";
+const LEGACY_STORAGE_KEY = "sankalp_jharkhand_challenges";
 
 export function getLocalChallenges() {
     try {
-        const stored = localStorage.getItem(STORAGE_KEY);
+        const stored = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(LEGACY_STORAGE_KEY);
         if (stored) {
             const parsed = JSON.parse(stored);
             if (Array.isArray(parsed) && parsed.length > 0) {
@@ -102,7 +103,7 @@ export const challengeService = {
 
     // Submit / Create new societal challenge
     async submitChallenge(challengeData) {
-        const newId = challengeData.id || `JH-2026-${String(Math.floor(1000 + Math.random() * 9000))}`;
+        const newId = challengeData.id || `ADH-2026-${String(Math.floor(1000 + Math.random() * 9000))}`;
         const fullChallenge = {
             ...challengeData,
             id: newId,
@@ -130,8 +131,8 @@ export const challengeService = {
                 block: fullChallenge.block,
                 panchayat: fullChallenge.panchayat,
                 locationText: fullChallenge.locationText,
-                latitude: Number(fullChallenge.lat || fullChallenge.latitude || 23.92),
-                longitude: Number(fullChallenge.lng || fullChallenge.longitude || 84.23),
+                latitude: Number(fullChallenge.lat || fullChallenge.latitude || 28.6139),
+                longitude: Number(fullChallenge.lng || fullChallenge.longitude || 77.2090),
                 affectedPopulation: Number(fullChallenge.affectedPopulation || 500),
                 evidenceImageUrl: fullChallenge.evidenceImageUrl || "https://images.unsplash.com/photo-1541888946425-d0fbb180c5f5?w=800"
             });
@@ -223,7 +224,7 @@ export const challengeService = {
     async verifyPilot(id, feedbackText) {
         return this.updateChallengeStatus(id, "RESOLVED", {
             citizenVerificationRequested: false,
-            citizenFeedbackNotes: feedbackText || "Citizen & Gram Panchayat verified field deployment."
+            citizenFeedbackNotes: feedbackText || "Citizen field verification confirmed by local resident & authority."
         });
     }
 };

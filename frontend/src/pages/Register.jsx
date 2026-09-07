@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Sparkles, ArrowRight, UserPlus } from "lucide-react";
-import { JHARKHAND_DISTRICTS } from "../data/jharkhandData";
+import { INDIA_STATES_AND_REGIONS } from "../data/indiaData";
 
 export default function Register() {
     const navigate = useNavigate();
@@ -11,7 +11,8 @@ export default function Register() {
         email: "",
         phone: "",
         password: "",
-        district: "Ranchi",
+        stateName: "Delhi NCR",
+        district: "North West Delhi",
         entityType: "CITIZEN",
         panchayatName: ""
     });
@@ -29,13 +30,14 @@ export default function Register() {
         e.preventDefault();
         setLoading(true);
 
+        localStorage.setItem("adhikar_token", "mock_jwt_token_" + Date.now());
         localStorage.setItem("sankalp_token", "mock_jwt_token_" + Date.now());
-        localStorage.setItem("sankalp_user_email", form.email);
-        localStorage.setItem("sankalp_user_role", form.entityType);
+        localStorage.setItem("adhikar_user_email", form.email);
+        localStorage.setItem("adhikar_user_role", form.entityType);
 
         setTimeout(() => {
             setLoading(false);
-            alert("Registration successful! Welcome to Sankalp AI - Jharkhand Innovation Portal.");
+            alert("Registration successful! Welcome to Adhikar AI - National Citizen Innovation & Grievance Portal.");
             navigate("/dashboard");
         }, 300);
     };
@@ -44,16 +46,16 @@ export default function Register() {
         <div style={styles.container}>
             <div style={styles.card}>
                 <div style={styles.govBadge}>
-                    <span>🇮🇳 Government of Jharkhand • NEP 2020</span>
+                    <span>🇮🇳 National Citizen Portal • NEP 2020</span>
                 </div>
 
                 <div style={styles.logoBadge}>
                     <Sparkles size={24} color="#ffffff" />
                 </div>
 
-                <h1 style={styles.brandTitle}>Create Citizen / PRI Account</h1>
+                <h1 style={styles.brandTitle}>Create Citizen / Submitter Account</h1>
                 <p style={styles.brandSubtitle}>
-                    Join the Jharkhand Societal Innovation Ecosystem to submit and track community solutions
+                    Join the Adhikar AI National Innovation Ecosystem to submit and track community solutions
                 </p>
 
                 <form onSubmit={handleSubmit} style={styles.form}>
@@ -66,7 +68,7 @@ export default function Register() {
                             onChange={handleChange}
                             required
                             style={styles.input}
-                            placeholder="e.g. Somra Kisku / Rajesh Oraon"
+                            placeholder="e.g. Rajesh Kumar / Priya Sharma"
                         />
                     </div>
 
@@ -79,7 +81,7 @@ export default function Register() {
                             style={styles.input}
                         >
                             <option value="CITIZEN">Individual Citizen / Resident</option>
-                            <option value="GRAM_PANCHAYAT">Gram Panchayat / PRI (Mukhya / Panchayat Samiti)</option>
+                            <option value="GRAM_PANCHAYAT">Gram Panchayat / PRI (Mukhya / Ward)</option>
                             <option value="COMMUNITY_SHG">Self-Help Group (SHG) / Farmer Producer Org (FPO)</option>
                             <option value="LOCAL_BODY">Urban Local Body (ULB) / Ward Committee</option>
                         </select>
@@ -87,28 +89,27 @@ export default function Register() {
 
                     <div style={styles.grid2}>
                         <div style={styles.inputGroup}>
-                            <label style={styles.label}>District *</label>
-                            <select
+                            <label style={styles.label}>District / City *</label>
+                            <input
+                                type="text"
                                 name="district"
                                 value={form.district}
                                 onChange={handleChange}
+                                required
                                 style={styles.input}
-                            >
-                                {JHARKHAND_DISTRICTS.map(d => (
-                                    <option key={d.name} value={d.name}>{d.name}</option>
-                                ))}
-                            </select>
+                                placeholder="e.g. North West Delhi / Ghaziabad / Ranchi"
+                            />
                         </div>
 
                         <div style={styles.inputGroup}>
-                            <label style={styles.label}>Panchayat / Ward Name</label>
+                            <label style={styles.label}>Panchayat / Ward / Area</label>
                             <input
                                 type="text"
                                 name="panchayatName"
                                 value={form.panchayatName}
                                 onChange={handleChange}
                                 style={styles.input}
-                                placeholder="e.g. Satbarwa Khurd"
+                                placeholder="e.g. Rohini Sector 16"
                             />
                         </div>
                     </div>
