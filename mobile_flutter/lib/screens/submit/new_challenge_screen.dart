@@ -1,8 +1,12 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
+import 'package:dio/dio.dart';
 import '../../core/constants.dart';
 import '../../core/theme.dart';
 import '../../models/challenge_model.dart';
@@ -20,6 +24,8 @@ class NewChallengeScreen extends StatefulWidget {
 class _NewChallengeScreenState extends State<NewChallengeScreen> {
   final _formKey = GlobalKey<FormState>();
   final ApiService _apiService = ApiService();
+  final MapController _mapController = MapController();
+  final Dio _dio = Dio(BaseOptions(connectTimeout: const Duration(seconds: 6), receiveTimeout: const Duration(seconds: 6)));
 
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _descController = TextEditingController();
@@ -30,6 +36,11 @@ class _NewChallengeScreenState extends State<NewChallengeScreen> {
 
   double _lat = 28.7499;
   double _lng = 77.1170;
+  String _state = "Delhi";
+  String _surroundingAddress = "Outer Ring Road Junction, Rohini Sector 16, Delhi";
+  bool _isGeocoding = false;
+  Timer? _debounceGeocode;
+
   String _selectedDomain = "INFRASTRUCTURE";
   String _selectedUrgency = "HIGH";
   String _submitterType = "INDIVIDUAL_CITIZEN";
@@ -54,6 +65,7 @@ class _NewChallengeScreenState extends State<NewChallengeScreen> {
 
   @override
   void dispose() {
+    _debounceGeocode?.cancel();
     _titleController.dispose();
     _descController.dispose();
     _districtController.dispose();
@@ -63,8 +75,90 @@ class _NewChallengeScreenState extends State<NewChallengeScreen> {
     super.dispose();
   }
 
+  // Reverse Geocoding with OpenStreetMap Nominatim & BigDataCloud fallback
+  Future<void> _reverseGeocode(double lat, double lng) async {
+    setState(() => _isGeocoding = true);
+    try {
+      // 1. Nominatim Reverse Geocoding
+      final response = await _dio.get(
+        "https://nominatim.openstreetmap.org/reverse",
+        queryParameters: {
+          "format": "jsonv2",
+          "lat": lat,
+          "lon": lng,
+          "zoom": 18,
+          "addressdetails": 1,
+        },
+        options: Options(headers: {"User-Agent": "AdhikarCitizenApp/1.0"}),
+      );
+
+      if (response.statusCode == 200 && response.data != null) {
+        final data = response.data;
+        final address = data["address"] as Map<String, dynamic>? ?? {};
+
+        final road = address["road"] ?? address["pedestrian"] ?? address["suburb"] ?? address["neighbourhood"] ?? "";
+        final suburb = address["suburb"] ?? address["neighbourhood"] ?? address["residential"] ?? address["quarter"] ?? "";
+        final district = address["state_district"] ?? address["county"] ?? address["city_district"] ?? address["city"] ?? address["town"] ?? "";
+        final state = address["state"] ?? "";
+        final displayName = data["display_name"] ?? "";
+
+        setState(() {
+          _state = state.isNotEmpty ? state : _state;
+          if (district.isNotEmpty) _districtController.text = district;
+          if (suburb.isNotEmpty) _blockController.text = suburb;
+          if (road.isNotEmpty) _panchayatController.text = road;
+
+          _surroundingAddress = displayName.isNotEmpty
+              ? displayName
+              : [road, suburb, district, state].where((s) => s.isNotEmpty).join(", ");
+        });
+
+        _triggerAiAnalysis();
+        return;
+      }
+    } catch (e) {
+      // Fallback to BigDataCloud
+      try {
+        final bdc = await _dio.get(
+          "https://api.bigdatacloud.net/data/reverse-geocode-client",
+          queryParameters: {"latitude": lat, "longitude": lng, "localityLanguage": "en"},
+        );
+        if (bdc.statusCode == 200 && bdc.data != null) {
+          final data = bdc.data;
+          final locality = data["locality"] ?? data["principalSubdivision"] ?? "";
+          final city = data["city"] ?? data["localityInfo"]?["administrative"]?[2]?["name"] ?? "";
+          final state = data["principalSubdivision"] ?? "";
+
+          setState(() {
+            if (city.isNotEmpty) _districtController.text = city;
+            if (locality.isNotEmpty) _panchayatController.text = locality;
+            if (state.isNotEmpty) _state = state;
+            _surroundingAddress = "$locality, $city, $state";
+          });
+          _triggerAiAnalysis();
+        }
+      } catch (_) {}
+    } finally {
+      if (mounted) setState(() => _isGeocoding = false);
+    }
+  }
+
+  void _onMapMoved(MapCamera camera, bool hasGesture) {
+    if (!hasGesture) return;
+    final center = camera.center;
+    setState(() {
+      _lat = center.latitude;
+      _lng = center.longitude;
+    });
+
+    _debounceGeocode?.cancel();
+    _debounceGeocode = Timer(const Duration(milliseconds: 600), () {
+      _reverseGeocode(_lat, _lng);
+    });
+  }
+
   void _triggerAiAnalysis() async {
-    final text = "${_titleController.text} ${_descController.text}".trim();
+    final text = "${_titleController.text} ${_descController.text} ${_panchayatController.text}".trim();
     if (text.isEmpty) return;
 
     // 1. Quick local keyword detection
@@ -113,25 +207,64 @@ class _NewChallengeScreenState extends State<NewChallengeScreen> {
   Future<void> _acquireGps() async {
     setState(() => _isLocating = true);
     try {
+      // 1. Check Location Service enabled
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("⚠️ Device Location / GPS is turned off. Please enable GPS for pinpoint accuracy."),
+            backgroundColor: Color(0xFFEA580C),
+          ),
+        );
+      }
+
+      // 2. Request Permissions
       LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
       }
 
-      if (permission == LocationPermission.whileInUse || permission == LocationPermission.always) {
-        Position pos = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
-        setState(() {
-          _lat = pos.latitude;
-          _lng = pos.longitude;
-          _panchayatController.text = "GPS: ${_lat.toStringAsFixed(4)}° N, ${_lng.toStringAsFixed(4)}° E";
-        });
-        _triggerAiAnalysis();
+      if (permission == LocationPermission.deniedForever) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("📍 1-Tap GPS Locked (${_lat.toStringAsFixed(4)}° N, ${_lng.toStringAsFixed(4)}° E)"),
-            backgroundColor: const Color(0xFF16A34A),
+          const SnackBar(
+            content: Text("⚠️ Location permissions are permanently denied. Please allow in app settings."),
+            backgroundColor: Color(0xFFDC2626),
           ),
         );
+        return;
+      }
+
+      if (permission == LocationPermission.whileInUse || permission == LocationPermission.always) {
+        Position? pos;
+        try {
+          pos = await Geolocator.getCurrentPosition(
+            locationSettings: const LocationSettings(
+              accuracy: LocationAccuracy.best,
+              timeLimit: Duration(seconds: 10),
+            ),
+          );
+        } catch (_) {
+          pos = await Geolocator.getLastKnownPosition();
+        }
+
+        if (pos != null) {
+          final foundLat = pos.latitude;
+          final foundLng = pos.longitude;
+          setState(() {
+            _lat = foundLat;
+            _lng = foundLng;
+          });
+
+          _mapController.move(LatLng(_lat, _lng), 16.0);
+          await _reverseGeocode(_lat, _lng);
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text("📍 Exact GPS Located: ${_lat.toStringAsFixed(4)}° N, ${_lng.toStringAsFixed(4)}° E"),
+              backgroundColor: const Color(0xFF16A34A),
+            ),
+          );
+        }
       }
     } catch (e) {
       // fallback
@@ -151,12 +284,23 @@ class _NewChallengeScreenState extends State<NewChallengeScreen> {
         // Run 4-Class YOLOv8 vision audit
         final visionResult = await _apiService.detectVisualEvidence(_selectedImage!);
         if (mounted && visionResult != null && visionResult.isVisualEvidenceVerified) {
+          // Auto fill title and description from AI detection if empty
+          if (_titleController.text.isEmpty && visionResult.primaryClass != null) {
+            _titleController.text = "Reported ${visionResult.primaryClass!.replaceAll('_', ' ').toUpperCase()} at ${_panchayatController.text}";
+          }
+          if (visionResult.recommendedDomain != null) {
+            setState(() {
+              _selectedDomain = visionResult.recommendedDomain!;
+            });
+          }
+
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text("✓ YOLOv8 Vision Verified: ${visionResult.primaryClass} (${visionResult.confidencePercent})"),
               backgroundColor: const Color(0xFF16A34A),
             ),
           );
+          _triggerAiAnalysis();
         }
       }
     } catch (e) {
@@ -165,46 +309,60 @@ class _NewChallengeScreenState extends State<NewChallengeScreen> {
   }
 
   void _handleSubmit() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (!_formKey.currentState!.validate()) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please fill all required challenge details")),
+      );
+      return;
+    }
 
     setState(() => _isSubmitting = true);
 
+    final uniqueId = "ADH-2026-${(1000 + DateTime.now().millisecondsSinceEpoch % 9000)}";
+    final domainName = AppConstants.thematicDomains.firstWhere(
+      (d) => d['id'] == _selectedDomain,
+      orElse: () => {"name": _selectedDomain},
+    )['name'];
+
     final newChallenge = ChallengeModel(
-      id: "ADH-2026-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}",
+      id: uniqueId,
       title: _titleController.text.trim(),
       description: _descController.text.trim(),
       domain: _selectedDomain,
-      domainName: AppConstants.thematicDomains.firstWhere((d) => d['id'] == _selectedDomain)['name'],
+      domainName: domainName,
       urgency: _selectedUrgency,
       submitterType: _submitterType,
       submitterName: _submitterName,
-      citizenEmail: "citizen@adhikar.in",
+      citizenEmail: "citizen.user@adhikar.in",
       district: _districtController.text.trim(),
       block: _blockController.text.trim(),
       panchayat: _panchayatController.text.trim(),
-      locationText: "${_panchayatController.text}, ${_blockController.text}, ${_districtController.text}",
+      locationText: _surroundingAddress.isNotEmpty ? _surroundingAddress : "${_panchayatController.text}, ${_districtController.text}, $_state",
       latitude: _lat,
       longitude: _lng,
-      affectedPopulation: int.tryParse(_affectedPopController.text) ?? 500,
+      affectedPopulation: int.tryParse(_affectedPopController.text.trim()) ?? 500,
       status: "SUBMITTED",
+      upvotes: 0,
       evidenceImageUrl: _selectedImage != null
-          ? "https://images.unsplash.com/photo-1541888946425-d0fbb180c5f5?w=800"
-          : "https://images.unsplash.com/photo-1541888946425-d0fbb180c5f5?w=800",
-      upvotes: 1,
-      assignedHei: _suggestedHei?.name ?? "Delhi Technological University (DTU), Delhi",
-      assignedHeiDepartment: _suggestedHei?.specializedLab ?? "Urban Mobility & Clean Energy Innovation Hub",
-      facultyMentor: _suggestedHei?.facultyMentor ?? "Prof. S. K. Garg",
+          ? "https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?w=800"
+          : "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=800",
+      assignedHei: _suggestedHei?.name ?? "Premier National HEI Innovation Center",
+      assignedHeiDepartment: _suggestedHei?.specializedLab ?? "Center for Rural Innovation & Sustainable Engineering",
+      facultyMentor: _suggestedHei?.facultyMentor ?? "Prof. Senior Nodal Faculty",
+      studentTeam: "Adhikar Student Innovators",
+      industryPartner: "National Innovation Council & CSR Fund",
     );
 
     final provider = Provider.of<ChallengeProvider>(context, listen: false);
     await provider.addChallenge(newChallenge);
 
+    setState(() => _isSubmitting = false);
+
     if (mounted) {
-      setState(() => _isSubmitting = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("🚀 Challenge Ingested into Adhikar AI National Pipeline!"),
-          backgroundColor: Color(0xFF16A34A),
+        SnackBar(
+          content: Text("✓ Challenge #$uniqueId Ingested to Adhikar AI"),
+          backgroundColor: const Color(0xFF16A34A),
         ),
       );
       Navigator.of(context).pop();
@@ -214,54 +372,187 @@ class _NewChallengeScreenState extends State<NewChallengeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.backgroundLight,
       appBar: AppBar(
-        title: const Text("Report Societal Challenge"),
+        title: const Text("Submit Societal Challenge"),
       ),
       body: Form(
         key: _formKey,
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            // 1. Top Helper Notice
+            // 1. Header Banner
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: const Color(0xFFE0F2FE),
+                color: const Color(0xFFF0FDF4),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFBAE6FD)),
+                border: Border.all(color: const Color(0xFFBBF7D0)),
               ),
               child: Row(
                 children: const [
-                  Icon(Icons.info_outline, color: Color(0xFF0284C7), size: 18),
+                  Icon(Icons.verified, color: Color(0xFF16A34A), size: 20),
                   SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      "Submissions are routed directly to university engineering labs or municipal desks across India.",
-                      style: TextStyle(fontSize: 12, color: Color(0xFF0369A1), fontWeight: FontWeight.w600),
+                      "Pan-India NEP 2020 Multi-Disciplinary Innovation Protocol",
+                      style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: Color(0xFF166534)),
                     ),
                   ),
                 ],
               ),
             ),
 
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
 
-            // 2. Pure 1-Tap Live GPS Button
-            ElevatedButton.icon(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF0284C7),
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            // 2. ZEPTO / RAPIDO STYLE INTERACTIVE MAP & PIN ADJUSTMENT
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.04),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
-              icon: _isLocating
-                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                  : const Icon(Icons.my_location, size: 18, color: Colors.white),
-              label: Text(
-                _isLocating ? "Acquiring High-Accuracy GPS..." : "📍 1-Tap Auto-Detect Live GPS (${_lat.toStringAsFixed(3)}°, ${_lng.toStringAsFixed(3)}°)",
-                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Colors.white),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Top map header
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: const [
+                            Icon(Icons.location_on, color: Color(0xFFDC2626), size: 18),
+                            SizedBox(width: 6),
+                            Text(
+                              "Pinpoint Location (Rapido/Zepto Style)",
+                              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
+                            ),
+                          ],
+                        ),
+                        if (_isGeocoding)
+                          const SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF0284C7)),
+                          ),
+                      ],
+                    ),
+                  ),
+
+                  // Mini Map with Center Marker
+                  SizedBox(
+                    height: 200,
+                    child: Stack(
+                      children: [
+                        ClipRRect(
+                          child: FlutterMap(
+                            mapController: _mapController,
+                            options: MapOptions(
+                              initialCenter: LatLng(_lat, _lng),
+                              initialZoom: 16.0,
+                              onPositionChanged: _onMapMoved,
+                            ),
+                            children: [
+                              TileLayer(
+                                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                                userAgentPackageName: 'com.adhikar.citizen',
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        // Center Map Pin (Rapido / Zepto style centered pointer)
+                        Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF0F172A),
+                                  borderRadius: BorderRadius.circular(20),
+                                  boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 6)],
+                                ),
+                                child: const Text(
+                                  "Drag map to adjust spot",
+                                  style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700),
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              const Icon(
+                                Icons.location_pin,
+                                size: 40,
+                                color: Color(0xFFDC2626),
+                              ),
+                              const SizedBox(height: 16),
+                            ],
+                          ),
+                        ),
+
+                        // Floating "Target My Exact Location" GPS Button
+                        Positioned(
+                          bottom: 10,
+                          right: 10,
+                          child: FloatingActionButton.small(
+                            heroTag: "gps_recenter",
+                            backgroundColor: const Color(0xFF0284C7),
+                            foregroundColor: Colors.white,
+                            onPressed: _acquireGps,
+                            child: _isLocating
+                                ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                                : const Icon(Icons.my_location, size: 18),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Live Surrounding Address Summary
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.only(
+                        bottomLeft: Radius.circular(16),
+                        bottomRight: Radius.circular(16),
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Icon(Icons.home_work_outlined, size: 16, color: Color(0xFF0284C7)),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                _surroundingAddress.isNotEmpty
+                                    ? _surroundingAddress
+                                    : "Lat: ${_lat.toStringAsFixed(4)}°, Lng: ${_lng.toStringAsFixed(4)}°",
+                                style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: Color(0xFF1E293B)),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          "📍 Coordinates: ${_lat.toStringAsFixed(4)}° N, ${_lng.toStringAsFixed(4)}° E • Auto-Geocoded",
+                          style: const TextStyle(fontSize: 10.5, color: Color(0xFF64748B), fontWeight: FontWeight.w600),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-              onPressed: _acquireGps,
             ),
 
             const SizedBox(height: 16),
@@ -285,7 +576,7 @@ class _NewChallengeScreenState extends State<NewChallengeScreen> {
             const SizedBox(height: 6),
             TextFormField(
               controller: _descController,
-              maxLines: 4,
+              maxLines: 3,
               onChanged: (_) => _triggerAiAnalysis(),
               decoration: const InputDecoration(
                 hintText: "Describe the grassroots issue, community safety impact, and urgency...",
@@ -370,7 +661,7 @@ class _NewChallengeScreenState extends State<NewChallengeScreen> {
 
             const SizedBox(height: 16),
 
-            // 7. Administrative Location Inputs
+            // 7. Administrative Location Inputs (Auto-Filled from GPS/Map)
             Row(
               children: [
                 Expanded(
@@ -405,7 +696,7 @@ class _NewChallengeScreenState extends State<NewChallengeScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text("Area / Landmark", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12.5)),
+                      const Text("Area / Landmark / Road", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12.5)),
                       const SizedBox(height: 4),
                       TextFormField(controller: _panchayatController),
                     ],

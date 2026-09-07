@@ -174,7 +174,7 @@ class _MapViewScreenState extends State<MapViewScreen> {
                         const SizedBox(width: 4),
                         Expanded(
                           child: Text(
-                            "${_selectedChallenge!.panchayat ?? _selectedChallenge!.block}, ${_selectedChallenge!.district}",
+                            "${_selectedChallenge!.panchayat.isNotEmpty ? _selectedChallenge!.panchayat : _selectedChallenge!.block}, ${_selectedChallenge!.district}",
                             style: const TextStyle(fontSize: 12, color: Color(0xFF64748B), fontWeight: FontWeight.w600),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
