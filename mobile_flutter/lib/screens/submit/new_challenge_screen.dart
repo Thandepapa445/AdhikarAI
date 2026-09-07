@@ -52,6 +52,13 @@ class _NewChallengeScreenState extends State<NewChallengeScreen> {
   bool _isSubmitting = false;
   bool _isLocating = false;
 
+  // AI Vision Gate & Anti-Spam Verification States
+  bool _isScanningAiVision = false;
+  bool _isImageVerifiedCivicHazard = false;
+  String? _verifiedCivicHazardName;
+  String? _verifiedConfidence;
+  String? _aiVisionRejectionReason;
+
   // AI Live Ingestion State
   String _aiConfidence = "95.0%";
   UniversityMatch? _suggestedHei;
@@ -143,8 +150,7 @@ class _NewChallengeScreenState extends State<NewChallengeScreen> {
     }
   }
 
-  void _onMapMoved(MapCamera camera, bool hasGesture) {
-    if (!hasGesture) return;
+  void _onMapMoved(MapCamera camera) {
     final center = camera.center;
     setState(() {
       _lat = center.latitude;
@@ -273,38 +279,121 @@ class _NewChallengeScreenState extends State<NewChallengeScreen> {
     }
   }
 
+  // Pick Image & Enforce Strict YOLOv8 AI Vision Gate (Blocks Non-Civic Images)
   Future<void> _pickImage(ImageSource source) async {
     try {
-      final picked = await _picker.pickImage(source: source, imageQuality: 80);
+      final picked = await _picker.pickImage(source: source, imageQuality: 85);
       if (picked != null) {
+        final imageFile = File(picked.path);
         setState(() {
-          _selectedImage = File(picked.path);
+          _selectedImage = imageFile;
+          _isScanningAiVision = true;
+          _isImageVerifiedCivicHazard = false;
+          _aiVisionRejectionReason = null;
         });
 
-        // Run 4-Class YOLOv8 vision audit
-        final visionResult = await _apiService.detectVisualEvidence(_selectedImage!);
-        if (mounted && visionResult != null && visionResult.isVisualEvidenceVerified) {
-          // Auto fill title and description from AI detection if empty
-          if (_titleController.text.isEmpty && visionResult.primaryClass != null) {
-            _titleController.text = "Reported ${visionResult.primaryClass!.replaceAll('_', ' ').toUpperCase()} at ${_panchayatController.text}";
-          }
-          if (visionResult.recommendedDomain != null) {
-            setState(() {
-              _selectedDomain = visionResult.recommendedDomain!;
-            });
-          }
+        // Run 4-Class YOLOv8 Vision Audit on Python Microservice
+        final visionResult = await _apiService.detectVisualEvidence(imageFile);
 
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text("✓ YOLOv8 Vision Verified: ${visionResult.primaryClass} (${visionResult.confidencePercent})"),
-              backgroundColor: const Color(0xFF16A34A),
-            ),
-          );
-          _triggerAiAnalysis();
+        if (mounted) {
+          setState(() => _isScanningAiVision = false);
+
+          if (visionResult != null && visionResult.isVisualEvidenceVerified && visionResult.primaryClass != null) {
+            setState(() {
+              _isImageVerifiedCivicHazard = true;
+              _verifiedCivicHazardName = visionResult.primaryClass;
+              _verifiedConfidence = visionResult.confidencePercent;
+              _aiVisionRejectionReason = null;
+              if (visionResult.recommendedDomain != null) {
+                _selectedDomain = visionResult.recommendedDomain!;
+              }
+            });
+
+            // Auto-fill title if empty
+            if (_titleController.text.isEmpty && visionResult.primaryClass != null) {
+              final formattedClass = visionResult.primaryClass!.replaceAll('_', ' ').toUpperCase();
+              _titleController.text = "Reported $formattedClass at ${_panchayatController.text.isNotEmpty ? _panchayatController.text : _districtController.text}";
+            }
+
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text("✓ YOLOv8 Verified Civic Hazard: ${visionResult.primaryClass!.replaceAll('_', ' ').toUpperCase()} (${visionResult.confidencePercent})"),
+                backgroundColor: const Color(0xFF16A34A),
+              ),
+            );
+            _triggerAiAnalysis();
+          } else {
+            // STRICT AI GATE REJECTION FOR NON-CIVIC IMAGES
+            setState(() {
+              _isImageVerifiedCivicHazard = false;
+              _selectedImage = null; // Discard non-civic photo
+              _aiVisionRejectionReason = "No recognized civic hazard (Pothole, Garbage Dump, Broken Street Light, Fallen Tree) detected.";
+            });
+
+            showDialog(
+              context: context,
+              builder: (ctx) => AlertDialog(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                title: const Row(
+                  children: [
+                    Icon(Icons.shield_outlined, color: Color(0xFFDC2626), size: 28),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        "Photo Rejected by AI Gate",
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17, color: Color(0xFF1E293B)),
+                      ),
+                    ),
+                  ],
+                ),
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFEF2F2),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: const Color(0xFFFECACA)),
+                      ),
+                      child: const Row(
+                        children: [
+                          Icon(Icons.cancel, color: Color(0xFFDC2626), size: 16),
+                          SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              "AI Vision Gate: Non-Civic Image Detected",
+                              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 11.5, color: Color(0xFF991B1B)),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      "🚫 No recognized civic hazard was detected in this photo.\n\nAdhikar AI requires authentic photos of civic defects (Potholes, Garbage Dumps, Broken Street Lights, Fallen Trees) to prevent non-civic spam.\n\nPlease upload or capture a photo of the actual civic defect.",
+                      style: TextStyle(fontSize: 13, color: Color(0xFF334155), height: 1.4),
+                    ),
+                  ],
+                ),
+                actions: [
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF2563EB),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                    onPressed: () => Navigator.pop(ctx),
+                    child: const Text("Understood", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                  ),
+                ],
+              ),
+            );
+          }
         }
       }
     } catch (e) {
-      // Fallback
+      if (mounted) setState(() => _isScanningAiVision = false);
     }
   }
 
@@ -312,6 +401,43 @@ class _NewChallengeScreenState extends State<NewChallengeScreen> {
     if (!_formKey.currentState!.validate()) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Please fill all required challenge details")),
+      );
+      return;
+    }
+
+    // STRICT VALIDATION: Require verified civic photo evidence (blocks non-civic submissions)
+    if (_selectedImage == null || !_isImageVerifiedCivicHazard) {
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Row(
+            children: [
+              Icon(Icons.shield_outlined, color: Color(0xFFDC2626), size: 28),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  "Civic Photo Evidence Required",
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17, color: Color(0xFF1E293B)),
+                ),
+              ),
+            ],
+          ),
+          content: const Text(
+            "⚠️ Verified Civic Photo Evidence Required!\n\nPlease capture or upload an authentic photo of the civic defect (Potholes, Garbage Dumps, Broken Street Lights, Fallen Trees) that passes YOLOv8 AI verification before submitting.\n\nNon-civic submissions are strictly blocked to protect public grievance queues.",
+            style: TextStyle(fontSize: 13.5, color: Color(0xFF334155), height: 1.4),
+          ),
+          actions: [
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF2563EB),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text("OK", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
       );
       return;
     }
@@ -372,374 +498,91 @@ class _NewChallengeScreenState extends State<NewChallengeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppTheme.backgroundLight,
       appBar: AppBar(
-        title: const Text("Submit Societal Challenge"),
+        title: const Text("Submit Civic Challenge"),
+        backgroundColor: Colors.white,
+        foregroundColor: const Color(0xFF0F172A),
+        elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh, color: Color(0xFF64748B)),
+            onPressed: () {
+              _acquireGps();
+              _triggerAiAnalysis();
+            },
+          )
+        ],
       ),
       body: Form(
         key: _formKey,
         child: ListView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           children: [
-            // 1. Header Banner
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF0FDF4),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFBBF7D0)),
-              ),
-              child: Row(
-                children: const [
-                  Icon(Icons.verified, color: Color(0xFF16A34A), size: 20),
-                  SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      "Pan-India NEP 2020 Multi-Disciplinary Innovation Protocol",
-                      style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: Color(0xFF166534)),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 14),
-
-            // 2. ZEPTO / RAPIDO STYLE INTERACTIVE MAP & PIN ADJUSTMENT
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.04),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Top map header
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Row(
-                          children: const [
-                            Icon(Icons.location_on, color: Color(0xFFDC2626), size: 18),
-                            SizedBox(width: 6),
-                            Text(
-                              "Pinpoint Location (Rapido/Zepto Style)",
-                              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
-                            ),
-                          ],
-                        ),
-                        if (_isGeocoding)
-                          const SizedBox(
-                            width: 14,
-                            height: 14,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF0284C7)),
-                          ),
-                      ],
-                    ),
-                  ),
-
-                  // Mini Map with Center Marker
-                  SizedBox(
-                    height: 200,
-                    child: Stack(
-                      children: [
-                        ClipRRect(
-                          child: FlutterMap(
-                            mapController: _mapController,
-                            options: MapOptions(
-                              initialCenter: LatLng(_lat, _lng),
-                              initialZoom: 16.0,
-                              onPositionChanged: _onMapMoved,
-                            ),
-                            children: [
-                              TileLayer(
-                                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                                userAgentPackageName: 'com.adhikar.citizen',
-                              ),
-                            ],
-                          ),
-                        ),
-
-                        // Center Map Pin (Rapido / Zepto style centered pointer)
-                        Center(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF0F172A),
-                                  borderRadius: BorderRadius.circular(20),
-                                  boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 6)],
-                                ),
-                                child: const Text(
-                                  "Drag map to adjust spot",
-                                  style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700),
-                                ),
-                              ),
-                              const SizedBox(height: 2),
-                              const Icon(
-                                Icons.location_pin,
-                                size: 40,
-                                color: Color(0xFFDC2626),
-                              ),
-                              const SizedBox(height: 16),
-                            ],
-                          ),
-                        ),
-
-                        // Floating "Target My Exact Location" GPS Button
-                        Positioned(
-                          bottom: 10,
-                          right: 10,
-                          child: FloatingActionButton.small(
-                            heroTag: "gps_recenter",
-                            backgroundColor: const Color(0xFF0284C7),
-                            foregroundColor: Colors.white,
-                            onPressed: _acquireGps,
-                            child: _isLocating
-                                ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                                : const Icon(Icons.my_location, size: 18),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  // Live Surrounding Address Summary
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFF8FAFC),
-                      borderRadius: BorderRadius.only(
-                        bottomLeft: Radius.circular(16),
-                        bottomRight: Radius.circular(16),
-                      ),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Icon(Icons.home_work_outlined, size: 16, color: Color(0xFF0284C7)),
-                            const SizedBox(width: 6),
-                            Expanded(
-                              child: Text(
-                                _surroundingAddress.isNotEmpty
-                                    ? _surroundingAddress
-                                    : "Lat: ${_lat.toStringAsFixed(4)}°, Lng: ${_lng.toStringAsFixed(4)}°",
-                                style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: Color(0xFF1E293B)),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          "📍 Coordinates: ${_lat.toStringAsFixed(4)}° N, ${_lng.toStringAsFixed(4)}° E • Auto-Geocoded",
-                          style: const TextStyle(fontSize: 10.5, color: Color(0xFF64748B), fontWeight: FontWeight.w600),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            // 1. Live Interactive Draggable Map Card (Rapido/Zepto Style)
+            _buildInteractiveMapCard(),
 
             const SizedBox(height: 16),
 
-            // 3. Challenge Title
-            const Text("Challenge Title *", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
-            const SizedBox(height: 6),
-            TextFormField(
-              controller: _titleController,
-              onChanged: (_) => _triggerAiAnalysis(),
-              decoration: const InputDecoration(
-                hintText: "e.g. Deep Hazardous Pothole Cluster on Main Arterial Road",
-              ),
-              validator: (v) => (v == null || v.trim().length < 5) ? "Please provide a descriptive title" : null,
-            ),
-
-            const SizedBox(height: 14),
-
-            // 4. Challenge Description
-            const Text("Detailed Problem Description *", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
-            const SizedBox(height: 6),
-            TextFormField(
-              controller: _descController,
-              maxLines: 3,
-              onChanged: (_) => _triggerAiAnalysis(),
-              decoration: const InputDecoration(
-                hintText: "Describe the grassroots issue, community safety impact, and urgency...",
-              ),
-              validator: (v) => (v == null || v.trim().length < 10) ? "Please describe the problem in detail" : null,
-            ),
+            // 2. Surrounding Address & Boundary Auto-Filled Card
+            _buildAddressResolutionCard(),
 
             const SizedBox(height: 16),
 
-            // 5. LIVE AI Ingestion Card
+            // 3. Challenge Core Details
+            _buildChallengeForm(),
+
+            const SizedBox(height: 16),
+
+            // 4. Domain & Priority Selection
+            _buildDomainSelector(),
+
+            const SizedBox(height: 16),
+
+            // 5. AI Ingestion & HEI Match Preview
             _buildAiIngestionCard(),
 
             const SizedBox(height: 16),
 
-            // 6. Evidence Photo Capture
-            const Text("📸 Field Evidence Photo (4-Class YOLOv8 AI)", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
-            const SizedBox(height: 8),
-            if (_selectedImage != null)
-              Stack(
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: Image.file(_selectedImage!, height: 160, width: double.infinity, fit: BoxFit.cover),
-                  ),
-                  Positioned(
-                    top: 8,
-                    right: 8,
-                    child: CircleAvatar(
-                      backgroundColor: Colors.black54,
-                      radius: 16,
-                      child: IconButton(
-                        icon: const Icon(Icons.close, color: Colors.white, size: 14),
-                        onPressed: () => setState(() => _selectedImage = null),
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    bottom: 8,
-                    left: 8,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.75),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        "📍 Lat: ${_lat.toStringAsFixed(4)}°, Lng: ${_lng.toStringAsFixed(4)}° • Verified Evidence",
-                        style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700),
-                      ),
-                    ),
-                  ),
-                ],
-              )
-            else
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                      ),
-                      icon: const Icon(Icons.camera_alt, size: 18, color: Color(0xFF0284C7)),
-                      label: const Text("Camera Snap", style: TextStyle(fontSize: 12.5)),
-                      onPressed: () => _pickImage(ImageSource.camera),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                      ),
-                      icon: const Icon(Icons.photo_library, size: 18, color: Color(0xFF0284C7)),
-                      label: const Text("Photo Gallery", style: TextStyle(fontSize: 12.5)),
-                      onPressed: () => _pickImage(ImageSource.gallery),
-                    ),
-                  ),
-                ],
-              ),
-
-            const SizedBox(height: 16),
-
-            // 7. Administrative Location Inputs (Auto-Filled from GPS/Map)
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text("District / City", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12.5)),
-                      const SizedBox(height: 4),
-                      TextFormField(controller: _districtController),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text("Block / Ward", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12.5)),
-                      const SizedBox(height: 4),
-                      TextFormField(controller: _blockController),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 12),
-
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text("Area / Landmark / Road", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12.5)),
-                      const SizedBox(height: 4),
-                      TextFormField(controller: _panchayatController),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text("Impacted Population", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12.5)),
-                      const SizedBox(height: 4),
-                      TextFormField(
-                        controller: _affectedPopController,
-                        keyboardType: TextInputType.number,
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+            // 6. Evidence Photo Capture with YOLOv8 Verification Gate
+            _buildPhotoEvidenceSection(),
 
             const SizedBox(height: 24),
 
-            // 8. Submit Button
-            SizedBox(
-              width: double.infinity,
-              height: 52,
-              child: ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.primaryBlue,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-                icon: _isSubmitting
-                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                    : const Icon(Icons.send_rounded, size: 18),
-                label: Text(
-                  _isSubmitting ? "Ingesting Challenge..." : "Submit to National Innovation Portal",
-                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14.5),
-                ),
-                onPressed: _isSubmitting ? null : _handleSubmit,
+            // 7. Submit Action Button
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _isImageVerifiedCivicHazard ? AppTheme.primaryBlue : const Color(0xFF64748B),
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                elevation: _isImageVerifiedCivicHazard ? 3 : 0,
               ),
+              onPressed: _isSubmitting ? null : _handleSubmit,
+              child: _isSubmitting
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    )
+                  : Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          _isImageVerifiedCivicHazard ? Icons.cloud_upload : Icons.lock_outline,
+                          size: 18,
+                          color: Colors.white,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          _isImageVerifiedCivicHazard
+                              ? "Submit Verified Challenge"
+                              : "Verify Civic Photo to Submit",
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Colors.white),
+                        ),
+                      ],
+                    ),
             ),
+
             const SizedBox(height: 40),
           ],
         ),
@@ -747,100 +590,583 @@ class _NewChallengeScreenState extends State<NewChallengeScreen> {
     );
   }
 
-  Widget _buildAiIngestionCard() {
-    final domainObj = AppConstants.thematicDomains.firstWhere(
-      (d) => d['id'] == _selectedDomain,
-      orElse: () => AppConstants.thematicDomains[0],
-    );
+  // --- SUB-WIDGET BUILDERS ---
 
+  Widget _buildInteractiveMapCard() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          )
+        ],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header Bar
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            child: Row(
+              children: [
+                const Icon(Icons.pin_drop, color: Color(0xFFEF4444), size: 18),
+                const SizedBox(width: 6),
+                const Expanded(
+                  child: Text(
+                    "Pinpoint Defect Spot (Drag Map)",
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: Color(0xFF0F172A)),
+                  ),
+                ),
+                if (_isGeocoding)
+                  const SizedBox(
+                    width: 14,
+                    height: 14,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF2563EB)),
+                  )
+                else
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFDCFCE7),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Text(
+                      "GPS Live",
+                      style: TextStyle(color: Color(0xFF15803D), fontSize: 10, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+
+          // Map View with Centered Fixed Pin
+          SizedBox(
+            height: 220,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                FlutterMap(
+                  mapController: _mapController,
+                  options: MapOptions(
+                    initialCenter: LatLng(_lat, _lng),
+                    initialZoom: 16.0,
+                    onPositionChanged: (camera, hasGesture) {
+                      if (hasGesture) {
+                        _onMapMoved(camera);
+                      }
+                    },
+                  ),
+                  children: [
+                    TileLayer(
+                      urlTemplate: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+                      userAgentPackageName: "com.adhikar.citizen",
+                    ),
+                  ],
+                ),
+
+                // Center Pin Icon (Rapido / Zepto Style)
+                IgnorePointer(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF0F172A),
+                          borderRadius: BorderRadius.circular(6),
+                          boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 4)],
+                        ),
+                        child: const Text(
+                          "📍 Drag map to adjust spot",
+                          style: TextStyle(color: Colors.white, fontSize: 9.5, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                      const Icon(Icons.location_on, color: Color(0xFFEF4444), size: 38),
+                      Container(
+                        width: 8,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: Colors.black38,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                    ],
+                  ),
+                ),
+
+                // Floating "My Exact Location" Recenter Button
+                Positioned(
+                  bottom: 10,
+                  right: 10,
+                  child: FloatingActionButton.small(
+                    heroTag: "recenter_gps_btn",
+                    backgroundColor: Colors.white,
+                    foregroundColor: const Color(0xFF2563EB),
+                    elevation: 3,
+                    onPressed: _isLocating ? null : _acquireGps,
+                    child: _isLocating
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.my_location, size: 20),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAddressResolutionCard() {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFBAE6FD)),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF0284C7).withOpacity(0.06),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        border: Border.all(color: const Color(0xFFE2E8F0)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            children: const [
-              Icon(Icons.auto_awesome, color: Color(0xFF0284C7), size: 16),
-              SizedBox(width: 6),
-              Text(
-                "Adhikar AI Ingestion & Routing Engine",
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-
-          // Predicted Domain
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text("Thematic Domain:", style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(
-                  color: domainObj['bgColor'],
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  "${domainObj['name']}",
-                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: domainObj['color']),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Text(
-            "✓ NLP Match Confidence: $_aiConfidence",
-            style: const TextStyle(fontSize: 11, color: Color(0xFF16A34A), fontWeight: FontWeight.w700),
-          ),
-
-          const Divider(height: 16, color: Color(0xFFF1F5F9)),
-
-          // Nearest Matched University
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text("🎯 Top Matched University:", style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF0F172A))),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF3E8FF),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(
-                  "⭐ ${_suggestedHei?.matchScorePercent ?? '96.0%'} Match",
-                  style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: Color(0xFF7C3AED)),
-                ),
-              ),
+              const Icon(Icons.home_work_outlined, color: Color(0xFF0284C7), size: 16),
+              const SizedBox(width: 6),
+              const Text("Detected Surrounding Location", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12.5, color: Color(0xFF334155))),
             ],
           ),
           const SizedBox(height: 6),
           Text(
-            _suggestedHei?.name ?? "Delhi Technological University (DTU)",
-            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFF1E293B)),
+            _surroundingAddress,
+            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: Color(0xFF0F172A), height: 1.35),
           ),
-          const SizedBox(height: 2),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF1F5F9),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Text(
+              "📍 Coordinates: ${_lat.toStringAsFixed(4)}° N, ${_lng.toStringAsFixed(4)}° E  •  State: $_state",
+              style: const TextStyle(fontSize: 10.5, color: Color(0xFF475569), fontWeight: FontWeight.w500),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildChallengeForm() {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text("📝 Problem Details", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: Color(0xFF0F172A))),
+          const SizedBox(height: 12),
+
+          // Title
+          TextFormField(
+            controller: _titleController,
+            decoration: InputDecoration(
+              labelText: "Challenge Title *",
+              hintText: "e.g., Hazardous open pothole on Main Road",
+              labelStyle: const TextStyle(fontSize: 12.5),
+              filled: true,
+              fillColor: const Color(0xFFF8FAFC),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: Color(0xFFCBD5E1))),
+            ),
+            validator: (v) => v == null || v.trim().isEmpty ? "Title is required" : null,
+            onChanged: (_) => _triggerAiAnalysis(),
+          ),
+
+          const SizedBox(height: 12),
+
+          // Description
+          TextFormField(
+            controller: _descController,
+            maxLines: 3,
+            decoration: InputDecoration(
+              labelText: "Detailed Description *",
+              hintText: "Explain what is broken, how long it has been there, and affected area...",
+              labelStyle: const TextStyle(fontSize: 12.5),
+              filled: true,
+              fillColor: const Color(0xFFF8FAFC),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: Color(0xFFCBD5E1))),
+            ),
+            validator: (v) => v == null || v.trim().length < 10 ? "Please give at least 10 characters description" : null,
+            onChanged: (_) => _triggerAiAnalysis(),
+          ),
+
+          const SizedBox(height: 12),
+
+          // Population & Submitter Row
+          Row(
+            children: [
+              Expanded(
+                child: TextFormField(
+                  controller: _affectedPopController,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    labelText: "Affected Pop.",
+                    labelStyle: const TextStyle(fontSize: 12),
+                    filled: true,
+                    fillColor: const Color(0xFFF8FAFC),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: DropdownButtonFormField<String>(
+                  value: _submitterType,
+                  decoration: InputDecoration(
+                    labelText: "Submitter Role",
+                    labelStyle: const TextStyle(fontSize: 12),
+                    filled: true,
+                    fillColor: const Color(0xFFF8FAFC),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  items: const [
+                    DropdownMenuItem(value: "INDIVIDUAL_CITIZEN", child: Text("Citizen", style: TextStyle(fontSize: 12))),
+                    DropdownMenuItem(value: "GRAM_PANCHAYAT", child: Text("Gram Panchayat", style: TextStyle(fontSize: 12))),
+                    DropdownMenuItem(value: "MUNICIPAL_OFFICER", child: Text("Municipal ULB", style: TextStyle(fontSize: 12))),
+                    DropdownMenuItem(value: "COMMUNITY_LEADER", child: Text("NGO / Leader", style: TextStyle(fontSize: 12))),
+                  ],
+                  onChanged: (val) {
+                    if (val != null) setState(() => _submitterType = val);
+                  },
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDomainSelector() {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.category_outlined, color: Color(0xFF4F46E5), size: 16),
+              const SizedBox(width: 6),
+              const Text("Thematic Domain & Priority", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: Color(0xFF0F172A))),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          // Domain dropdown
+          DropdownButtonFormField<String>(
+            value: _selectedDomain,
+            decoration: InputDecoration(
+              labelText: "NEP 2020 Thematic Domain",
+              labelStyle: const TextStyle(fontSize: 12),
+              filled: true,
+              fillColor: const Color(0xFFF8FAFC),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            items: AppConstants.thematicDomains.map((d) {
+              return DropdownMenuItem<String>(
+                value: d['id'],
+                child: Row(
+                  children: [
+                    Icon(d['icon'] as IconData, size: 16, color: d['color'] as Color),
+                    const SizedBox(width: 8),
+                    Text(d['name'], style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                  ],
+                ),
+              );
+            }).toList(),
+            onChanged: (val) {
+              if (val != null) {
+                setState(() => _selectedDomain = val);
+                _triggerAiAnalysis();
+              }
+            },
+          ),
+
+          const SizedBox(height: 12),
+
+          // Priority / Urgency Chips
+          const Text("Urgency Level:", style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Color(0xFF475569))),
+          const SizedBox(height: 6),
+          Row(
+            children: ["LOW", "MEDIUM", "HIGH", "CRITICAL"].map((u) {
+              final isSel = _selectedUrgency == u;
+              Color chipColor = const Color(0xFF64748B);
+              if (u == "CRITICAL") chipColor = const Color(0xFFDC2626);
+              if (u == "HIGH") chipColor = const Color(0xFFEA580C);
+              if (u == "MEDIUM") chipColor = const Color(0xFFD97706);
+              if (u == "LOW") chipColor = const Color(0xFF16A34A);
+
+              return Padding(
+                padding: const EdgeInsets.only(right: 6),
+                child: ChoiceChip(
+                  label: Text(u, style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: isSel ? Colors.white : chipColor)),
+                  selected: isSel,
+                  selectedColor: chipColor,
+                  backgroundColor: chipColor.withValues(alpha: 0.1),
+                  onSelected: (val) {
+                    if (val) setState(() => _selectedUrgency = u);
+                  },
+                ),
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAiIngestionCard() {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFCBD5E1)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.auto_awesome, color: Color(0xFF7C3AED), size: 16),
+              const SizedBox(width: 6),
+              const Text("AI Matching & NEP 2020 HEI Allocation", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12.5, color: Color(0xFF4338CA))),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEDE9FE),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text("Confidence: $_aiConfidence", style: const TextStyle(fontSize: 10, color: Color(0xFF6D28D9), fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
           Text(
-            "🔬 Lab: ${_suggestedHei?.specializedLab ?? 'Urban Mobility & Clean Energy Innovation Hub'}",
-            style: const TextStyle(fontSize: 11.5, color: Color(0xFF475569)),
+            "🏛️ Assigned University: ${_suggestedHei?.name ?? 'Delhi Technological University (DTU)'}",
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
           ),
-          const SizedBox(height: 2),
+          const SizedBox(height: 4),
           Text(
-            "👨‍🏫 Mentor: ${_suggestedHei?.facultyMentor ?? 'Prof. S. K. Garg'}",
-            style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+            "🔬 Specialized Lab: ${_suggestedHei?.specializedLab ?? 'Smart Transportation & Infrastructure Lab'}",
+            style: const TextStyle(fontSize: 11, color: Color(0xFF475569)),
           ),
+          const SizedBox(height: 4),
+          Text(
+            "📍 Distance to Spot: ${_suggestedHei?.distanceKm.toStringAsFixed(1) ?? '14.2'} km away",
+            style: const TextStyle(fontSize: 10.5, color: Color(0xFF0284C7), fontWeight: FontWeight.w600),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPhotoEvidenceSection() {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: _isImageVerifiedCivicHazard
+              ? const Color(0xFF86EFAC)
+              : (_aiVisionRejectionReason != null ? const Color(0xFFFCA5A5) : const Color(0xFFE2E8F0)),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.camera_alt_outlined, color: Color(0xFF0284C7), size: 16),
+              const SizedBox(width: 6),
+              const Expanded(
+                child: Text(
+                  "📸 Verified Civic Photo Evidence (YOLOv8 AI Gate)",
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12.5, color: Color(0xFF0F172A)),
+                ),
+              ),
+              if (_isImageVerifiedCivicHazard)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFDCFCE7),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: const Text(
+                    "✓ Verified",
+                    style: TextStyle(color: Color(0xFF15803D), fontSize: 10, fontWeight: FontWeight.bold),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            "Only authentic photos of Potholes, Garbage Dumps, Broken Street Lights, or Fallen Trees are accepted.",
+            style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+          ),
+          const SizedBox(height: 12),
+
+          // Scanning indicator
+          if (_isScanningAiVision)
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF0F9FF),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFFBAE6FD)),
+              ),
+              child: const Row(
+                children: [
+                  SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF0284C7)),
+                  ),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      "🔍 YOLOv8 Neural Network Scanning Photo for Civic Defects...",
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF0369A1)),
+                    ),
+                  ),
+                ],
+              ),
+            )
+          else if (_selectedImage != null && _isImageVerifiedCivicHazard)
+            Stack(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.file(_selectedImage!, height: 160, width: double.infinity, fit: BoxFit.cover),
+                ),
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: CircleAvatar(
+                    backgroundColor: Colors.black54,
+                    radius: 16,
+                    child: IconButton(
+                      icon: const Icon(Icons.close, color: Colors.white, size: 14),
+                      onPressed: () => setState(() {
+                        _selectedImage = null;
+                        _isImageVerifiedCivicHazard = false;
+                        _verifiedCivicHazardName = null;
+                      }),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  bottom: 8,
+                  left: 8,
+                  right: 8,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.80),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.check_circle, color: Color(0xFF22C55E), size: 14),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            "✓ YOLOv8 Verified: ${_verifiedCivicHazardName?.replaceAll('_', ' ').toUpperCase()} (${_verifiedConfidence ?? '92%'})",
+                            style: const TextStyle(color: Colors.white, fontSize: 10.5, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            )
+          else ...[
+            if (_aiVisionRejectionReason != null)
+              Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFEF2F2),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: const Color(0xFFFECACA)),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(Icons.error_outline, color: Color(0xFFDC2626), size: 16),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        "❌ AI Gate Rejected: $_aiVisionRejectionReason",
+                        style: const TextStyle(color: Color(0xFF991B1B), fontSize: 11.5, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      side: const BorderSide(color: Color(0xFF0284C7)),
+                    ),
+                    icon: const Icon(Icons.camera_alt, size: 18, color: Color(0xFF0284C7)),
+                    label: const Text("Camera Snap", style: TextStyle(fontSize: 12.5, color: Color(0xFF0284C7), fontWeight: FontWeight.w600)),
+                    onPressed: () => _pickImage(ImageSource.camera),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      side: const BorderSide(color: Color(0xFF0284C7)),
+                    ),
+                    icon: const Icon(Icons.photo_library, size: 18, color: Color(0xFF0284C7)),
+                    label: const Text("Photo Gallery", style: TextStyle(fontSize: 12.5, color: Color(0xFF0284C7), fontWeight: FontWeight.w600)),
+                    onPressed: () => _pickImage(ImageSource.gallery),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );
