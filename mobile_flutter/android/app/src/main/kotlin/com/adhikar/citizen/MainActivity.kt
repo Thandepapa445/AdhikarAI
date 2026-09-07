@@ -1,4 +1,4 @@
-package com.jannirikshan.mobile_citizen
+﻿package com.adhikar.citizen
 
 import io.flutter.embedding.android.FlutterActivity
 

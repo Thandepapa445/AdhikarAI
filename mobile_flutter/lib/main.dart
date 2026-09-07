@@ -12,11 +12,11 @@ void main() {
     DeviceOrientation.portraitDown,
   ]);
 
-  runApp(const SankalpCitizenApp());
+  runApp(const AdhikarCitizenApp());
 }
 
-class SankalpCitizenApp extends StatelessWidget {
-  const SankalpCitizenApp({Key? key}) : super(key: key);
+class AdhikarCitizenApp extends StatelessWidget {
+  const AdhikarCitizenApp({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -25,7 +25,7 @@ class SankalpCitizenApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ChallengeProvider()),
       ],
       child: MaterialApp(
-        title: 'Sankalp AI - Citizen Innovation Portal',
+        title: 'Adhikar AI - National Citizen Innovation Portal',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.lightTheme,
         home: const SplashScreen(),
