@@ -3,6 +3,9 @@ import { INITIAL_SEED_CHALLENGES } from "../data/indiaData";
 
 // Dynamically resolve backend via Vite reverse proxy for 100% reliable cross-device communication
 const getApiBaseUrl = () => {
+    if (import.meta.env.VITE_API_BASE_URL) {
+        return import.meta.env.VITE_API_BASE_URL;
+    }
     return "/api";
 };
 
