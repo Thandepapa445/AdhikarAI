@@ -1,5 +1,5 @@
-// Simple Service Worker for Sankalp AI PWA
-const CACHE_NAME = 'sankalp-ai-v1';
+// Simple Service Worker for Adhikar AI PWA
+const CACHE_NAME = 'adhikar-ai-v1';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();

@@ -477,7 +477,7 @@ export default function UniversityDashboard() {
                                         <strong>Funding & Equipment Support:</strong> {ind.fundingContribution}
                                     </div>
                                     <div style={{ fontSize: "12px", color: "#64748b", marginTop: 4 }}>
-                                        <strong>Focus Areas:</strong> {ind.focusAreas.join(", ")}
+                                        <strong>Focus Areas:</strong> {(ind.focusAreas || ind.domains || []).join(", ")}
                                     </div>
                                 </div>
                             ))}

@@ -6,7 +6,7 @@ def run_detection(
         model_path: str = "models/pothole_garbage_water_yolov8.pt"
 ):
     """
-    Run Sankalp AI 3-Class Object Detection Model on an input image.
+    Run Adhikar AI 4-Class Object Detection Model on an input image.
 
     Classes:
         0: pothole
@@ -64,7 +64,7 @@ def run_detection(
 
 if __name__ == "__main__":
 
-    print("Sankalp AI Model Inference Module")
+    print("Adhikar AI Model Inference Module")
 
     run_detection(
         "pothole-test.webp",

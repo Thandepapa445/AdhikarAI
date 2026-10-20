@@ -74,6 +74,11 @@ class _HomeScreenState extends State<HomeScreen> {
             },
           ),
           IconButton(
+            icon: const Icon(Icons.settings_ethernet, color: Colors.white),
+            tooltip: "Server IP",
+            onPressed: () => _showServerIpDialog(context, provider),
+          ),
+          IconButton(
             icon: const Icon(Icons.refresh, color: Colors.white),
             tooltip: "Sync with State Portal",
             onPressed: () => provider.loadChallenges(),
@@ -506,6 +511,140 @@ class _HomeScreenState extends State<HomeScreen> {
             Text(
               "No challenges found in this filter",
               style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF64748B)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showServerIpDialog(BuildContext context, ChallengeProvider provider) {
+    final controller = TextEditingController(text: AppConstants.defaultHost);
+    bool isScanning = false;
+    String? scanStatus;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Row(
+            children: [
+              Icon(Icons.wifi_tethering, color: Color(0xFF0284C7)),
+              SizedBox(width: 8),
+              Text("Mobile Hotspot & Server IP", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  "Connect your laptop to your phone's Mobile Hotspot or same Wi-Fi:",
+                  style: TextStyle(fontSize: 12.5, color: Color(0xFF475569)),
+                ),
+                const SizedBox(height: 12),
+                // 1-Tap Auto-Scan for Laptop on Hotspot / Network
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFE0F2FE),
+                      foregroundColor: const Color(0xFF0284C7),
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                    icon: isScanning
+                        ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
+                        : const Icon(Icons.radar, size: 18),
+                    label: Text(
+                      isScanning ? "Scanning Network..." : "🔍 Auto-Detect Laptop (Hotspot)",
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                    ),
+                    onPressed: isScanning
+                        ? null
+                        : () async {
+                            setDialogState(() {
+                              isScanning = true;
+                              scanStatus = null;
+                            });
+                            final found = await AppConstants.autoScanForLaptop();
+                            setDialogState(() {
+                              isScanning = false;
+                              if (found != null) {
+                                controller.text = found;
+                                scanStatus = "✓ Found laptop at $found!";
+                              } else {
+                                scanStatus = "⚠️ Laptop not found on hotspot. Enter IP manually below.";
+                              }
+                            });
+                          },
+                  ),
+                ),
+                if (scanStatus != null) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    scanStatus!,
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w600,
+                      color: scanStatus!.startsWith("✓") ? const Color(0xFF16A34A) : const Color(0xFFDC2626),
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 14),
+                // Quick Preset Chips
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 4,
+                  children: [
+                    ActionChip(
+                      label: const Text("📱 Hotspot Gateway (192.168.43.1)", style: TextStyle(fontSize: 11)),
+                      onPressed: () => setDialogState(() => controller.text = "192.168.43.1"),
+                    ),
+                    ActionChip(
+                      label: const Text("🏠 Current PC (192.168.1.35)", style: TextStyle(fontSize: 11)),
+                      onPressed: () => setDialogState(() => controller.text = "192.168.1.35"),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: controller,
+                  decoration: const InputDecoration(
+                    labelText: "Server IP / Host",
+                    hintText: "e.g., 192.168.43.x or 192.168.1.x",
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text("Cancel"),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0284C7)),
+              onPressed: () async {
+                final newHost = controller.text.trim();
+                if (newHost.isNotEmpty) {
+                  await AppConstants.setCustomHost(newHost);
+                  if (ctx.mounted) Navigator.pop(ctx);
+                  provider.loadChallenges();
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text("✓ Server IP updated to $newHost. Re-syncing..."),
+                        backgroundColor: const Color(0xFF16A34A),
+                      ),
+                    );
+                  }
+                }
+              },
+              child: const Text("Save & Connect", style: TextStyle(color: Colors.white)),
             ),
           ],
         ),

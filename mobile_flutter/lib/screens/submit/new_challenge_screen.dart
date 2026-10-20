@@ -293,7 +293,7 @@ class _NewChallengeScreenState extends State<NewChallengeScreen> {
         });
 
         // Run 4-Class YOLOv8 Vision Audit on Python Microservice
-        final visionResult = await _apiService.detectVisualEvidence(imageFile);
+        final visionResult = await _apiService.detectVisualEvidence(imageFile: imageFile);
 
         if (mounted) {
           setState(() => _isScanningAiVision = false);

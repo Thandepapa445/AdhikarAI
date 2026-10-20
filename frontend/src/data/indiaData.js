@@ -535,22 +535,37 @@ export const INDUSTRY_CSR_PARTNERS = [
         id: "IND-01",
         name: "National Innovation Seed Fund",
         shortName: "NIF India",
+        category: "Central Innovation & Seed Capital",
         fundingContribution: "₹3.5 Lakhs Seed Grant",
-        domains: ["INFRASTRUCTURE", "WATER", "HEALTHCARE", "ENERGY_ENVIRONMENT"]
+        domains: ["INFRASTRUCTURE", "WATER", "HEALTHCARE", "ENERGY_ENVIRONMENT"],
+        focusAreas: ["Deep Tech", "Rural Infrastructure", "Water Purification", "Clean Energy"]
     },
     {
         id: "IND-02",
         name: "Smart Cities & Urban Tech Mission",
         shortName: "Smart Cities CSR",
+        category: "Urban Local Body & Smart Infrastructure",
         fundingContribution: "₹5.0 Lakhs Pilot Grant",
-        domains: ["INFRASTRUCTURE", "PUBLIC_ADMIN", "ENERGY_ENVIRONMENT"]
+        domains: ["INFRASTRUCTURE", "PUBLIC_ADMIN", "ENERGY_ENVIRONMENT"],
+        focusAreas: ["Pothole Remediation", "Smart Lighting", "Waste-to-Energy", "Civic IoT"]
     },
     {
         id: "IND-03",
         name: "Clean Water & Sanitation CSR Hub",
         shortName: "Jal Jeevan Tech Grant",
+        category: "Public Health & Environmental Sanitation",
         fundingContribution: "₹4.0 Lakhs Scale Grant",
-        domains: ["WATER", "HEALTHCARE", "AGRICULTURE"]
+        domains: ["WATER", "HEALTHCARE", "AGRICULTURE"],
+        focusAreas: ["Fluoride Removal", "Groundwater Monitoring", "Sanitation", "Agri-Runoff"]
+    },
+    {
+        id: "IND-04",
+        name: "Tata Steel Foundation (Rural Tech Initiative)",
+        shortName: "Tata Steel CSR",
+        category: "Corporate Social Responsibility",
+        fundingContribution: "₹12.5 Lakhs Consortium Grant",
+        domains: ["INFRASTRUCTURE", "WATER", "HEALTHCARE"],
+        focusAreas: ["Rural Roads", "Community Healthcare", "Clean Drinking Water", "Tribal Livelihoods"]
     }
 ];
 

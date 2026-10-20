@@ -613,7 +613,7 @@ export default function AdminDashboard() {
                                     <div style={styles.heiGovSection}>
                                         <strong>Thematic CSR Focus Areas:</strong>
                                         <div style={{ fontSize: "12.5px", color: "#334155", marginTop: "4px" }}>
-                                            {ind.focusAreas.join(" • ")}
+                                            {(ind.focusAreas || ind.domains || []).join(" • ")}
                                         </div>
                                     </div>
                                     <div style={styles.heiGovSection}>

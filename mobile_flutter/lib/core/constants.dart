@@ -1,11 +1,89 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:dio/dio.dart';
 
 class AppConstants {
+  static String customHost = "";
+
   // Backend and AI Endpoints
-  // Use 10.0.2.2 for Android Emulator, or your laptop Wi-Fi IP for physical mobile devices
-  static const String defaultHost = "192.168.1.41";
-  static const String apiBaseUrl = "http://$defaultHost:8085/api";
-  static const String aiServiceUrl = "http://$defaultHost:5000/api/v1";
+  // Automatically uses 'localhost' on Web / Desktop and active hotspot IP on physical devices
+  static String get defaultHost {
+    if (kIsWeb) return "localhost";
+    if (customHost.isNotEmpty) return customHost;
+    return "192.168.1.35";
+  }
+
+  static String get apiBaseUrl => "http://$defaultHost:8085/api";
+  static String get aiServiceUrl => "http://$defaultHost:5000/api/v1";
+
+  static Future<void> loadCustomHost() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final saved = prefs.getString("custom_server_host") ?? "";
+      if (saved == "10.67.57.96") {
+        await prefs.remove("custom_server_host");
+        customHost = "";
+      } else {
+        customHost = saved;
+      }
+    } catch (_) {}
+  }
+
+  static Future<void> setCustomHost(String host) async {
+    customHost = host.trim();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString("custom_server_host", customHost);
+    } catch (_) {}
+  }
+
+  /// Automatically scans common subnets (Mobile Hotspot, Home Wi-Fi, Windows Hotspot)
+  /// to locate the running Spring Boot backend.
+  static Future<String?> autoScanForLaptop() async {
+    final List<String> candidateIps = [
+      if (customHost.isNotEmpty) customHost,
+      "192.168.1.35",
+      "192.168.1.41",
+      // Android Mobile Hotspot range (phone is 192.168.43.1, laptop is 192.168.43.2..30)
+      for (int i = 2; i <= 35; i++) "192.168.43.$i",
+      // Windows Mobile Hotspot range
+      for (int i = 2; i <= 15; i++) "192.168.137.$i",
+      // iOS Personal Hotspot range
+      for (int i = 2; i <= 10; i++) "172.20.10.$i",
+    ];
+
+    final dio = Dio(BaseOptions(
+      connectTimeout: const Duration(milliseconds: 500),
+      receiveTimeout: const Duration(milliseconds: 500),
+    ));
+
+    for (int batchStart = 0; batchStart < candidateIps.length; batchStart += 8) {
+      final batch = candidateIps.sublist(
+        batchStart,
+        (batchStart + 8 > candidateIps.length) ? candidateIps.length : batchStart + 8,
+      );
+
+      final futures = batch.map((ip) async {
+        try {
+          final res = await dio.get("http://$ip:8085/api/challenges");
+          if (res.statusCode == 200) {
+            return ip;
+          }
+        } catch (_) {}
+        return null;
+      });
+
+      final results = await Future.wait(futures);
+      for (final match in results) {
+        if (match != null) {
+          await setCustomHost(match);
+          return match;
+        }
+      }
+    }
+    return null;
+  }
 
   // App Metadata
   static const String appName = "Adhikar AI";

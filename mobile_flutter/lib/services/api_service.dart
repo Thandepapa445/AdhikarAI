@@ -127,11 +127,19 @@ class ApiService {
   }
 
   // 8. YOLOv8 Civic Hazard Vision Audit & Safety Check
-  Future<VisionDetectionResult?> detectVisualEvidence(File imageFile) async {
+  Future<VisionDetectionResult?> detectVisualEvidence({
+    File? imageFile,
+    List<int>? imageBytes,
+    String? fileName,
+  }) async {
     try {
-      String fileName = imageFile.path.split('/').last;
+      final name = fileName ?? (imageFile != null ? imageFile.path.split(RegExp(r'[/\\]')).last : "evidence.jpg");
+      final MultipartFile multipart = imageBytes != null
+          ? MultipartFile.fromBytes(imageBytes, filename: name)
+          : await MultipartFile.fromFile(imageFile!.path, filename: name);
+
       FormData formData = FormData.fromMap({
-        "file": await MultipartFile.fromFile(imageFile.path, filename: fileName),
+        "file": multipart,
       });
 
       final res = await _dio.post(

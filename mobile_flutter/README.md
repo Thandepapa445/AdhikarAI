@@ -1,6 +1,6 @@
-# 📱 Sankalp AI — Citizen Flutter Mobile App
+# 📱 Adhikar AI — Citizen Flutter Mobile App
 
-Official cross-platform mobile application for **Sankalp AI** built using **Flutter (Dart)**. Designed for rural citizens, Gram Panchayat Mukhya leaders, farmer collectives, and women SHGs to report grassroots societal challenges and track their resolution through university engineering labs under NEP 2020.
+Official cross-platform mobile application for **Adhikar AI** built using **Flutter (Dart)**. Designed for rural citizens, Gram Panchayat Mukhya leaders, farmer collectives, and women SHGs to report grassroots societal challenges and track their resolution through university engineering labs under NEP 2020.
 
 ---
 

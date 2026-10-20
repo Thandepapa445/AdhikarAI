@@ -468,7 +468,7 @@ export default function Dashboard() {
                                             </div>
                                         </div>
                                         <div style={{ fontSize: "12px", color: "#475569", marginTop: 8 }}>
-                                            <strong>Focus Areas:</strong> {ind.focusAreas.join(", ")}
+                                            <strong>Focus Areas:</strong> {(ind.focusAreas || ind.domains || []).join(", ")}
                                         </div>
                                         <div style={{ fontSize: "12px", color: "#166534", marginTop: 4, background: "#dcfce7", padding: "6px 8px", borderRadius: "6px" }}>
                                             <strong>Seed Grant Support:</strong> {ind.fundingContribution}

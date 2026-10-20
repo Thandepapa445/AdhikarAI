@@ -30,25 +30,36 @@ api.interceptors.request.use((config) => {
 // LOCAL STORAGE BACKED SYNC FOR INSTANT OFFLINE / LIVE EXPERIENCE
 // ============================================================================
 
-const STORAGE_KEY = "adhikar_ai_challenges";
-const LEGACY_STORAGE_KEY = "sankalp_jharkhand_challenges";
+const STORAGE_KEY = "adhikar_ai_challenges_v2";
+
+const isJunkChallenge = (c) => {
+    if (!c) return true;
+    const txt = `${c.title || ""} ${c.description || ""} ${c.submitterName || ""}`.toLowerCase();
+    return (
+        txt.includes("baoa") ||
+        txt.includes("hjsj") ||
+        txt.includes("hrhw") ||
+        txt.includes("fqgh") ||
+        txt.includes("bwhr") ||
+        txt.includes("abhru") ||
+        txt.includes("leaning here and there") ||
+        txt.includes("kirtiii") ||
+        txt.includes("crops surfers")
+    );
+};
 
 export function getLocalChallenges() {
     try {
-        const stored = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(LEGACY_STORAGE_KEY);
+        const stored = localStorage.getItem(STORAGE_KEY);
         if (stored) {
             const parsed = JSON.parse(stored);
             if (Array.isArray(parsed) && parsed.length > 0) {
-                return parsed;
+                const clean = parsed.filter(c => !isJunkChallenge(c));
+                if (clean.length > 0) return clean;
             }
         }
     } catch (e) {
         console.error("Local storage read error", e);
-    }
-    try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(INITIAL_SEED_CHALLENGES));
-    } catch (e) {
-        // safety
     }
     return INITIAL_SEED_CHALLENGES;
 }
@@ -56,7 +67,8 @@ export function getLocalChallenges() {
 export function saveLocalChallenges(challenges) {
     try {
         if (Array.isArray(challenges)) {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(challenges));
+            const clean = challenges.filter(c => !isJunkChallenge(c));
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(clean));
         }
     } catch (e) {
         console.warn("Local storage write error", e);
@@ -68,24 +80,19 @@ export function saveLocalChallenges(challenges) {
 // ============================================================================
 
 export const challengeService = {
-    // Fetch all challenges (syncs backend with local state)
+    // Fetch all challenges (backend is primary authoritative source)
     async getAllChallenges() {
-        const localList = getLocalChallenges();
         try {
             const res = await api.get("/challenges");
             if (Array.isArray(res.data) && res.data.length > 0) {
-                // Merge by ID so all challenges from both backend and local queue are visible!
-                const map = new Map();
-                localList.forEach(c => map.set(String(c.id), c));
-                res.data.forEach(c => map.set(String(c.id), c));
-                const merged = Array.from(map.values());
-                saveLocalChallenges(merged);
-                return merged;
+                const clean = res.data.filter(c => !isJunkChallenge(c));
+                saveLocalChallenges(clean);
+                return clean;
             }
         } catch (err) {
-            // Fallback gracefully to local dataset
+            // Fallback gracefully to local dataset if offline
         }
-        return localList;
+        return getLocalChallenges();
     },
 
     // Fetch citizen's own challenges
