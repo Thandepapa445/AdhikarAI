@@ -63,6 +63,7 @@ flutter run
 
 ## 🧩 Key Portals & Interfaces
 - **🌾 Citizen & Submitter Portal (`/dashboard`)**: KPI impact counters, 8-stage progress tracker, interactive Pan-India GIS map, deployed showcase, and Citizen Field Sign-off.
+- **🏢 Society Resident & Manager Portal (`/society/resident`, `/society/manager`)**: Multi-tenant residential society grievance redressal, real-time YOLOv8 defect verification, civic track escalation, and resident sign-off.
 - **🎓 University (HEI) & Faculty Portal (`/university`)**: Workspaces for premier institutions across India, student team builder, lab deliverable uploads, and milestone management.
 - **🛡️ Nodal Admin Command Center (`/admin`)**: Pan-India volume triage queue, AI Deduplication & Clustering, Proximity University Allocation, CSR Grants tracking, and audit logs.
 - **📱 Flutter Mobile App (`mobile_flutter/`)**: 1-Tap live GPS auto-locator, direct camera snap with 4-class YOLOv8 AI verification, and vernacular voice notes.
