@@ -93,6 +93,26 @@ input, textarea, select {
   line-height: 1.4 !important;
 }
 
+/* Tablet & Medium Screen Header Scaling (769px to 1180px) */
+@media screen and (min-width: 769px) and (max-width: 1180px) {
+  .nav-container {
+    padding: 0 14px !important;
+    gap: 8px !important;
+  }
+  .nav-links-desktop button {
+    padding: 6px 8px !important;
+  }
+  .nav-links-desktop button span {
+    font-size: 12px !important;
+  }
+  .nav-actions-group {
+    gap: 6px !important;
+  }
+  .nav-actions-group a span {
+    font-size: 11.5px !important;
+  }
+}
+
 /* ==========================================================================
    MOBILE-ONLY RESPONSIVE ENGINE (Strictly for mobile screens <= 768px)
    Laptop / PC views (> 768px) remain 100% desktop-standard & untouched.
@@ -113,25 +133,17 @@ input, textarea, select {
   }
 
   /* 1. Header & Nav Adjustments */
-  .top-gov-bar, div[style*="topGovBar"] {
-    display: none !important;
-  }
-
   .nav-links-desktop, nav[style*="display: flex"][style*="gap: 2px"] {
     display: none !important;
   }
 
-  .nav-container, div[style*="maxWidth: 1280px"] {
-    padding: 0 10px !important;
+  .nav-container, div[style*="maxWidth: 1320px"], div[style*="maxWidth: 1280px"] {
+    padding: 0 12px !important;
     max-width: 100% !important;
   }
 
-  .brand-subtitle-text, div[style*="brandSubtitle"] {
-    display: none !important;
-  }
-
   .brand-title-text {
-    font-size: 16px !important;
+    font-size: 17px !important;
   }
 
   .brand-logo {

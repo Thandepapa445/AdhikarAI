@@ -71,10 +71,23 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/api/auth/**").permitAll()
+                        // 1. Secured Administrative / Nodal Officer Endpoints
+                        .requestMatchers(HttpMethod.PUT, "/api/challenges/*/override-priority").hasAnyRole("NODAL_ADMIN", "ADMIN", "OFFICER", "GRAM_PANCHAYAT")
+                        .requestMatchers(HttpMethod.POST, "/api/challenges/*/separate-cluster").hasAnyRole("NODAL_ADMIN", "ADMIN", "OFFICER", "GRAM_PANCHAYAT")
+                        .requestMatchers(HttpMethod.PUT, "/api/challenges/*/status").hasAnyRole("NODAL_ADMIN", "ADMIN", "OFFICER", "GRAM_PANCHAYAT", "HEI_FACULTY", "INDUSTRY_PARTNER")
+                        .requestMatchers(HttpMethod.POST, "/api/challenges/*/allocate").hasAnyRole("NODAL_ADMIN", "ADMIN")
+                        // 2. Residential Society Platform Endpoints
+                        .requestMatchers(HttpMethod.GET, "/api/society/organizations").permitAll()
+                        .requestMatchers(HttpMethod.PUT, "/api/society/issues/*/status").hasAnyRole("SOCIETY_MANAGER", "ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/api/society/issues/*/separate-cluster").hasAnyRole("SOCIETY_MANAGER", "ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/api/society/metrics").hasAnyRole("SOCIETY_MANAGER", "ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/api/society/staff").hasAnyRole("SOCIETY_MANAGER", "ADMIN")
+                        .requestMatchers("/api/society/**").hasAnyRole("SOCIETY_RESIDENT", "SOCIETY_MANAGER", "ADMIN")
+                        // 3. Public / Citizen Endpoints
                         .requestMatchers(HttpMethod.GET, "/api/challenges/**").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/challenges/**").permitAll()
-                        .requestMatchers(HttpMethod.PUT, "/api/challenges/**").permitAll()
-                        .requestMatchers(HttpMethod.PATCH, "/api/challenges/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/challenges", "/api/challenges/").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/challenges/*/upvote").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/challenges/*/verify-pilot").permitAll()
                         .requestMatchers("/error").permitAll()
                         .anyRequest().authenticated()
                 )

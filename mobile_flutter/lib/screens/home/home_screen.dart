@@ -189,7 +189,7 @@ class _HomeScreenState extends State<HomeScreen> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.12),
+            color: Colors.black.withValues(alpha: 0.12),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -198,17 +198,20 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
+            runSpacing: 6,
             children: [
               const Text(
-                "Govt. of Jharkhand • State Innovation",
+                "National Citizen Innovation • Adhikar AI",
                 style: TextStyle(color: Color(0xFF38BDF8), fontSize: 11.5, fontWeight: FontWeight.w700),
               ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF16A34A).withOpacity(0.2),
+                  color: const Color(0xFF16A34A).withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(color: const Color(0xFF22C55E), width: 0.8),
                 ),
@@ -225,7 +228,7 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               _buildKpiItem("Total Issues", "$total", Icons.assignment_outlined),
               Container(width: 1, height: 36, color: Colors.white24),
-              _buildKpiItem("In R&D Lab", "$inRnd", Icons.science_outlined),
+              _buildKpiItem("In Resolution", "$inRnd", Icons.build_circle_outlined),
               Container(width: 1, height: 36, color: Colors.white24),
               _buildKpiItem("Verified Pilots", "$resolved", Icons.verified_outlined),
             ],
@@ -252,7 +255,7 @@ class _HomeScreenState extends State<HomeScreen> {
         const SizedBox(height: 2),
         Text(
           title,
-          style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 11, fontWeight: FontWeight.w600),
+          style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 11, fontWeight: FontWeight.w600),
         ),
       ],
     );
@@ -329,7 +332,7 @@ class _HomeScreenState extends State<HomeScreen> {
           border: Border.all(color: const Color(0xFFE2E8F0)),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.04),
+              color: Colors.black.withValues(alpha: 0.04),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -366,7 +369,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.75),
+                      color: Colors.black.withValues(alpha: 0.75),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Row(
@@ -431,30 +434,41 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   const SizedBox(height: 10),
 
-                  // HEI Lab Allocation Pill (if assigned)
-                  if (c.assignedHei != null)
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF8FAFC),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: const Color(0xFFE2E8F0)),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.account_balance, size: 14, color: Color(0xFF7C3AED)),
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: Text(
-                              "🎓 ${c.assignedHei}",
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: Color(0xFF334155)),
+                  // AI Priority & Civic Status Pill
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: const Color(0xFFE2E8F0)),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          c.urgency == "CRITICAL" ? Icons.warning_rounded : Icons.shield_outlined,
+                          size: 14,
+                          color: c.urgency == "CRITICAL"
+                              ? const Color(0xFFDC2626)
+                              : (c.urgency == "HIGH" ? const Color(0xFFEA580C) : const Color(0xFF0284C7)),
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            "● ${c.urgency} Priority Civic Grievance",
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w700,
+                              color: c.urgency == "CRITICAL"
+                                  ? const Color(0xFFDC2626)
+                                  : (c.urgency == "HIGH" ? const Color(0xFFEA580C) : const Color(0xFF0284C7)),
                             ),
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
+                  ),
 
                   const SizedBox(height: 12),
                   const Divider(height: 1, color: Color(0xFFF1F5F9)),

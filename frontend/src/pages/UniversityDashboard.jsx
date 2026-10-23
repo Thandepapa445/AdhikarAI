@@ -125,15 +125,10 @@ export default function UniversityDashboard() {
                 <div style={styles.headerContainer}>
                     <div style={styles.headerLeft}>
                         <div style={styles.heiAvatar}>
-                            <Building2 size={24} color="#ffffff" />
+                            <Building2 size={20} color="#ffffff" />
                         </div>
-                        <div>
-                            <div style={styles.heiTitle}>
-                                {currentHei.name} <span style={styles.heiTag}>HEI Innovation Portal</span>
-                            </div>
-                            <div style={styles.heiSub}>
-                                NEP 2020 Multidisciplinary R&D, Prototyping & Student Innovation Center • Adhikar AI
-                            </div>
+                        <div style={styles.heiTitle}>
+                            {currentHei.name} <span style={styles.heiTag}>HEI Innovation Portal</span>
                         </div>
                     </div>
 
@@ -154,7 +149,10 @@ export default function UniversityDashboard() {
 
                         {/* Switch View Buttons */}
                         <button onClick={() => navigate("/dashboard")} style={styles.switchBtn}>
-                            <span>🌾 Citizen View</span>
+                            <span>🏛️ Citizen View</span>
+                        </button>
+                        <button onClick={() => navigate("/society/resident")} style={{ ...styles.switchBtn, background: "#ecfdf5", color: "#059669", border: "1px solid #a7f3d0" }}>
+                            <span>🏢 Society Portal</span>
                         </button>
                         <button onClick={() => navigate("/admin")} style={{ ...styles.switchBtn, background: "#0f172a", color: "#38bdf8" }}>
                             <span>🛡️ Nodal Admin</span>
@@ -598,8 +596,11 @@ const styles = {
     heiHeader: {
         background: "linear-gradient(135deg, #4c1d95 0%, #1e1b4b 100%)",
         borderBottom: "1px solid #6b21a8",
-        padding: "14px 0",
-        boxShadow: "0 4px 20px rgba(0,0,0,0.15)"
+        padding: "10px 0",
+        position: "sticky",
+        top: 0,
+        zIndex: 1000,
+        boxShadow: "0 2px 10px rgba(0,0,0,0.15)"
     },
     headerContainer: {
         maxWidth: "1320px",
@@ -614,34 +615,33 @@ const styles = {
     headerLeft: {
         display: "flex",
         alignItems: "center",
-        gap: "12px"
+        gap: "10px"
     },
     heiAvatar: {
-        width: "42px",
-        height: "42px",
-        borderRadius: "12px",
+        width: "36px",
+        height: "36px",
+        borderRadius: "10px",
         background: "linear-gradient(135deg, #7c3aed 0%, #a855f7 100%)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        boxShadow: "0 4px 12px rgba(124, 58, 237, 0.4)"
+        boxShadow: "0 3px 10px rgba(124, 58, 237, 0.35)",
+        flexShrink: 0
     },
     heiTitle: {
-        fontSize: "18px",
+        fontSize: "19px",
         fontWeight: 800,
-        color: "#ffffff"
+        color: "#ffffff",
+        letterSpacing: "-0.02em",
+        lineHeight: 1
     },
     heiTag: {
         fontSize: "11.5px",
         color: "#c084fc",
         background: "rgba(192, 132, 252, 0.2)",
-        padding: "2px 8px",
-        borderRadius: "10px",
+        padding: "3px 8px",
+        borderRadius: "8px",
         marginLeft: "6px"
-    },
-    heiSub: {
-        fontSize: "11px",
-        color: "#cbd5e1"
     },
     headerRight: {
         display: "flex",

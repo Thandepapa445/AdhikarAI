@@ -16,4 +16,14 @@ public interface ChallengeRepository extends JpaRepository<Challenge, Long> {
     List<Challenge> findByDomain(String domain);
 
     List<Challenge> findByStatus(Challenge.Status status);
+
+    List<Challenge> findByStatusNot(Challenge.Status status);
+
+    List<Challenge> findByIsClusterMasterTrueOrderByCreatedAtDesc();
+
+    List<Challenge> findByClusterIdOrderByCreatedAtAsc(Long clusterId);
+
+    java.util.Optional<Challenge> findByLinkedSocietyIssueId(Long linkedSocietyIssueId);
+
+    List<Challenge> findByOriginTypeOrderByCreatedAtDesc(String originType);
 }

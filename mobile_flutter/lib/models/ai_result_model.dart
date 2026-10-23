@@ -84,6 +84,12 @@ class VisionDetectionResult {
   final String? suggestedHei;
   final String? message;
   final bool safetyFailed;
+  final String? suggestedDescription;
+  final String? assignedPriority;
+  final String? estimatedSeverity;
+  final String? priorityExplanation;
+  final List<dynamic>? safetyFlags;
+  final bool needsHumanReview;
 
   VisionDetectionResult({
     required this.isVisualEvidenceVerified,
@@ -94,6 +100,12 @@ class VisionDetectionResult {
     this.suggestedHei,
     this.message,
     this.safetyFailed = false,
+    this.suggestedDescription,
+    this.assignedPriority,
+    this.estimatedSeverity,
+    this.priorityExplanation,
+    this.safetyFlags,
+    this.needsHumanReview = false,
   });
 
   factory VisionDetectionResult.fromJson(Map<String, dynamic> json) {
@@ -106,6 +118,12 @@ class VisionDetectionResult {
       suggestedHei: json['suggestedHei'],
       message: json['message'],
       safetyFailed: json['safetyFailed'] ?? false,
+      suggestedDescription: json['suggestedDescription'],
+      assignedPriority: json['assignedPriority'],
+      estimatedSeverity: json['estimatedSeverity'],
+      priorityExplanation: json['priorityExplanation'],
+      safetyFlags: json['safetyFlags'] is List ? json['safetyFlags'] : null,
+      needsHumanReview: json['needsHumanReview'] ?? false,
     );
   }
 }

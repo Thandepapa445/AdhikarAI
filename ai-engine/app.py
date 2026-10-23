@@ -2,10 +2,17 @@ import os
 import io
 import math
 import re
+import base64
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from PIL import Image
 import numpy as np
+from image_guardrails import (
+    analyze_image_quality,
+    analyze_nsfw_content,
+    analyze_ai_generated_image,
+    comprehensive_safety_audit
+)
 
 app = Flask(__name__)
 CORS(app)
@@ -66,33 +73,18 @@ DOMAIN_MAPPING = {
 }
 
 # ==============================================================================
-# 2. IMAGE QUALITY & SAFETY GUARDRAILS (STAGE 1 PRE-FILTER)
+# 2. IMAGE QUALITY, NSFW & AI-GENERATION SAFETY GUARDRAILS (STAGE 1 PRE-FILTER)
 # ==============================================================================
-def analyze_image_safety(image: Image.Image):
+def analyze_image_safety(image: Image.Image, raw_bytes: bytes = None):
     """
-    Checks for corrupted, blank, pitch black, or overexposed images.
-    Returns (is_safe: bool, error_type: str, message: str)
+    Executes full multi-stage safety pre-filter:
+      1. Image Quality / Lighting (Blank, Dark, Overexposed)
+      2. NSFW & Explicit Adult Content Moderation
+      3. AI-Generated Synthetic Image Forensic Detection
+    Returns:
+      (is_safe: bool, error_type: str, message: str, audit_data: dict)
     """
-    try:
-        img_np = np.array(image.convert("RGB"))
-        std = float(img_np.std())
-        mean = float(img_np.mean())
-
-        # 1. Blank or single-color image
-        if std < 12.0:
-            return False, "BLANK_OR_CORRUPTED", "The uploaded photo appears blank or solid color. Please upload a clear photo of the civic problem."
-
-        # 2. Pitch black photo
-        if mean < 12.0:
-            return False, "PITCH_DARK", "The uploaded photo is pitch black or too dark. Please capture an adequately lit photograph."
-
-        # 3. Overexposed / whiteout
-        if mean > 245.0:
-            return False, "OVEREXPOSED", "The uploaded photo is overexposed or solid white. Please capture a clear photograph."
-
-        return True, "SAFE", "Image passed safety and clarity checks."
-    except Exception as e:
-        return True, "SAFE", f"Pass: {str(e)}"
+    return comprehensive_safety_audit(image, raw_bytes=raw_bytes)
 
 # ==============================================================================
 # 3. COMPREHENSIVE PAN-INDIA UNIVERSITY CAPABILITY DATABASE
@@ -409,13 +401,209 @@ def health():
     return jsonify({
         "status": "online",
         "service": "Adhikar AI Pan-India Multi-Modal Engine",
+        "version": "2.1.0-safety-guardrails",
         "modelLoaded": vision_model is not None,
         "classes": list(vision_model.names.values()) if vision_model else ["pothole", "garbage", "broken_street_light", "fallen_tree"],
         "totalClasses": len(vision_model.names) if vision_model else 4,
-        "capabilities": ["4-Class YOLOv8 Vision", "NLP Domain Classification", "Pan-India HEI Multi-Factor Matching", "100m Geodesic Deduplication", "Image Safety Guardrail"]
+        "capabilities": [
+            "4-Class YOLOv8 Vision",
+            "NSFW Adult Content Safety Guardrail",
+            "AI-Generated Synthetic Image Forensic Detector",
+            "Image Quality & Clarity Guardrail",
+            "NLP Domain Classification",
+            "Pan-India HEI Multi-Factor Matching",
+            "100m Geodesic Deduplication",
+            "Residential Society Multi-Tenant Triage & Duplicate Clustering"
+        ]
     })
 
-# 1. Computer Vision & Visual Safety Audit (4-Class YOLOv8)
+def generate_civic_assessment(class_name, conf, num_detections=1):
+    """
+    Produces server-side deterministic assessment, safety flags, suggested description,
+    and priority scaling (LOW, MODERATE, HIGH, CRITICAL).
+    """
+    if not class_name:
+        return {
+            "assignedPriority": "MODERATE",
+            "estimatedSeverity": "NEEDS_ASSESSMENT",
+            "priorityExplanation": "Visual prediction inconclusive. Marked for administrative review.",
+            "suggestedDescription": "A civic issue has been observed at this location. Please inspect and resolve.",
+            "safetyFlags": ["NEEDS_INSPECTION"],
+            "needsHumanReview": True
+        }
+
+    is_low_conf = conf < 0.35
+
+    if class_name == "pothole":
+        priority = "HIGH" if (conf >= 0.65 or num_detections >= 2) else "MODERATE"
+        severity = "HIGH - Dangerous road surface crater" if priority == "HIGH" else "MODERATE - Surface road depression"
+        explanation = f"Detected {num_detections} pothole(s) with {conf*100:.1f}% confidence. Priority set to {priority} due to road safety hazard."
+        suggested_desc = "A pothole is visible on the road surface and may affect vehicles or pedestrians. Please verify its size, depth, and exact location for prompt asphalt restoration."
+        flags = ["ROAD_HAZARD", "ACCIDENT_RISK"]
+
+    elif class_name == "fallen_tree":
+        priority = "CRITICAL" if (conf >= 0.60 or num_detections >= 2) else "HIGH"
+        severity = "CRITICAL - Major thoroughfare obstruction" if priority == "CRITICAL" else "HIGH - Pathway obstruction"
+        explanation = f"Detected fallen tree/branch with {conf*100:.1f}% confidence. Priority set to {priority} due to obstruction and potential emergency access impediment."
+        suggested_desc = "A fallen tree or large branch appears to be obstructing this area. Please verify whether the road or pedestrian pathway is blocked and clear it immediately."
+        flags = ["OBSTRUCTION_HAZARD", "EMERGENCY_ACCESS_RISK"]
+
+    elif class_name == "broken_street_light":
+        priority = "MODERATE"
+        severity = "MODERATE - Non-functional municipal lighting"
+        explanation = f"Detected damaged or broken street light ({conf*100:.1f}% confidence). Priority set to MODERATE for night safety restoration."
+        suggested_desc = "A broken or non-functioning street light is observed at this spot. Please inspect the lighting fixture and electrical connection to restore illumination."
+        flags = ["NIGHT_SAFETY_RISK"]
+
+    elif class_name == "garbage":
+        priority = "MODERATE" if (num_detections >= 2 or conf >= 0.70) else "LOW"
+        severity = "MODERATE - Significant municipal waste dump" if priority == "MODERATE" else "LOW - Localized trash accumulation"
+        explanation = f"Detected accumulated waste with {conf*100:.1f}% confidence. Priority set to {priority} for sanitation dispatch."
+        suggested_desc = "Accumulated waste is visible at this location. Please verify the extent of the accumulation and dispatch sanitation staff for clearance."
+        flags = ["SANITATION_RISK"]
+
+    else:
+        priority = "MODERATE"
+        severity = "STANDARD - Civic issue requires inspection"
+        explanation = f"Detected {class_name} with {conf*100:.1f}% confidence."
+        suggested_desc = f"A civic issue regarding {class_name} has been reported at this location. Please inspect and resolve."
+        flags = ["CIVIC_INSPECTION"]
+
+    if is_low_conf:
+        return {
+            "assignedPriority": "MODERATE",
+            "estimatedSeverity": severity,
+            "priorityExplanation": f"Low model confidence ({conf*100:.1f}%). Assigned MODERATE and queued for human verification.",
+            "suggestedDescription": suggested_desc,
+            "safetyFlags": flags + ["LOW_CONFIDENCE"],
+            "needsHumanReview": True
+        }
+
+    return {
+        "assignedPriority": priority,
+        "estimatedSeverity": severity,
+        "priorityExplanation": explanation,
+        "suggestedDescription": suggested_desc,
+        "safetyFlags": flags,
+        "needsHumanReview": False
+    }
+
+def generate_society_assessment(class_name, conf, num_detections=1, category_hint=None):
+    """
+    Produces residential-society specific safety guidance, category mapping,
+    editable descriptions, and authoritative priority scaling.
+    """
+    hint = (category_hint or "").lower()
+
+    if "wire" in hint or "electric" in hint or "spark" in hint:
+        return {
+            "assignedPriority": "CRITICAL",
+            "category": "WIRING_HAZARD",
+            "estimatedSeverity": "CRITICAL - Life Safety Risk",
+            "priorityExplanation": "Electrical spark or exposed wiring reported. Priority set to CRITICAL.",
+            "suggestedDescription": "Exposed or damaged wiring observed in the residential area. Please do not touch or enter the wet perimeter. Electrician dispatched immediately.",
+            "safetyFlags": ["ELECTRICAL_LIFE_SAFETY"],
+            "emergencyGuidance": "CRITICAL ELECTRICAL RISK: Stay at least 3 meters away. Keep children and pets clear. Main isolator shutdown requested.",
+            "needsHumanReview": False
+        }
+
+    if "lift" in hint or "elevator" in hint:
+        is_trapped = "trap" in hint or "stuck" in hint
+        return {
+            "assignedPriority": "CRITICAL" if is_trapped else "HIGH",
+            "category": "ELEVATOR_LIFT",
+            "estimatedSeverity": "CRITICAL - Entrapment Emergency" if is_trapped else "HIGH - Vertical Transit Outage",
+            "priorityExplanation": "Elevator issue reported. Immediate technician dispatch.",
+            "suggestedDescription": "Elevator is non-operational or has stopped functioning properly in this tower. OEM technician intervention requested.",
+            "safetyFlags": ["PASSENGER_ENTRAPMENT"] if is_trapped else ["ELEVATOR_OUTAGE"],
+            "emergencyGuidance": "ELEVATOR SAFETY: If passengers are inside, maintain voice communication and sound cabin alarm. DO NOT pry open doors manually.",
+            "needsHumanReview": False
+        }
+
+    if "plumb" in hint or "water" in hint or "leak" in hint:
+        return {
+            "assignedPriority": "MODERATE",
+            "category": "WATER_LEAKAGE",
+            "estimatedSeverity": "MODERATE - Plumbing Infiltration",
+            "priorityExplanation": "Water seepage/leakage detected in building piping/shaft.",
+            "suggestedDescription": "Water leakage or seepage observed near the plumbing shaft or ceiling. Please inspect shut-off valves and repair joints.",
+            "safetyFlags": ["WATER_CONSERVATION"],
+            "emergencyGuidance": "Check nearby power sockets. Avoid contact if water reaches electrical junction boxes.",
+            "needsHumanReview": False
+        }
+
+    if not class_name:
+        return {
+            "assignedPriority": "MODERATE",
+            "category": "OTHER",
+            "estimatedSeverity": "STANDARD - Society Maintenance Request",
+            "priorityExplanation": "Visual prediction inconclusive. Forwarded for facility manager review.",
+            "suggestedDescription": "A maintenance issue has been reported in this residential area. Please inspect and resolve.",
+            "safetyFlags": ["STANDARD_INSPECTION"],
+            "emergencyGuidance": None,
+            "needsHumanReview": True
+        }
+
+    if class_name == "broken_street_light":
+        return {
+            "assignedPriority": "MODERATE",
+            "category": "COMMON_LIGHTING",
+            "estimatedSeverity": "MODERATE - Common Area Illumination",
+            "priorityExplanation": f"Detected damaged lighting fixture ({conf*100:.1f}% confidence).",
+            "suggestedDescription": "A common-area or corridor light fixture is damaged or non-functional. Please dispatch staff to replace the bulb or check ballast.",
+            "safetyFlags": ["COMMON_AREA_SAFETY"],
+            "emergencyGuidance": None,
+            "needsHumanReview": False
+        }
+
+    elif class_name == "garbage":
+        return {
+            "assignedPriority": "LOW",
+            "category": "HOUSEKEEPING",
+            "estimatedSeverity": "LOW - Common Area Housekeeping",
+            "priorityExplanation": f"Detected waste accumulation ({conf*100:.1f}% confidence).",
+            "suggestedDescription": "Uncollected waste or discarded items visible in common corridor or compound. Please arrange housekeeping clearance.",
+            "safetyFlags": ["ROUTINE_HOUSEKEEPING"],
+            "emergencyGuidance": None,
+            "needsHumanReview": False
+        }
+
+    elif class_name == "pothole":
+        return {
+            "assignedPriority": "MODERATE",
+            "category": "STRUCTURAL_CIVIL",
+            "estimatedSeverity": "MODERATE - Campus Road Surface Damage",
+            "priorityExplanation": f"Detected road/pathway damage ({conf*100:.1f}% confidence).",
+            "suggestedDescription": "A depression or pothole is present on the society internal driveway or parking area. Civil repair required.",
+            "safetyFlags": ["CIVIL_MAINTENANCE"],
+            "emergencyGuidance": None,
+            "needsHumanReview": False
+        }
+
+    elif class_name == "fallen_tree":
+        return {
+            "assignedPriority": "HIGH",
+            "category": "STRUCTURAL_CIVIL",
+            "estimatedSeverity": "HIGH - Compound Access Blocked",
+            "priorityExplanation": f"Detected fallen tree/branch in society premises ({conf*100:.1f}% confidence).",
+            "suggestedDescription": "A fallen tree or large branch is obstructing the society internal pathway or parking. Ground staff clearance required.",
+            "safetyFlags": ["ACCESS_OBSTRUCTION"],
+            "emergencyGuidance": "Caution: Do not park vehicles under leaning branches. Ground maintenance team dispatched.",
+            "needsHumanReview": False
+        }
+
+    return {
+        "assignedPriority": "MODERATE",
+        "category": "OTHER",
+        "estimatedSeverity": "STANDARD - Society Inspection",
+        "priorityExplanation": f"Detected {class_name} ({conf*100:.1f}% confidence).",
+        "suggestedDescription": f"A society maintenance issue regarding {class_name} has been reported. Facility manager review requested.",
+        "safetyFlags": ["ROUTINE_MAINTENANCE"],
+        "emergencyGuidance": None,
+        "needsHumanReview": False
+    }
+
+# 1. Computer Vision & Visual Safety Audit (4-Class YOLOv8 + Multi-Stage Guardrails)
 @app.route("/api/v1/detect", methods=["POST"])
 def detect_visual_evidence():
     file = request.files.get("file") or request.files.get("image")
@@ -423,22 +611,33 @@ def detect_visual_evidence():
         return jsonify({"error": "No image file or URL provided"}), 400
 
     try:
+        img_bytes = None
         if file:
             img_bytes = file.read()
             image = Image.open(io.BytesIO(img_bytes)).convert("RGB")
         else:
-            image_url = request.json.get("image_url")
-            image = image_url
+            image_data = request.json.get("image_url") or request.json.get("image") or ""
+            if image_data.startswith("data:image"):
+                header, encoded = image_data.split(",", 1)
+                img_bytes = base64.b64decode(encoded)
+                image = Image.open(io.BytesIO(img_bytes)).convert("RGB")
+            else:
+                image = image_data
 
-        # STAGE 1: Safety & Clarity Check
+        # STAGE 1: Visual Safety, NSFW & Synthetic AI Forensic Audit
         if isinstance(image, Image.Image):
-            is_safe, err_type, err_msg = analyze_image_safety(image)
+            is_safe, err_type, err_msg, audit_data = analyze_image_safety(image, raw_bytes=img_bytes)
             if not is_safe:
                 return jsonify({
                     "isVisualEvidenceVerified": False,
                     "safetyFailed": True,
                     "errorType": err_type,
                     "message": err_msg,
+                    "isNsfw": err_type == "NSFW_CONTENT",
+                    "isAiGenerated": err_type == "AI_GENERATED_IMAGE",
+                    "nsfwAudit": audit_data if err_type == "NSFW_CONTENT" else None,
+                    "aiAudit": audit_data if err_type == "AI_GENERATED_IMAGE" else None,
+                    "audit": audit_data,
                     "totalDetections": 0
                 })
 
@@ -494,6 +693,13 @@ def detect_visual_evidence():
         is_verified = len(detections) > 0
         primary_detection = detections[0] if is_verified else None
 
+        # Generate structured civic assessment, priority, safety flags, and suggested description
+        civic_assessment = generate_civic_assessment(
+            primary_detection["class_name"] if primary_detection else None,
+            primary_detection["confidence"] if primary_detection else 0.0,
+            len(detections)
+        )
+
         return jsonify({
             "isVisualEvidenceVerified": is_verified,
             "totalDetections": len(detections),
@@ -505,9 +711,146 @@ def detect_visual_evidence():
             "recommendedDepartment": primary_detection["recommendedDepartment"] if primary_detection else None,
             "triageType": primary_detection["triageType"] if primary_detection else None,
             "suggestedHei": primary_detection["suggestedHei"] if primary_detection else None,
+            "assignedPriority": civic_assessment["assignedPriority"],
+            "estimatedSeverity": civic_assessment["estimatedSeverity"],
+            "priorityExplanation": civic_assessment["priorityExplanation"],
+            "suggestedDescription": civic_assessment["suggestedDescription"],
+            "safetyFlags": civic_assessment["safetyFlags"],
+            "needsHumanReview": civic_assessment["needsHumanReview"],
             "allDetections": detections
         })
 
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# 1B. Society Multi-Modal Vision & Maintenance Hazard Assessment
+@app.route("/api/v1/society/detect", methods=["POST"])
+def detect_society_evidence():
+    file = request.files.get("file") or request.files.get("image")
+    category_hint = request.form.get("category") or ""
+    text_hint = request.form.get("text") or request.form.get("description") or ""
+
+    if not file and not request.json:
+        # If no file, perform text/category assessment
+        assessment = generate_society_assessment(None, 0.0, category_hint=category_hint or text_hint)
+        return jsonify({
+            "isVisualEvidenceVerified": False,
+            "totalDetections": 0,
+            "assignedPriority": assessment["assignedPriority"],
+            "category": assessment["category"],
+            "estimatedSeverity": assessment["estimatedSeverity"],
+            "priorityExplanation": assessment["priorityExplanation"],
+            "suggestedDescription": assessment["suggestedDescription"],
+            "safetyFlags": assessment["safetyFlags"],
+            "emergencyGuidance": assessment["emergencyGuidance"],
+            "needsHumanReview": assessment["needsHumanReview"]
+        })
+
+    try:
+        img_bytes = None
+        if file:
+            img_bytes = file.read()
+            image = Image.open(io.BytesIO(img_bytes)).convert("RGB")
+        else:
+            image_data = request.json.get("image_url") or request.json.get("image") or ""
+            category_hint = request.json.get("category", "")
+            text_hint = request.json.get("text", "")
+            if image_data.startswith("data:image"):
+                header, encoded = image_data.split(",", 1)
+                img_bytes = base64.b64decode(encoded)
+                image = Image.open(io.BytesIO(img_bytes)).convert("RGB")
+            else:
+                image = image_data
+
+        if isinstance(image, Image.Image):
+            is_safe, err_type, err_msg, audit_data = analyze_image_safety(image, raw_bytes=img_bytes)
+            if not is_safe:
+                return jsonify({
+                    "isVisualEvidenceVerified": False,
+                    "safetyFailed": True,
+                    "errorType": err_type,
+                    "message": err_msg,
+                    "audit": audit_data,
+                    "totalDetections": 0
+                })
+
+        detections = []
+        if vision_model is not None:
+            results = vision_model.predict(source=image, conf=0.15, save=False)
+            for result in results:
+                for box in result.boxes:
+                    class_id = int(box.cls[0].item())
+                    class_name = vision_model.names.get(class_id, f"class_{class_id}")
+                    conf = float(box.conf[0].item())
+                    bbox = [round(x, 2) for x in box.xyxy[0].tolist()]
+                    detections.append({
+                        "class_id": class_id,
+                        "class_name": class_name,
+                        "confidence": round(conf, 4),
+                        "confidencePercent": f"{conf * 100:.1f}%",
+                        "bbox": bbox
+                    })
+
+        primary = detections[0] if detections else None
+        assessment = generate_society_assessment(
+            primary["class_name"] if primary else None,
+            primary["confidence"] if primary else 0.0,
+            len(detections),
+            category_hint=category_hint or text_hint
+        )
+
+        return jsonify({
+            "isVisualEvidenceVerified": len(detections) > 0,
+            "totalDetections": len(detections),
+            "primaryClass": primary["class_name"] if primary else None,
+            "highestConfidence": primary["confidence"] if primary else 0.0,
+            "confidencePercent": f"{primary['confidence'] * 100:.1f}%" if primary else "0%",
+            "assignedPriority": assessment["assignedPriority"],
+            "category": assessment["category"],
+            "estimatedSeverity": assessment["estimatedSeverity"],
+            "priorityExplanation": assessment["priorityExplanation"],
+            "suggestedDescription": assessment["suggestedDescription"],
+            "safetyFlags": assessment["safetyFlags"],
+            "emergencyGuidance": assessment["emergencyGuidance"],
+            "needsHumanReview": assessment["needsHumanReview"],
+            "allDetections": detections
+        })
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# Standalone Visual Safety & Authenticity Audit API
+@app.route("/api/v1/audit-image", methods=["POST"])
+@app.route("/api/v1/analyze-image-safety", methods=["POST"])
+def audit_image_endpoint():
+    file = request.files.get("file") or request.files.get("image")
+    if not file and not request.json:
+        return jsonify({"error": "No image file or URL provided"}), 400
+
+    try:
+        img_bytes = None
+        if file:
+            img_bytes = file.read()
+            image = Image.open(io.BytesIO(img_bytes)).convert("RGB")
+        else:
+            image_data = request.json.get("image_url") or request.json.get("image") or ""
+            if image_data.startswith("data:image"):
+                header, encoded = image_data.split(",", 1)
+                img_bytes = base64.b64decode(encoded)
+                image = Image.open(io.BytesIO(img_bytes)).convert("RGB")
+            else:
+                image = image_data
+
+        if not isinstance(image, Image.Image):
+            return jsonify({"error": "Failed to decode image"}), 400
+
+        is_safe, err_type, err_msg, audit_data = analyze_image_safety(image, raw_bytes=img_bytes)
+        return jsonify({
+            "isSafe": is_safe,
+            "errorType": err_type,
+            "message": err_msg,
+            "audit": audit_data
+        })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

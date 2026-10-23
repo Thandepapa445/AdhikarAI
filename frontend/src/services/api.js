@@ -144,7 +144,14 @@ export const challengeService = {
                 latitude: Number(fullChallenge.lat || fullChallenge.latitude || 28.6139),
                 longitude: Number(fullChallenge.lng || fullChallenge.longitude || 77.2090),
                 affectedPopulation: Number(fullChallenge.affectedPopulation || 500),
-                evidenceImageUrl: fullChallenge.evidenceImageUrl || "https://images.unsplash.com/photo-1541888946425-d0fbb180c5f5?w=800"
+                evidenceImageUrl: fullChallenge.evidenceImageUrl || "https://images.unsplash.com/photo-1541888946425-d0fbb180c5f5?w=800",
+                priority: fullChallenge.priority || fullChallenge.urgency || "MODERATE",
+                estimatedSeverity: fullChallenge.estimatedSeverity,
+                modelConfidence: fullChallenge.modelConfidence,
+                priorityExplanation: fullChallenge.priorityExplanation,
+                aiSuggestedDescription: fullChallenge.aiSuggestedDescription,
+                needsHumanReview: fullChallenge.needsHumanReview,
+                safetyFlags: fullChallenge.safetyFlags
             });
             if (res.data) {
                 const map = new Map();
@@ -236,6 +243,176 @@ export const challengeService = {
             citizenVerificationRequested: false,
             citizenFeedbackNotes: feedbackText || "Citizen field verification confirmed by local resident & authority."
         });
+    },
+
+    // Duplicate complaint clusters
+    async getClusters() {
+        try {
+            const res = await api.get("/challenges/clusters");
+            if (Array.isArray(res.data)) return res.data;
+        } catch (e) {
+            console.warn("Failed to fetch clusters from backend", e?.message);
+        }
+        return getLocalChallenges().filter(c => c.isClusterMaster !== false);
+    },
+
+    async getClusterReports(clusterId) {
+        try {
+            const res = await api.get(`/challenges/clusters/${clusterId}/reports`);
+            if (Array.isArray(res.data)) return res.data;
+        } catch (e) {
+            console.warn("Failed to fetch cluster reports from backend", e?.message);
+        }
+        return getLocalChallenges().filter(c => String(c.clusterId) === String(clusterId) || String(c.id) === String(clusterId));
+    },
+
+    async overridePriority(id, priority, reason) {
+        try {
+            const res = await api.put(`/challenges/${id}/override-priority`, { priority, reason });
+            if (res.data) {
+                const list = getLocalChallenges().map(c => String(c.id) === String(id) ? res.data : c);
+                saveLocalChallenges(list);
+                return res.data;
+            }
+        } catch (e) {
+            console.warn("Override priority fallback", e?.message);
+        }
+        return this.updateChallengeStatus(id, undefined, { priority, priorityOverrideReason: reason });
+    },
+
+    async separateCluster(id) {
+        try {
+            const res = await api.post(`/challenges/${id}/separate-cluster`);
+            if (res.data) {
+                const list = getLocalChallenges().map(c => String(c.id) === String(id) ? res.data : c);
+                saveLocalChallenges(list);
+                return res.data;
+            }
+        } catch (e) {
+            console.warn("Separate cluster fallback", e?.message);
+        }
+        return this.updateChallengeStatus(id, undefined, { isClusterMaster: true, duplicateCount: 1 });
+    },
+
+    // =========================================================================
+    // PHASE 2: RESIDENTIAL SOCIETY MAINTENANCE PLATFORM API
+    // =========================================================================
+
+    async getSocieties() {
+        try {
+            const res = await api.get("/society/organizations");
+            if (Array.isArray(res.data)) return res.data;
+        } catch (e) {
+            console.warn("Failed to load societies", e?.message);
+        }
+        return [
+            { id: 2, name: "Greenwood Heights Residential Society", code: "SOC-GREENWOOD", city: "Ranchi" },
+            { id: 3, name: "Palm Meadows Luxury Condos", code: "SOC-PALM", city: "Ranchi" }
+        ];
+    },
+
+    async createSocietyIssue(issueData) {
+        const res = await api.post("/society/issues", issueData);
+        return res.data;
+    },
+
+    async getSocietyIssues(params = {}) {
+        const res = await api.get("/society/issues", { params });
+        return res.data;
+    },
+
+    async getMySocietyIssues() {
+        const res = await api.get("/society/issues/my");
+        return res.data;
+    },
+
+    async getSocietyIssueDetails(id) {
+        const res = await api.get(`/society/issues/${id}`);
+        return res.data;
+    },
+
+    async getSocietyIssueAudits(id) {
+        const res = await api.get(`/society/issues/${id}/audits`);
+        return res.data;
+    },
+
+    async updateSocietyIssueStatus(id, updateData) {
+        const res = await api.put(`/society/issues/${id}/status`, updateData);
+        return res.data;
+    },
+
+    async separateSocietyCluster(id) {
+        const res = await api.post(`/society/issues/${id}/separate-cluster`);
+        return res.data;
+    },
+
+    async escalateSocietyIssueToCivic(id, reason) {
+        const res = await api.post(`/society/issues/${id}/escalate-to-civic`, { reason });
+        return res.data;
+    },
+
+    async signOffSocietyIssue(id, rating, feedback) {
+        const res = await api.post(`/society/issues/${id}/sign-off`, { rating, feedback });
+        return res.data;
+    },
+
+    async getSocietyMetrics() {
+        const res = await api.get("/society/metrics");
+        return res.data;
+    },
+
+    async getSocietyStaff() {
+        const res = await api.get("/society/staff");
+        return res.data;
+    },
+
+    async assessSocietyEvidence(file, categoryHint, textHint) {
+        const formData = new FormData();
+        if (file) formData.append("file", file);
+        if (categoryHint) formData.append("category", categoryHint);
+        if (textHint) formData.append("text", textHint);
+
+        try {
+            const res = await axios.post("/yolo-api/v1/society/detect", formData, {
+                headers: { "Content-Type": "multipart/form-data" },
+                timeout: 10000
+            });
+            return res.data;
+        } catch (e) {
+            console.warn("Society AI assessment fallback", e?.message);
+            // Fallback deterministic assessment
+            const hint = (categoryHint || textHint || "").toLowerCase();
+            if (hint.includes("electric") || hint.includes("spark") || hint.includes("wire")) {
+                return {
+                    assignedPriority: "CRITICAL",
+                    category: "WIRING_HAZARD",
+                    estimatedSeverity: "CRITICAL - Life Safety Hazard",
+                    priorityExplanation: "Exposed / sparking electrical hazard. Dispatched to licensed electrician.",
+                    suggestedDescription: "Exposed electrical wiring or sparking hazard observed in the tower common area. Keep distance.",
+                    safetyFlags: ["ELECTRICAL_LIFE_SAFETY"],
+                    emergencyGuidance: "CRITICAL: Stay at least 3 meters away. Main circuit breaker isolation requested."
+                };
+            }
+            if (hint.includes("lift") || hint.includes("elevator")) {
+                return {
+                    assignedPriority: "HIGH",
+                    category: "ELEVATOR_LIFT",
+                    estimatedSeverity: "HIGH - Elevator Outage",
+                    priorityExplanation: "Elevator breakdown in tower. Technician dispatched.",
+                    suggestedDescription: "Elevator is non-operational in this tower. OEM technician intervention requested.",
+                    safetyFlags: ["ELEVATOR_OUTAGE"],
+                    emergencyGuidance: "Do not attempt manual door forcing. Use service lift or stairs."
+                };
+            }
+            return {
+                assignedPriority: "MODERATE",
+                category: "OTHER",
+                estimatedSeverity: "STANDARD - Maintenance Inspection",
+                priorityExplanation: "Standard maintenance issue queued for facility manager review.",
+                suggestedDescription: "A maintenance issue has been reported in this residential area. Please inspect and resolve.",
+                safetyFlags: ["ROUTINE_MAINTENANCE"]
+            };
+        }
     }
 };
 

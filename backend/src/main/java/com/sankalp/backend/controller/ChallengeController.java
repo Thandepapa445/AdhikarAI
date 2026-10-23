@@ -69,6 +69,43 @@ public class ChallengeController {
         return ResponseEntity.ok(challengeService.updateStatus(id, body));
     }
 
+    @GetMapping("/clusters")
+    public ResponseEntity<List<Challenge>> getClusterMasters() {
+        return ResponseEntity.ok(challengeService.getClusterMasters());
+    }
+
+    @GetMapping("/clusters/{clusterId}/reports")
+    public ResponseEntity<List<Challenge>> getClusterReports(@PathVariable Long clusterId) {
+        return ResponseEntity.ok(challengeService.getClusterReports(clusterId));
+    }
+
+    @PutMapping("/{id}/override-priority")
+    public ResponseEntity<Challenge> overridePriority(
+            @PathVariable Long id,
+            @RequestBody java.util.Map<String, String> body,
+            Authentication authentication
+    ) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new org.springframework.security.access.AccessDeniedException("Administrative privileges required");
+        }
+        String newPriority = body.getOrDefault("priority", "HIGH");
+        String reason = body.getOrDefault("reason", "Administrative verification and escalation");
+        String adminEmail = authentication.getName();
+        return ResponseEntity.ok(challengeService.overridePriority(id, newPriority, reason, adminEmail));
+    }
+
+    @PostMapping("/{id}/separate-cluster")
+    public ResponseEntity<Challenge> separateFromCluster(
+            @PathVariable Long id,
+            Authentication authentication
+    ) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new org.springframework.security.access.AccessDeniedException("Administrative privileges required");
+        }
+        String adminEmail = authentication.getName();
+        return ResponseEntity.ok(challengeService.separateFromCluster(id, adminEmail));
+    }
+
     @PostMapping("/{id}/allocate")
     public ResponseEntity<Challenge> allocateHei(
             @PathVariable Long id,

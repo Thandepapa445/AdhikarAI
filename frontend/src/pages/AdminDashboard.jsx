@@ -34,6 +34,15 @@ export default function AdminDashboard() {
     const [selectedCsrId, setSelectedCsrId] = useState("IND-01");
     const [nodalNote, setNodalNote] = useState("");
 
+    // Duplicate Cluster & Priority Override States
+    const [clusters, setClusters] = useState([]);
+    const [selectedCluster, setSelectedCluster] = useState(null);
+    const [selectedClusterReports, setSelectedClusterReports] = useState([]);
+    const [loadingClusterReports, setLoadingClusterReports] = useState(false);
+    const [overrideTarget, setOverrideTarget] = useState(null);
+    const [overridePriorityVal, setOverridePriorityVal] = useState("HIGH");
+    const [overrideReason, setOverrideReason] = useState("");
+
     // Audit Log State
     const [auditLogs, setAuditLogs] = useState([
         { id: 1, time: "10 mins ago", event: "Challenge #ADH-2026-1041 verified by Field Officer", officer: "System / Citizen Verification", type: "RESOLVED" },
@@ -47,8 +56,12 @@ export default function AdminDashboard() {
         try {
             const data = await challengeService.getAllChallenges();
             setChallenges(data);
+            const cls = await challengeService.getClusters();
+            setClusters(cls);
         } catch (e) {
-            setChallenges(getLocalChallenges());
+            const local = getLocalChallenges();
+            setChallenges(local);
+            setClusters(local.filter(c => c.isClusterMaster !== false));
         } finally {
             setLoading(false);
         }
@@ -159,6 +172,57 @@ export default function AdminDashboard() {
         setAssigningChallenge(null);
     };
 
+    // Handle Cluster Inspection
+    const handleInspectCluster = async (cluster) => {
+        setSelectedCluster(cluster);
+        setLoadingClusterReports(true);
+        try {
+            const reports = await challengeService.getClusterReports(cluster.clusterId || cluster.id);
+            setSelectedClusterReports(reports);
+        } catch (e) {
+            setSelectedClusterReports([cluster]);
+        } finally {
+            setLoadingClusterReports(false);
+        }
+    };
+
+    // Handle Report Separation from Cluster
+    const handleSeparateReport = async (reportId) => {
+        if (!window.confirm("Separate this report from the cluster into an independent grievance?")) return;
+        await challengeService.separateCluster(reportId);
+        await loadData();
+        if (selectedCluster) {
+            const reports = await challengeService.getClusterReports(selectedCluster.clusterId || selectedCluster.id);
+            setSelectedClusterReports(reports);
+        }
+    };
+
+    // Handle Admin Priority Override with Mandatory Reason
+    const handleSavePriorityOverride = async (e) => {
+        e.preventDefault();
+        if (!overrideTarget) return;
+        if (!overrideReason || overrideReason.trim().length < 5) {
+            alert("⚠️ Please provide a mandatory administrative explanation for overriding the priority.");
+            return;
+        }
+
+        await challengeService.overridePriority(overrideTarget.id, overridePriorityVal, overrideReason);
+        setAuditLogs(prev => [
+            {
+                id: Date.now(),
+                time: "Just now",
+                event: `Admin overridden Priority for #${overrideTarget.id} to ${overridePriorityVal}. Reason: ${overrideReason}`,
+                officer: "State Nodal Officer (Admin)",
+                type: "PRIORITY_OVERRIDE"
+            },
+            ...prev
+        ]);
+        setOverrideTarget(null);
+        setOverrideReason("");
+        await loadData();
+        alert(`✓ Priority updated to ${overridePriorityVal} and audit note recorded.`);
+    };
+
     // Deduplicate & Cluster Action
     const handleRunAiClustering = () => {
         alert("✨ AI Deduplication Engine Executed!\n\nAnalyzed 6 challenges across 24 districts.\n• 2 Water Contamination reports clustered in Palamu.\n• 0 Duplicate entries purged.\n• All raw evidence files linked to primary master challenges.");
@@ -171,15 +235,10 @@ export default function AdminDashboard() {
                 <div style={styles.headerContainer}>
                     <div style={styles.headerLeft}>
                         <div style={styles.govEmblemBox}>
-                            <ShieldCheck size={24} color="#ffffff" />
+                            <ShieldCheck size={20} color="#ffffff" />
                         </div>
-                        <div>
-                            <div style={styles.adminTitle}>
-                                Adhikar AI <span style={{ color: "#38bdf8" }}>Admin & Nodal Command Center</span>
-                            </div>
-                            <div style={styles.adminSub}>
-                                National Innovation & Grievance Governance Portal • Inter-Ministerial & State Councils
-                            </div>
+                        <div style={styles.adminTitle}>
+                            Adhikar AI <span style={{ color: "#38bdf8" }}>Admin & Nodal Command Center</span>
                         </div>
                     </div>
 
@@ -190,7 +249,21 @@ export default function AdminDashboard() {
                             style={styles.switchViewBtn}
                             title="Switch to Citizen Portal"
                         >
-                            <span>🌾 Switch to Citizen View</span>
+                            <span>🏛️ Citizen View</span>
+                        </button>
+                        <button
+                            onClick={() => navigate("/society/resident")}
+                            style={{ ...styles.switchViewBtn, background: "#065f46", color: "#6ee7b7", borderColor: "#059669" }}
+                            title="Residential Society Maintenance Portal"
+                        >
+                            <span>🏢 Society Portal</span>
+                        </button>
+                        <button
+                            onClick={() => navigate("/university")}
+                            style={{ ...styles.switchViewBtn, background: "#581c87", color: "#d8b4fe", borderColor: "#7c3aed" }}
+                            title="University & Research HEI Portal"
+                        >
+                            <span>🎓 HEI Hub</span>
                         </button>
 
                         <div style={styles.nodalProfile}>
@@ -281,6 +354,12 @@ export default function AdminDashboard() {
                         style={{ ...styles.tabBtn, ...(activeTab === "all-submissions" ? styles.activeTabBtn : {}) }}
                     >
                         📋 Submissions & Triage Queue ({challenges.length})
+                    </button>
+                    <button
+                        onClick={() => setActiveTab("duplicate-clusters")}
+                        style={{ ...styles.tabBtn, ...(activeTab === "duplicate-clusters" ? styles.activeTabBtn : {}) }}
+                    >
+                        🗺️ Consolidated Duplicate Clusters ({clusters.length})
                     </button>
                     <button
                         onClick={() => setActiveTab("pipeline-visualizer")}
@@ -404,6 +483,18 @@ export default function AdminDashboard() {
                                                     </div>
                                                 </td>
                                                 <td style={styles.td}>
+                                                    {c.originType === "SOCIETY_ESCALATED" && (
+                                                        <div style={{ marginBottom: 3 }}>
+                                                            <span style={{ fontSize: "10.5px", fontWeight: 700, padding: "2px 6px", borderRadius: 4, backgroundColor: "#eff6ff", color: "#1d4ed8", border: "1px solid #bfdbfe", display: "inline-block" }}>
+                                                                🏢 Society Escalated #{c.linkedSocietyIssueId}
+                                                            </span>
+                                                            {c.residentSignOffStatus === "VERIFIED" && (
+                                                                <span style={{ fontSize: "10.5px", fontWeight: 700, padding: "2px 6px", borderRadius: 4, backgroundColor: "#dcfce7", color: "#15803d", border: "1px solid #bbf7d0", display: "inline-block", marginLeft: 4 }}>
+                                                                    ✓ Resident Verified
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    )}
                                                     <div style={{ fontWeight: 700, fontSize: "13px", color: "#0f172a", marginBottom: 3, maxWidth: "280px" }}>
                                                         {c.title}
                                                     </div>
@@ -507,7 +598,145 @@ export default function AdminDashboard() {
                     </section>
                 )}
 
-                {/* TAB 2: 8-STAGE PIPELINE VISUALIZER */}
+                {/* TAB: CONSOLIDATED DUPLICATE CLUSTERS */}
+                {activeTab === "duplicate-clusters" && (
+                    <section>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px", background: "#ffffff", padding: "16px 20px", borderRadius: "12px", border: "1px solid #e2e8f0" }}>
+                            <div>
+                                <h2 style={{ fontSize: "18px", fontWeight: 800, color: "#0f172a", margin: 0 }}>
+                                    🗺️ Consolidated Duplicate Clusters (200m Geodesic Perimeter)
+                                </h2>
+                                <p style={{ fontSize: "12.5px", color: "#64748b", margin: "4px 0 0" }}>
+                                    AI-powered spatial clustering consolidates multiple citizen reports of the same defect into master issues. When 3+ independent citizens report, priority automatically escalates.
+                                </p>
+                            </div>
+                            <button
+                                onClick={loadData}
+                                style={{ display: "flex", alignItems: "center", gap: "6px", padding: "8px 14px", background: "#f1f5f9", border: "1px solid #cbd5e1", borderRadius: "8px", fontWeight: 700, fontSize: "12px", cursor: "pointer" }}
+                            >
+                                <RefreshCw size={13} /> Refresh Clusters
+                            </button>
+                        </div>
+
+                        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))", gap: "16px" }}>
+                            {clusters.map((cluster) => {
+                                const domainInfo = THEMATIC_DOMAINS.find(d => d.id === cluster.domain) || { name: cluster.domain, icon: "💡" };
+                                const priority = cluster.priority || cluster.urgency || "MODERATE";
+                                const isCritical = priority === "CRITICAL";
+                                const isHigh = priority === "HIGH";
+
+                                return (
+                                    <div
+                                        key={cluster.id}
+                                        style={{
+                                            background: "#ffffff",
+                                            borderRadius: "14px",
+                                            border: isCritical ? "2px solid #ef4444" : isHigh ? "2px solid #f97316" : "1px solid #e2e8f0",
+                                            padding: "16px",
+                                            display: "flex",
+                                            flexDirection: "column",
+                                            boxShadow: "0 2px 8px rgba(0,0,0,0.04)"
+                                        }}
+                                    >
+                                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "10px" }}>
+                                            <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                                                <span style={{ fontSize: "18px" }}>{domainInfo.icon}</span>
+                                                <div>
+                                                    <span style={{ fontSize: "11px", fontWeight: 700, color: "#64748b" }}>Master Grievance #{cluster.clusterId || cluster.id}</span>
+                                                    <div style={{ fontSize: "12px", fontWeight: 800, color: "#0f172a" }}>{cluster.domainName || domainInfo.name}</div>
+                                                </div>
+                                            </div>
+                                            <span style={{
+                                                padding: "3px 10px",
+                                                borderRadius: "12px",
+                                                fontSize: "11px",
+                                                fontWeight: 800,
+                                                color: isCritical ? "#dc2626" : isHigh ? "#ea580c" : "#0284c7",
+                                                background: isCritical ? "#fee2e2" : isHigh ? "#ffedd5" : "#e0f2fe",
+                                                border: "1px solid currentColor"
+                                            }}>
+                                                ● {priority}
+                                            </span>
+                                        </div>
+
+                                        {cluster.evidenceImageUrl && (
+                                            <div style={{ width: "100%", height: "130px", borderRadius: "8px", overflow: "hidden", marginBottom: "10px", border: "1px solid #e2e8f0" }}>
+                                                <img src={cluster.evidenceImageUrl} alt="Cluster Evidence" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                                            </div>
+                                        )}
+
+                                        <h3 style={{ fontSize: "14px", fontWeight: 800, color: "#0f172a", margin: "0 0 6px" }}>{cluster.title}</h3>
+                                        <p style={{ fontSize: "12px", color: "#475569", margin: "0 0 10px", flex: 1, display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                                            {cluster.description}
+                                        </p>
+
+                                        <div style={{ background: "#f8fafc", padding: "10px", borderRadius: "8px", marginBottom: "12px", border: "1px solid #f1f5f9" }}>
+                                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
+                                                <span style={{ fontSize: "11px", fontWeight: 700, color: "#16a34a" }}>
+                                                    👥 Corroborated Reports:
+                                                </span>
+                                                <span style={{ fontSize: "12px", fontWeight: 900, color: "#0f172a", background: "#dcfce7", padding: "2px 8px", borderRadius: "10px" }}>
+                                                    {cluster.duplicateCount || 1} Submissions
+                                                </span>
+                                            </div>
+                                            <div style={{ fontSize: "11.5px", color: "#64748b" }}>
+                                                📍 {cluster.panchayat || cluster.block}, {cluster.district} ({Number(cluster.latitude || 0).toFixed(3)}°N, {Number(cluster.longitude || 0).toFixed(3)}°E)
+                                            </div>
+                                            {cluster.priorityExplanation && (
+                                                <div style={{ fontSize: "11px", color: "#0284c7", marginTop: "4px", fontWeight: 600 }}>
+                                                    ⚡ {cluster.priorityExplanation}
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <div style={{ display: "flex", gap: "8px", marginTop: "auto" }}>
+                                            <button
+                                                onClick={() => handleInspectCluster(cluster)}
+                                                style={{
+                                                    flex: 1,
+                                                    display: "flex",
+                                                    alignItems: "center",
+                                                    justifyContent: "center",
+                                                    gap: "6px",
+                                                    padding: "8px 12px",
+                                                    background: "#0284c7",
+                                                    color: "#ffffff",
+                                                    border: "none",
+                                                    borderRadius: "8px",
+                                                    fontSize: "12px",
+                                                    fontWeight: 700,
+                                                    cursor: "pointer"
+                                                }}
+                                            >
+                                                <Eye size={13} /> View Reports ({cluster.duplicateCount || 1})
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    setOverrideTarget(cluster);
+                                                    setOverridePriorityVal(priority);
+                                                    setOverrideReason(cluster.priorityOverrideReason || "");
+                                                }}
+                                                style={{
+                                                    padding: "8px 12px",
+                                                    background: "#f1f5f9",
+                                                    color: "#0369a1",
+                                                    border: "1px solid #cbd5e1",
+                                                    borderRadius: "8px",
+                                                    fontSize: "12px",
+                                                    fontWeight: 700,
+                                                    cursor: "pointer"
+                                                }}
+                                                title="Override Priority"
+                                            >
+                                                Override ⚙️
+                                            </button>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </section>
+                )}
                 {activeTab === "pipeline-visualizer" && (
                     <section>
                         <div style={styles.kanbanBoard}>
@@ -760,6 +989,153 @@ export default function AdminDashboard() {
                     }}
                 />
             )}
+
+            {/* Admin Priority Override Modal */}
+            {overrideTarget && (
+                <div style={styles.backdrop} onClick={() => setOverrideTarget(null)}>
+                    <div style={styles.assignModal} onClick={e => e.stopPropagation()}>
+                        <h3 style={{ fontSize: "18px", fontWeight: 800, color: "#0f172a", marginBottom: 6 }}>
+                            ⚙️ Administrative Priority Override & Audit
+                        </h3>
+                        <p style={{ fontSize: "13px", color: "#64748b", marginBottom: 16 }}>
+                            Overriding priority for Grievance #{overrideTarget.id}: <strong>{overrideTarget.title}</strong>
+                        </p>
+
+                        <form onSubmit={handleSavePriorityOverride}>
+                            <div style={{ marginBottom: 14 }}>
+                                <label style={styles.label}>Select Overridden Priority Level *</label>
+                                <select
+                                    value={overridePriorityVal}
+                                    onChange={(e) => setOverridePriorityVal(e.target.value)}
+                                    style={styles.selectFull}
+                                >
+                                    <option value="CRITICAL">CRITICAL (Immediate safety / life hazard)</option>
+                                    <option value="HIGH">HIGH (Severe road or public disruption)</option>
+                                    <option value="MODERATE">MODERATE (Standard civic repair)</option>
+                                    <option value="LOW">LOW (Routine municipal maintenance)</option>
+                                </select>
+                            </div>
+
+                            <div style={{ marginBottom: 18 }}>
+                                <label style={styles.label}>Mandatory Justification / Nodal Reason *</label>
+                                <textarea
+                                    value={overrideReason}
+                                    onChange={(e) => setOverrideReason(e.target.value)}
+                                    placeholder="Enter verified reason for overriding AI assessment (e.g., On-site engineering inspection confirmed deep water ingress near high-voltage transformer)..."
+                                    rows={4}
+                                    required
+                                    style={styles.textarea}
+                                />
+                            </div>
+
+                            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+                                <button type="button" onClick={() => setOverrideTarget(null)} style={styles.cancelBtn}>
+                                    Cancel
+                                </button>
+                                <button type="submit" style={styles.confirmBtn}>
+                                    ✓ Save Override & Record in Audit Log
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Inspect Cluster Submissions Modal */}
+            {selectedCluster && (
+                <div style={styles.backdrop} onClick={() => setSelectedCluster(null)}>
+                    <div style={{ ...styles.assignModal, maxWidth: "750px", width: "95%" }} onClick={e => e.stopPropagation()}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                            <div>
+                                <h3 style={{ fontSize: "18px", fontWeight: 800, color: "#0f172a", margin: 0 }}>
+                                    👥 Cluster #{selectedCluster.clusterId || selectedCluster.id} Submissions ({selectedClusterReports.length})
+                                </h3>
+                                <p style={{ fontSize: "12px", color: "#64748b", margin: "2px 0 0" }}>
+                                    All individual citizen reports aggregated inside 200m perimeter. Individual evidence and submitters are preserved.
+                                </p>
+                            </div>
+                            <button
+                                onClick={() => setSelectedCluster(null)}
+                                style={{ background: "none", border: "none", fontSize: "18px", cursor: "pointer", color: "#64748b" }}
+                            >
+                                ✕
+                            </button>
+                        </div>
+
+                        {loadingClusterReports ? (
+                            <div style={{ textAlign: "center", padding: "30px", color: "#0284c7" }}>
+                                Loading reports in this cluster...
+                            </div>
+                        ) : (
+                            <div style={{ maxHeight: "450px", overflowY: "auto", display: "flex", flexDirection: "column", gap: "12px" }}>
+                                {selectedClusterReports.map((report, idx) => (
+                                    <div
+                                        key={report.id || idx}
+                                        style={{
+                                            border: "1px solid #e2e8f0",
+                                            borderRadius: "10px",
+                                            padding: "12px",
+                                            background: "#f8fafc",
+                                            display: "flex",
+                                            gap: "14px",
+                                            alignItems: "flex-start"
+                                        }}
+                                    >
+                                        {report.evidenceImageUrl && (
+                                            <img
+                                                src={report.evidenceImageUrl}
+                                                alt="Report Photo"
+                                                style={{ width: "90px", height: "70px", objectFit: "cover", borderRadius: "6px", border: "1px solid #cbd5e1" }}
+                                            />
+                                        )}
+                                        <div style={{ flex: 1 }}>
+                                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                                <span style={{ fontSize: "13px", fontWeight: 800, color: "#0f172a" }}>
+                                                    Report #{report.id} • {report.submitterName || "Anonymous Citizen"}
+                                                </span>
+                                                <span style={{ fontSize: "11px", color: "#64748b" }}>
+                                                    {report.createdAt ? new Date(report.createdAt).toLocaleString() : "Recent"}
+                                                </span>
+                                            </div>
+                                            <p style={{ fontSize: "12px", color: "#334155", margin: "4px 0" }}>
+                                                {report.description}
+                                            </p>
+                                            <div style={{ fontSize: "11px", color: "#64748b" }}>
+                                                📍 {report.locationText || `${report.block}, ${report.district}`}
+                                            </div>
+                                        </div>
+                                        {selectedClusterReports.length > 1 && (
+                                            <button
+                                                onClick={() => handleSeparateReport(report.id)}
+                                                style={{
+                                                    padding: "6px 10px",
+                                                    background: "#fee2e2",
+                                                    color: "#dc2626",
+                                                    border: "1px solid #fca5a5",
+                                                    borderRadius: "6px",
+                                                    fontSize: "11px",
+                                                    fontWeight: 700,
+                                                    cursor: "pointer",
+                                                    whiteSpace: "nowrap"
+                                                }}
+                                                title="Unlink from this cluster into an independent issue"
+                                            >
+                                                Separate Unlink
+                                            </button>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        <div style={{ marginTop: "16px", display: "flex", justifyContent: "flex-end" }}>
+                            <button onClick={() => setSelectedCluster(null)} style={styles.cancelBtn}>
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
@@ -772,8 +1148,11 @@ const styles = {
     adminHeader: {
         background: "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)",
         borderBottom: "1px solid #334155",
-        padding: "14px 0",
-        boxShadow: "0 4px 20px rgba(0,0,0,0.15)"
+        padding: "10px 0",
+        position: "sticky",
+        top: 0,
+        zIndex: 1000,
+        boxShadow: "0 2px 10px rgba(0,0,0,0.15)"
     },
     headerContainer: {
         maxWidth: "1320px",
@@ -781,31 +1160,32 @@ const styles = {
         padding: "0 20px",
         display: "flex",
         justifyContent: "space-between",
-        alignItems: "center"
+        alignItems: "center",
+        gap: "12px",
+        flexWrap: "wrap"
     },
     headerLeft: {
         display: "flex",
         alignItems: "center",
-        gap: "12px"
+        gap: "10px"
     },
     govEmblemBox: {
-        width: "42px",
-        height: "42px",
-        borderRadius: "12px",
+        width: "36px",
+        height: "36px",
+        borderRadius: "10px",
         background: "linear-gradient(135deg, #0284c7 0%, #38bdf8 100%)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        boxShadow: "0 4px 12px rgba(2, 132, 199, 0.35)"
+        boxShadow: "0 3px 10px rgba(2, 132, 199, 0.35)",
+        flexShrink: 0
     },
     adminTitle: {
-        fontSize: "18px",
+        fontSize: "19px",
         fontWeight: 800,
-        color: "#ffffff"
-    },
-    adminSub: {
-        fontSize: "11.5px",
-        color: "#94a3b8"
+        color: "#ffffff",
+        letterSpacing: "-0.02em",
+        lineHeight: 1
     },
     headerRight: {
         display: "flex",

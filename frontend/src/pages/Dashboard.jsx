@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
-    Sparkles, PlusCircle, Search, Filter, MapPin, Users, Award, Building,
+    Sparkles, PlusCircle, Search, Filter, MapPin, Users, Award, Building, Building2,
     Briefcase, CheckCircle2, ChevronRight, AlertTriangle, ArrowUpRight,
-    TrendingUp, ShieldCheck, FileCheck2, Lightbulb, RefreshCw
+    TrendingUp, ShieldCheck, FileCheck2, Lightbulb, RefreshCw, GraduationCap
 } from "lucide-react";
 import { THEMATIC_DOMAINS, PARTICIPATING_HEIS, INDIA_STATES_AND_REGIONS, STAGES_OF_INNOVATION, INDUSTRY_CSR_PARTNERS } from "../data/indiaData";
 import { challengeService, getLocalChallenges } from "../services/api";
@@ -14,8 +14,22 @@ import MobileBottomNav from "../components/MobileBottomNav";
 
 export default function Dashboard() {
     const navigate = useNavigate();
+    const [searchParams, setSearchParams] = useSearchParams();
+    const tabFromUrl = searchParams.get("tab");
 
-    const [activeTab, setActiveTab] = useState("my-challenges");
+    const [activeTab, setActiveTabState] = useState(tabFromUrl || "my-challenges");
+
+    const setActiveTab = (tab) => {
+        setActiveTabState(tab);
+        setSearchParams({ tab });
+    };
+
+    useEffect(() => {
+        if (tabFromUrl && tabFromUrl !== activeTab) {
+            setActiveTabState(tabFromUrl);
+        }
+    }, [tabFromUrl]);
+
     const [challenges, setChallenges] = useState([]);
     const [loading, setLoading] = useState(true);
 
@@ -96,10 +110,10 @@ export default function Dashboard() {
                         </div>
                         <h1 style={styles.heroHeading}>
                             Transforming Grassroots Challenges into <br />
-                            <span style={styles.headingGradient}>University Research & Civic Solutions</span>
+                            <span style={styles.headingGradient}>Smart Civic Grievance & Redressal Ecosystem</span>
                         </h1>
                         <p style={styles.heroSub}>
-                            Welcome, <strong>Citizen Innovators & Community Representatives</strong>. Submit local challenges across Infrastructure, Sanitation, Water, and Clean Energy to be matched with premier Universities (HEIs) and routed for administrative redressal.
+                            Welcome, <strong>Citizen Innovators & Community Representatives</strong>. Submit and track local challenges across Infrastructure, Sanitation, Water, and Electrical Safety with automated AI prioritization and municipal redressal.
                         </p>
 
                         <div style={styles.heroButtons}>
@@ -116,7 +130,34 @@ export default function Dashboard() {
                                 style={styles.secondaryCta}
                             >
                                 <MapPin size={18} />
-                                <span>Explore National GIS Map</span>
+                                <span>National GIS Map</span>
+                            </button>
+
+                            <button
+                                onClick={() => navigate("/society/resident")}
+                                style={styles.portalCtaSociety}
+                                title="Residential Society Maintenance & Facility Management"
+                            >
+                                <Building2 size={16} />
+                                <span>Society Portal</span>
+                            </button>
+
+                            <button
+                                onClick={() => navigate("/university")}
+                                style={styles.portalCtaUniversity}
+                                title="Higher Education Institutions (HEIs) & Lab Allocation"
+                            >
+                                <GraduationCap size={16} />
+                                <span>University Hub</span>
+                            </button>
+
+                            <button
+                                onClick={() => navigate("/admin")}
+                                style={styles.portalCtaAdmin}
+                                title="State Nodal Officer & Governance Center"
+                            >
+                                <ShieldCheck size={16} />
+                                <span>Nodal Admin</span>
                             </button>
                         </div>
                     </div>
@@ -136,13 +177,13 @@ export default function Dashboard() {
 
                         <div style={styles.kpiCard}>
                             <div style={styles.kpiHeader}>
-                                <span style={styles.kpiTitle}>In University R&D</span>
+                                <span style={styles.kpiTitle}>Active in Field</span>
                                 <div style={{ ...styles.kpiIcon, background: "#ede9fe", color: "#7c3aed" }}>
                                     <Building size={18} />
                                 </div>
                             </div>
                             <div style={styles.kpiValue}>{inActiveRnD}</div>
-                            <span style={styles.kpiSub}>Prototyping in HEI Labs</span>
+                            <span style={styles.kpiSub}>In Resolution Pipeline</span>
                         </div>
 
                         <div style={styles.kpiCard}>
@@ -275,7 +316,11 @@ export default function Dashboard() {
                                     };
 
                                     const stageIndex = STAGES_OF_INNOVATION.findIndex(s => s.key === challenge.status);
-                                    const currentStage = STAGES_OF_INNOVATION[stageIndex >= 0 ? stageIndex : 0];
+                                    const currentStage = STAGES_OF_INNOVATION[stageIndex >= 0 ? stageIndex : 0] || {
+                                        step: 1,
+                                        label: challenge.status || "Submitted",
+                                        name: challenge.status || "Submitted"
+                                    };
 
                                     return (
                                         <article
@@ -300,6 +345,21 @@ export default function Dashboard() {
                                             </div>
 
                                             {/* Card Title & Desc */}
+                                            {challenge.originType === "SOCIETY_ESCALATED" && (
+                                                <div style={{ display: "inline-block", fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 6, backgroundColor: "#eff6ff", color: "#1d4ed8", border: "1px solid #bfdbfe", margin: "4px 0" }}>
+                                                    🏢 Escalated from Society (Issue #{challenge.linkedSocietyIssueId})
+                                                </div>
+                                            )}
+                                            {challenge.residentSignOffStatus === "VERIFIED" && (
+                                                <div style={{ display: "inline-block", fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 6, backgroundColor: "#dcfce7", color: "#15803d", border: "1px solid #bbf7d0", margin: "4px 0 4px 6px" }}>
+                                                    ✓ Verified by Resident
+                                                </div>
+                                            )}
+                                            {challenge.status === "PILOT" && (
+                                                <div style={{ display: "inline-block", fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 6, backgroundColor: "#fef3c7", color: "#b45309", border: "1px solid #fde68a", margin: "4px 0" }}>
+                                                    🚀 Field Pilot Deployed
+                                                </div>
+                                            )}
                                             <h3 style={styles.cardTitle}>{challenge.title}</h3>
                                             <p style={styles.cardDesc}>
                                                 {challenge.description?.slice(0, 130)}...
@@ -321,35 +381,46 @@ export default function Dashboard() {
                                             <div style={styles.stageVisualizer}>
                                                 <div style={styles.stageVisualHeader}>
                                                     <span style={styles.stageLabel}>
-                                                        Stage {currentStage.step}/8: <strong>{currentStage.label}</strong>
+                                                        Stage {currentStage.step || 1}/8: <strong>{currentStage.label || currentStage.name || "Processing"}</strong>
                                                     </span>
                                                     <span style={styles.stageStepCount}>
-                                                        {Math.round((currentStage.step / 8) * 100)}% Complete
+                                                        {Math.round(((currentStage.step || 1) / 8) * 100)}% Complete
                                                     </span>
                                                 </div>
                                                 <div style={styles.progressBarBg}>
                                                     <div
                                                         style={{
                                                             ...styles.progressBarFill,
-                                                            width: `${(currentStage.step / 8) * 100}%`,
+                                                            width: `${((currentStage.step || 1) / 8) * 100}%`,
                                                             backgroundColor: currentStage.step === 8 ? "#16a34a" : "#0284c7"
                                                         }}
                                                     />
                                                 </div>
                                             </div>
 
-                                            {/* Assigned University & Industry Partner */}
+                                            {/* Priority & Cluster Badges */}
                                             <div style={styles.collaborationPills}>
-                                                {challenge.assignedHei && (
-                                                    <div style={styles.heiPill}>
-                                                        <Building size={12} color="#7c3aed" />
-                                                        <span>{challenge.assignedHei}</span>
+                                                <div style={{
+                                                    ...styles.heiPill,
+                                                    background: (challenge.priority === "CRITICAL" || challenge.urgency === "CRITICAL") ? "#fee2e2" :
+                                                                (challenge.priority === "HIGH" || challenge.urgency === "HIGH") ? "#ffedd5" :
+                                                                (challenge.priority === "MODERATE" || challenge.urgency === "MEDIUM") ? "#e0f2fe" : "#dcfce7",
+                                                    color: (challenge.priority === "CRITICAL" || challenge.urgency === "CRITICAL") ? "#dc2626" :
+                                                           (challenge.priority === "HIGH" || challenge.urgency === "HIGH") ? "#ea580c" :
+                                                           (challenge.priority === "MODERATE" || challenge.urgency === "MEDIUM") ? "#0284c7" : "#16a34a",
+                                                    border: "1px solid currentColor"
+                                                }}>
+                                                    <span>● {challenge.priority || challenge.urgency || "MODERATE"} PRIORITY</span>
+                                                </div>
+                                                {challenge.duplicateCount && challenge.duplicateCount > 1 && (
+                                                    <div style={{ ...styles.csrPill, background: "#f0fdf4", color: "#15803d", borderColor: "#bbf7d0" }}>
+                                                        <Users size={12} color="#16a34a" />
+                                                        <span>👥 {challenge.duplicateCount} Corroborated</span>
                                                     </div>
                                                 )}
-                                                {challenge.industryPartner && (
-                                                    <div style={styles.csrPill}>
-                                                        <Briefcase size={12} color="#16a34a" />
-                                                        <span>{challenge.industryPartner.split("(")[0]}</span>
+                                                {challenge.needsHumanReview && (
+                                                    <div style={{ ...styles.csrPill, background: "#fffbeb", color: "#b45309", borderColor: "#fde68a" }}>
+                                                        <span>⚠️ Nodal Review</span>
                                                     </div>
                                                 )}
                                             </div>
@@ -374,7 +445,7 @@ export default function Dashboard() {
                     </section>
                 )}
 
-                {/* TAB 2: JHARKHAND GIS MAP */}
+                {/* TAB 2: PAN-INDIA GIS MAP */}
                 {activeTab === "community-map" && (
                     <section style={styles.contentSection}>
                         <CommunityInnovationMap
@@ -580,6 +651,45 @@ const styles = {
         borderRadius: "12px",
         fontSize: "14px",
         fontWeight: 600
+    },
+    portalCtaSociety: {
+        display: "flex",
+        alignItems: "center",
+        gap: "6px",
+        background: "rgba(16, 185, 129, 0.15)",
+        color: "#6ee7b7",
+        border: "1px solid rgba(16, 185, 129, 0.3)",
+        padding: "12px 18px",
+        borderRadius: "12px",
+        fontSize: "13.5px",
+        fontWeight: 700,
+        cursor: "pointer"
+    },
+    portalCtaUniversity: {
+        display: "flex",
+        alignItems: "center",
+        gap: "6px",
+        background: "rgba(168, 85, 247, 0.15)",
+        color: "#d8b4fe",
+        border: "1px solid rgba(168, 85, 247, 0.3)",
+        padding: "12px 18px",
+        borderRadius: "12px",
+        fontSize: "13.5px",
+        fontWeight: 700,
+        cursor: "pointer"
+    },
+    portalCtaAdmin: {
+        display: "flex",
+        alignItems: "center",
+        gap: "6px",
+        background: "rgba(56, 189, 248, 0.15)",
+        color: "#7dd3fc",
+        border: "1px solid rgba(56, 189, 248, 0.3)",
+        padding: "12px 18px",
+        borderRadius: "12px",
+        fontSize: "13.5px",
+        fontWeight: 700,
+        cursor: "pointer"
     },
     kpiGrid: {
         display: "grid",

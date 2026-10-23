@@ -520,14 +520,14 @@ export const INITIAL_SEED_CHALLENGES = [
 // 8-STAGE SOCIAL INNOVATION & GRIEVANCE LIFECYCLE (NEP 2020)
 // ============================================================================
 export const STAGES_OF_INNOVATION = [
-    { key: "SUBMITTED", name: "Problem Ingested", desc: "Citizen challenge verified via 1-Tap GPS & AI Vision.", icon: "📥" },
-    { key: "SCREENING", name: "Domain Triage", desc: "AI NLP classification & duplicate deduplication.", icon: "🤖" },
-    { key: "ASSIGNED", name: "University HEI Matched", desc: "Assigned to specialized multidisciplinary student lab.", icon: "🎓" },
-    { key: "RESEARCH", name: "Field Research & Capstone", desc: "Student team scoping challenge under faculty mentor.", icon: "🔬" },
-    { key: "PROTOTYPE", name: "Lab Prototyping", desc: "Low-cost engineering prototype built in university fablab.", icon: "⚙️" },
-    { key: "TESTING", name: "Lab & Safety Testing", desc: "Standards and durability validation under faculty guidance.", icon: "🧪" },
-    { key: "PILOT", name: "Field Deployment & Verification", desc: "Live on-ground deployment in local area/ward.", icon: "🚀" },
-    { key: "RESOLVED", name: "Citizen Sign-Off", desc: "Citizen & local authority verified successful resolution.", icon: "✅" }
+    { key: "SUBMITTED", step: 1, label: "Problem Ingested", name: "Problem Ingested", desc: "Citizen challenge verified via 1-Tap GPS & AI Vision.", icon: "📥" },
+    { key: "SCREENING", step: 2, label: "Domain Triage", name: "Domain Triage", desc: "AI NLP classification & duplicate deduplication.", icon: "🤖" },
+    { key: "ASSIGNED", step: 3, label: "University HEI Matched", name: "University HEI Matched", desc: "Assigned to specialized multidisciplinary student lab.", icon: "🎓" },
+    { key: "RESEARCH", step: 4, label: "Field Research & Capstone", name: "Field Research & Capstone", desc: "Student team scoping challenge under faculty mentor.", icon: "🔬" },
+    { key: "PROTOTYPE", step: 5, label: "Lab Prototyping", name: "Lab Prototyping", desc: "Low-cost engineering prototype built in university fablab.", icon: "⚙️" },
+    { key: "TESTING", step: 6, label: "Lab & Safety Testing", name: "Lab & Safety Testing", desc: "Standards and durability validation under faculty guidance.", icon: "🧪" },
+    { key: "PILOT", step: 7, label: "Field Deployment & Verification", name: "Field Deployment & Verification", desc: "Live on-ground deployment in local area/ward.", icon: "🚀" },
+    { key: "RESOLVED", step: 8, label: "Citizen Sign-Off", name: "Citizen Sign-Off", desc: "Citizen & local authority verified successful resolution.", icon: "✅" }
 ];
 
 export const INDUSTRY_CSR_PARTNERS = [

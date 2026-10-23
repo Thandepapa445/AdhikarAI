@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Sparkles, PlusCircle, MapPin, Award, Building2, Bell, LogOut, Layers, CheckCircle2, ShieldCheck, GraduationCap } from "lucide-react";
+import { Sparkles, PlusCircle, MapPin, Building2, Bell, LogOut, Layers, CheckCircle2, ShieldCheck, GraduationCap } from "lucide-react";
 
 export default function NavBar({ activeTab, setActiveTab }) {
     const location = useLocation();
@@ -8,6 +8,14 @@ export default function NavBar({ activeTab, setActiveTab }) {
     const [showNotifications, setShowNotifications] = useState(false);
 
     const isHome = location.pathname === "/" || location.pathname === "/dashboard";
+
+    const handleTabClick = (tabKey) => {
+        if (isHome && setActiveTab) {
+            setActiveTab(tabKey);
+        } else {
+            navigate(`/dashboard?tab=${tabKey}`);
+        }
+    };
 
     const handleLogout = () => {
         localStorage.removeItem("adhikar_token");
@@ -17,91 +25,61 @@ export default function NavBar({ activeTab, setActiveTab }) {
 
     return (
         <header style={styles.header}>
-            <div className="top-gov-bar" style={styles.topGovBar}>
-                <div style={styles.topGovContainer}>
-                    <div style={styles.govTag}>
-                        <span style={styles.govEmblem}>🇮🇳</span>
-                        <span>National Citizen Innovation & Grievance Ecosystem • Government of India & State Portals</span>
-                    </div>
-                    <div style={styles.nepBadge}>
-                        <Award size={13} style={{ marginRight: 4 }} />
-                        <span>NEP 2020 Experiential Social Innovation & R&D Initiative</span>
-                    </div>
-                </div>
-            </div>
-
             <div className="main-nav" style={styles.mainNav}>
                 <div className="nav-container" style={styles.container}>
                     {/* Brand */}
-                    <Link to="/dashboard" style={styles.brand}>
+                    <Link to="/dashboard" style={styles.brand} title="Adhikar AI - Home">
                         <div className="brand-logo" style={styles.logoBadge}>
-                            <Sparkles size={22} color="#ffffff" />
+                            <Sparkles size={20} color="#ffffff" />
                         </div>
-                        <div>
-                            <div className="brand-title-text" style={styles.brandTitle}>
-                                Adhikar <span style={styles.brandHighlight}>AI</span>
-                            </div>
-                            <div className="brand-subtitle-text" style={styles.brandSubtitle}>
-                                National Citizen Innovation & Grievance Redressal Ecosystem
-                            </div>
+                        <div className="brand-title-text" style={styles.brandTitle}>
+                            Adhikar <span style={styles.brandHighlight}>AI</span>
                         </div>
                     </Link>
 
                     {/* Navigation Links */}
                     <nav className="nav-links-desktop" style={styles.navLinks}>
                         <button
-                            onClick={() => {
-                                if (!isHome) navigate("/dashboard");
-                                if (setActiveTab) setActiveTab("my-challenges");
-                            }}
+                            onClick={() => handleTabClick("my-challenges")}
                             style={{
                                 ...styles.navLink,
-                                ...(isHome && activeTab === "my-challenges" ? styles.activeNavLink : {})
+                                ...(isHome && (!activeTab || activeTab === "my-challenges") ? styles.activeNavLink : {})
                             }}
                         >
-                            <Layers size={17} />
+                            <Layers size={16} />
                             <span>My Grievances</span>
                         </button>
 
                         <button
-                            onClick={() => {
-                                if (!isHome) navigate("/dashboard");
-                                if (setActiveTab) setActiveTab("community-map");
-                            }}
+                            onClick={() => handleTabClick("community-map")}
                             style={{
                                 ...styles.navLink,
                                 ...(isHome && activeTab === "community-map" ? styles.activeNavLink : {})
                             }}
                         >
-                            <MapPin size={17} />
+                            <MapPin size={16} />
                             <span>National Map</span>
                         </button>
 
                         <button
-                            onClick={() => {
-                                if (!isHome) navigate("/dashboard");
-                                if (setActiveTab) setActiveTab("showcase");
-                            }}
+                            onClick={() => handleTabClick("showcase")}
                             style={{
                                 ...styles.navLink,
                                 ...(isHome && activeTab === "showcase" ? styles.activeNavLink : {})
                             }}
                         >
-                            <CheckCircle2 size={17} />
+                            <CheckCircle2 size={16} />
                             <span>Solved Showcase</span>
                         </button>
 
                         <button
-                            onClick={() => {
-                                if (!isHome) navigate("/dashboard");
-                                if (setActiveTab) setActiveTab("network");
-                            }}
+                            onClick={() => handleTabClick("network")}
                             style={{
                                 ...styles.navLink,
                                 ...(isHome && activeTab === "network" ? styles.activeNavLink : {})
                             }}
                         >
-                            <Building2 size={17} />
+                            <Building2 size={16} />
                             <span>Universities & CSR</span>
                         </button>
                     </nav>
@@ -109,19 +87,25 @@ export default function NavBar({ activeTab, setActiveTab }) {
                     {/* Action Buttons & Persona Links */}
                     <div className="nav-actions-group" style={styles.navActions}>
                         <Link to="/challenges/new" className="submit-challenge-nav-btn" style={styles.submitBtn}>
-                            <PlusCircle size={17} />
+                            <PlusCircle size={16} />
                             <span>Submit Challenge</span>
+                        </Link>
+
+                        {/* Direct Link to Residential Society Maintenance Portal */}
+                        <Link to="/society/resident" style={styles.societyNavBtn} title="Residential Society Maintenance Portal">
+                            <Building2 size={15} />
+                            <span>Society Portal</span>
                         </Link>
 
                         {/* Direct Link to University (HEI) Portal */}
                         <Link to="/university" style={styles.universityBtn} title="Higher Education Institutions (HEIs) & Faculty Portal">
-                            <GraduationCap size={16} />
+                            <GraduationCap size={15} />
                             <span>University Hub</span>
                         </Link>
 
                         {/* Direct Link to Nodal Admin Portal */}
                         <Link to="/admin" style={styles.adminBtn} title="State Nodal Officer & HEI Governance Command Center">
-                            <ShieldCheck size={16} />
+                            <ShieldCheck size={15} />
                             <span>Nodal Admin</span>
                         </Link>
 
@@ -131,7 +115,7 @@ export default function NavBar({ activeTab, setActiveTab }) {
                                 style={styles.iconBtn}
                                 title="Notifications & Nodal Updates"
                             >
-                                <Bell size={18} color="#475569" />
+                                <Bell size={17} color="#475569" />
                                 <span style={styles.notifBadge}>2</span>
                             </button>
 
@@ -186,105 +170,74 @@ const styles = {
         top: 0,
         zIndex: 1000,
         background: "#ffffff",
-        boxShadow: "0 2px 10px rgba(15,23,42,0.06)",
+        boxShadow: "0 1px 3px rgba(15,23,42,0.06), 0 1px 2px rgba(15,23,42,0.04)",
         borderBottom: "1px solid #e2e8f0"
-    },
-    topGovBar: {
-        background: "linear-gradient(90deg, #0f172a 0%, #1e293b 100%)",
-        color: "#cbd5e1",
-        fontSize: "11px",
-        padding: "5px 0",
-        borderBottom: "1px solid #334155"
-    },
-    topGovContainer: {
-        maxWidth: "1280px",
-        margin: "0 auto",
-        padding: "0 20px",
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center"
-    },
-    govTag: {
-        display: "flex",
-        alignItems: "center",
-        gap: "6px",
-        fontWeight: 500
-    },
-    govEmblem: {
-        fontSize: "13px"
-    },
-    nepBadge: {
-        display: "flex",
-        alignItems: "center",
-        color: "#38bdf8",
-        fontWeight: 600
     },
     mainNav: {
         padding: "10px 0"
     },
     container: {
-        maxWidth: "1280px",
+        maxWidth: "1320px",
         margin: "0 auto",
         padding: "0 20px",
         display: "flex",
         justifyContent: "space-between",
         alignItems: "center",
-        gap: "10px"
+        gap: "12px"
     },
     brand: {
         display: "flex",
         alignItems: "center",
-        gap: "12px",
+        gap: "10px",
         textDecoration: "none",
-        color: "inherit"
+        color: "inherit",
+        flexShrink: 0
     },
     logoBadge: {
-        width: "40px",
-        height: "40px",
-        borderRadius: "12px",
+        width: "36px",
+        height: "36px",
+        borderRadius: "10px",
         background: "linear-gradient(135deg, #0284c7 0%, #16a34a 100%)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        boxShadow: "0 4px 12px rgba(2, 132, 199, 0.3)"
+        boxShadow: "0 3px 10px rgba(2, 132, 199, 0.25)",
+        flexShrink: 0
     },
     brandTitle: {
-        fontSize: "19px",
+        fontSize: "20px",
         fontWeight: 800,
         color: "#0f172a",
-        lineHeight: 1.1
+        letterSpacing: "-0.02em",
+        lineHeight: 1
     },
     brandHighlight: {
         color: "#0284c7"
     },
-    brandSubtitle: {
-        fontSize: "10.5px",
-        color: "#64748b",
-        fontWeight: 500,
-        marginTop: "2px"
-    },
     navLinks: {
         display: "flex",
         alignItems: "center",
-        gap: "2px"
+        gap: "4px"
     },
     navLink: {
         display: "flex",
         alignItems: "center",
-        gap: "5px",
-        padding: "7px 10px",
-        borderRadius: "10px",
-        fontSize: "12.5px",
+        gap: "6px",
+        padding: "7px 11px",
+        borderRadius: "8px",
+        fontSize: "13px",
         fontWeight: 600,
         color: "#475569",
         textDecoration: "none",
         background: "none",
         border: "none",
-        cursor: "pointer"
+        cursor: "pointer",
+        transition: "all 0.15s ease"
     },
     activeNavLink: {
         background: "#e0f2fe",
-        color: "#0369a1"
+        color: "#0369a1",
+        fontWeight: 700
     },
     navActions: {
         display: "flex",
@@ -297,13 +250,27 @@ const styles = {
         gap: "6px",
         background: "linear-gradient(135deg, #0284c7 0%, #0369a1 100%)",
         color: "#ffffff",
-        padding: "8px 12px",
-        borderRadius: "10px",
+        padding: "8px 13px",
+        borderRadius: "9px",
         fontSize: "12.5px",
         fontWeight: 700,
         textDecoration: "none",
-        boxShadow: "0 4px 14px rgba(2, 132, 199, 0.35)",
+        boxShadow: "0 3px 12px rgba(2, 132, 199, 0.3)",
         whiteSpace: "nowrap"
+    },
+    societyNavBtn: {
+        display: "flex",
+        alignItems: "center",
+        gap: "5px",
+        background: "#ecfdf5",
+        color: "#059669",
+        padding: "7px 11px",
+        borderRadius: "9px",
+        fontSize: "12px",
+        fontWeight: 700,
+        textDecoration: "none",
+        border: "1px solid #a7f3d0",
+        whiteSpace: "nowrap",
     },
     universityBtn: {
         display: "flex",
@@ -312,7 +279,7 @@ const styles = {
         background: "#f5f3ff",
         color: "#7c3aed",
         padding: "7px 11px",
-        borderRadius: "10px",
+        borderRadius: "9px",
         fontSize: "12px",
         fontWeight: 700,
         textDecoration: "none",
@@ -326,7 +293,7 @@ const styles = {
         background: "#0f172a",
         color: "#38bdf8",
         padding: "7px 11px",
-        borderRadius: "10px",
+        borderRadius: "9px",
         fontSize: "12px",
         fontWeight: 700,
         textDecoration: "none",
@@ -336,7 +303,7 @@ const styles = {
     iconBtn: {
         width: "34px",
         height: "34px",
-        borderRadius: "10px",
+        borderRadius: "9px",
         border: "1px solid #e2e8f0",
         background: "#f8fafc",
         display: "flex",
@@ -391,7 +358,7 @@ const styles = {
         alignItems: "center",
         gap: "6px",
         padding: "3px 8px 3px 5px",
-        borderRadius: "10px",
+        borderRadius: "9px",
         background: "#f8fafc",
         border: "1px solid #e2e8f0"
     },

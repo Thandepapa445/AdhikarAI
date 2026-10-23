@@ -54,9 +54,6 @@ export default function Register() {
                 </div>
 
                 <h1 style={styles.brandTitle}>Create Citizen / Submitter Account</h1>
-                <p style={styles.brandSubtitle}>
-                    Join the Adhikar AI National Innovation Ecosystem to submit and track community solutions
-                </p>
 
                 <form onSubmit={handleSubmit} style={styles.form}>
                     <div style={styles.inputGroup}>
@@ -206,12 +203,7 @@ const styles = {
         fontSize: "22px",
         fontWeight: 800,
         color: "#0f172a",
-        marginBottom: "4px"
-    },
-    brandSubtitle: {
-        fontSize: "12px",
-        color: "#64748b",
-        marginBottom: "20px"
+        marginBottom: "16px"
     },
     form: {
         textAlign: "left"

@@ -1,6 +1,6 @@
 import React from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Home, Plus, MapPin, Layers, CheckCircle2, ShieldCheck, GraduationCap } from "lucide-react";
+import { Home, Plus, MapPin, Layers, CheckCircle2, ShieldCheck, GraduationCap, Building2 } from "lucide-react";
 
 export default function MobileBottomNav({ activeTab, setActiveTab }) {
     const location = useLocation();
@@ -10,6 +10,7 @@ export default function MobileBottomNav({ activeTab, setActiveTab }) {
     const isNew = location.pathname === "/challenges/new";
     const isUniversity = location.pathname === "/university";
     const isAdmin = location.pathname === "/admin";
+    const isSociety = location.pathname.startsWith("/society");
 
     return (
         <nav style={styles.mobileNav}>
@@ -20,16 +21,16 @@ export default function MobileBottomNav({ activeTab, setActiveTab }) {
                 }}
                 style={{
                     ...styles.navBtn,
-                    ...(isDashboard && activeTab === "my-challenges" ? styles.activeNavBtn : {})
+                    ...(isDashboard && (!activeTab || activeTab === "my-challenges") ? styles.activeNavBtn : {})
                 }}
             >
                 <Home size={20} />
-                <span>Home</span>
+                <span>Civic</span>
             </button>
 
             <button
                 onClick={() => {
-                    if (!isDashboard) navigate("/dashboard");
+                    if (!isDashboard) navigate("/dashboard?tab=community-map");
                     if (setActiveTab) setActiveTab("community-map");
                 }}
                 style={{
@@ -52,28 +53,25 @@ export default function MobileBottomNav({ activeTab, setActiveTab }) {
             </Link>
 
             <button
-                onClick={() => {
-                    if (!isDashboard) navigate("/dashboard");
-                    if (setActiveTab) setActiveTab("showcase");
-                }}
+                onClick={() => navigate("/society/resident")}
                 style={{
                     ...styles.navBtn,
-                    ...(isDashboard && activeTab === "showcase" ? styles.activeNavBtn : {})
+                    ...(isSociety ? styles.activeNavBtn : {})
                 }}
             >
-                <CheckCircle2 size={20} />
-                <span>Showcase</span>
+                <Building2 size={20} />
+                <span>Society</span>
             </button>
 
             <button
-                onClick={() => navigate("/university")}
+                onClick={() => navigate("/admin")}
                 style={{
                     ...styles.navBtn,
-                    ...(isUniversity ? styles.activeNavBtn : {})
+                    ...(isAdmin ? styles.activeNavBtn : {})
                 }}
             >
-                <GraduationCap size={20} />
-                <span>HEI Hub</span>
+                <ShieldCheck size={20} />
+                <span>Admin</span>
             </button>
         </nav>
     );

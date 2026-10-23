@@ -11,7 +11,7 @@ class AppConstants {
   static String get defaultHost {
     if (kIsWeb) return "localhost";
     if (customHost.isNotEmpty) return customHost;
-    return "192.168.1.35";
+    return "10.235.250.96";
   }
 
   static String get apiBaseUrl => "http://$defaultHost:8085/api";
@@ -21,7 +21,7 @@ class AppConstants {
     try {
       final prefs = await SharedPreferences.getInstance();
       final saved = prefs.getString("custom_server_host") ?? "";
-      if (saved == "10.67.57.96") {
+      if (saved == "10.67.57.96" || saved == "192.168.1.35") {
         await prefs.remove("custom_server_host");
         customHost = "";
       } else {
@@ -43,6 +43,8 @@ class AppConstants {
   static Future<String?> autoScanForLaptop() async {
     final List<String> candidateIps = [
       if (customHost.isNotEmpty) customHost,
+      "10.235.250.96",
+      "172.16.1.3",
       "192.168.1.35",
       "192.168.1.41",
       // Android Mobile Hotspot range (phone is 192.168.43.1, laptop is 192.168.43.2..30)
@@ -89,6 +91,19 @@ class AppConstants {
   static const String appName = "Adhikar AI";
   static const String appTagline = "National Citizen Innovation & Grievance Ecosystem";
   static const String governmentSubtitle = "NEP 2020 Social Innovation & Citizen Portal";
+
+  // Society Maintenance Categories (Phase 2)
+  static const List<Map<String, dynamic>> societyCategories = [
+    {"id": "ELECTRICAL", "name": "Electrical Faults", "icon": Icons.bolt, "color": Color(0xFFF59E0B)},
+    {"id": "WIRING_HAZARD", "name": "Exposed Wiring Hazard", "icon": Icons.warning_amber_rounded, "color": Color(0xFFEF4444)},
+    {"id": "WATER_LEAKAGE", "name": "Water Leakage & Plumbing", "icon": Icons.water_drop, "color": Color(0xFF0284C7)},
+    {"id": "ELEVATOR_LIFT", "name": "Lift / Elevator Malfunction", "icon": Icons.elevator, "color": Color(0xFF8B5CF6)},
+    {"id": "HOUSEKEEPING", "name": "Cleaning & Housekeeping", "icon": Icons.cleaning_services, "color": Color(0xFF10B981)},
+    {"id": "WASTE_MANAGEMENT", "name": "Waste & Garbage", "icon": Icons.delete_outline, "color": Color(0xFF64748B)},
+    {"id": "COMMON_LIGHTING", "name": "Common-Area Lighting", "icon": Icons.lightbulb_outline, "color": Color(0xFFEAB308)},
+    {"id": "STRUCTURAL_CIVIL", "name": "Structural / Civil", "icon": Icons.apartment, "color": Color(0xFFD97706)},
+    {"id": "OTHER", "name": "Other Society Issue", "icon": Icons.build, "color": Color(0xFF475569)},
+  ];
 
   // 9 Thematic Domains
   static const List<Map<String, dynamic>> thematicDomains = [

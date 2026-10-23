@@ -21,5 +21,7 @@ public record RegisterRequest(
 
         String district,
 
-        String organizationName
+        String organizationName,
+
+        Long organizationId
 ) {}

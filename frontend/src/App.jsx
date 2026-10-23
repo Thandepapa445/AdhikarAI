@@ -6,22 +6,23 @@ import Dashboard from "./pages/Dashboard";
 import NewChallenge from "./pages/NewChallenge";
 import AdminDashboard from "./pages/AdminDashboard";
 import UniversityDashboard from "./pages/UniversityDashboard";
+import SocietyResidentPortal from "./pages/SocietyResidentPortal";
+import SocietyManagerDashboard from "./pages/SocietyManagerDashboard";
 
 export default function App() {
     return (
         <BrowserRouter>
             <Routes>
-                {/* Citizen & Gram Panchayat Dashboard */}
+                {/* 1. Civic Platform Routes */}
                 <Route path="/dashboard" element={<Dashboard />} />
-
-                {/* Submit New Societal Challenge */}
                 <Route path="/challenges/new" element={<NewChallenge />} />
-
-                {/* State Nodal Officer & Admin Command Center */}
                 <Route path="/admin" element={<AdminDashboard />} />
-
-                {/* Higher Education Institutions (HEIs) & Faculty Portal */}
                 <Route path="/university" element={<UniversityDashboard />} />
+
+                {/* 2. Residential Society Platform Routes (Phase 2) */}
+                <Route path="/society/resident" element={<SocietyResidentPortal />} />
+                <Route path="/society/submit" element={<SocietyResidentPortal />} />
+                <Route path="/society/manager" element={<SocietyManagerDashboard />} />
 
                 {/* Authentication */}
                 <Route path="/login" element={<Login />} />

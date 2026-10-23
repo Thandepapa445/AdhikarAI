@@ -78,7 +78,7 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.8),
+                    color: Colors.black.withValues(alpha: 0.8),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
@@ -148,7 +148,7 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
                     const SizedBox(width: 4),
                     Expanded(
                       child: Text(
-                        "${c.panchayat}, ${c.block}, ${c.district} (Jharkhand)",
+                        "${c.panchayat}, ${c.block}, ${c.district}",
                         style: const TextStyle(fontSize: 13, color: Color(0xFF475569), fontWeight: FontWeight.w600),
                       ),
                     ),
@@ -175,8 +175,8 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
 
                 const SizedBox(height: 20),
 
-                // 3. Assigned University & Lab Card
-                if (c.assignedHei != null) _buildHeiAssignmentCard(c),
+                // 3. AI Civic Safety Triage & Geodesic Clustering
+                _buildCivicTriageAndClusterCard(c),
 
                 const SizedBox(height: 16),
 
@@ -203,7 +203,7 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
         border: Border.all(color: const Color(0xFFE2E8F0)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -222,7 +222,7 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF0284C7).withOpacity(0.1),
+                  color: const Color(0xFF0284C7).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
@@ -311,7 +311,10 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
     );
   }
 
-  Widget _buildHeiAssignmentCard(ChallengeModel c) {
+  Widget _buildCivicTriageAndClusterCard(ChallengeModel c) {
+    final bool isCritical = c.urgency == "CRITICAL";
+    final bool isHigh = c.urgency == "HIGH";
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -323,44 +326,65 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            children: const [
-              Icon(Icons.account_balance, color: Color(0xFF7C3AED), size: 18),
-              SizedBox(width: 8),
-              Text(
-                "Assigned University (HEI) Lab",
-                style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: const [
+                  Icon(Icons.shield_outlined, color: Color(0xFF0284C7), size: 18),
+                  SizedBox(width: 8),
+                  Text(
+                    "AI Civic Safety & Priority Triage",
+                    style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
+                  ),
+                ],
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: isCritical
+                      ? const Color(0xFFFEE2E2)
+                      : (isHigh ? const Color(0xFFFFEDD5) : const Color(0xFFE0F2FE)),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: isCritical
+                        ? const Color(0xFFDC2626)
+                        : (isHigh ? const Color(0xFFEA580C) : const Color(0xFF0284C7)),
+                  ),
+                ),
+                child: Text(
+                  "● ${c.urgency} PRIORITY",
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    color: isCritical
+                        ? const Color(0xFFDC2626)
+                        : (isHigh ? const Color(0xFFEA580C) : const Color(0xFF0284C7)),
+                  ),
+                ),
               ),
             ],
           ),
           const SizedBox(height: 10),
-          Text(
-            c.assignedHei ?? '',
-            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Color(0xFF1E293B)),
+          const Text(
+            "Priority is determined deterministically on the server via AI defect analysis and municipal safety rules.",
+            style: TextStyle(fontSize: 12, color: Color(0xFF475569)),
+          ),
+          const Divider(height: 16, color: Color(0xFFE2E8F0)),
+          Row(
+            children: const [
+              Icon(Icons.hub_outlined, color: Color(0xFF16A34A), size: 16),
+              SizedBox(width: 6),
+              Text(
+                "200m Smart Geodesic Deduplication Active",
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF16A34A)),
+              ),
+            ],
           ),
           const SizedBox(height: 4),
-          Text(
-            "🔬 Lab: ${c.assignedHeiDepartment ?? 'Clean Water & Rural Innovation FabLab'}",
-            style: const TextStyle(fontSize: 12, color: Color(0xFF475569)),
+          const Text(
+            "Reports in this 200m perimeter are automatically aggregated into master issue clusters to accelerate dispatch.",
+            style: TextStyle(fontSize: 11.5, color: Color(0xFF64748B)),
           ),
-          const SizedBox(height: 4),
-          Text(
-            "👨‍🏫 Faculty Lead: ${c.facultyMentor ?? 'Dr. Arvind Sharma'}",
-            style: const TextStyle(fontSize: 12, color: Color(0xFF475569)),
-          ),
-          if (c.industryPartner != null) ...[
-            const SizedBox(height: 4),
-            Text(
-              "💼 CSR Sponsor: ${c.industryPartner}",
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF0369A1)),
-            ),
-          ],
-          if (c.prototypeDetails != null) ...[
-            const Divider(height: 16, color: Color(0xFFE2E8F0)),
-            Text(
-              "⚙️ Student Prototype: ${c.prototypeDetails}",
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF0D9488)),
-            ),
-          ],
         ],
       ),
     );

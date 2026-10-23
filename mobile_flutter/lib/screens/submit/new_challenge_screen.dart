@@ -61,13 +61,26 @@ class _NewChallengeScreenState extends State<NewChallengeScreen> {
 
   // AI Live Ingestion State
   String _aiConfidence = "95.0%";
+  String? _aiPriorityExplanation;
+  String? _aiEstimatedSeverity;
   UniversityMatch? _suggestedHei;
 
   @override
   void initState() {
     super.initState();
+    _retrieveLostData();
     _acquireGps();
     _triggerAiAnalysis();
+  }
+
+  Future<void> _retrieveLostData() async {
+    try {
+      final response = await _picker.retrieveLostData();
+      if (response.isEmpty) return;
+      if (response.file != null) {
+        _processPickedImage(response.file!);
+      }
+    } catch (_) {}
   }
 
   @override
@@ -282,18 +295,32 @@ class _NewChallengeScreenState extends State<NewChallengeScreen> {
   // Pick Image & Enforce Strict YOLOv8 AI Vision Gate (Blocks Non-Civic Images)
   Future<void> _pickImage(ImageSource source) async {
     try {
-      final picked = await _picker.pickImage(source: source, imageQuality: 85);
+      final picked = await _picker.pickImage(
+        source: source,
+        maxWidth: 1200,
+        maxHeight: 1200,
+        imageQuality: 80,
+      );
       if (picked != null) {
-        final imageFile = File(picked.path);
-        setState(() {
-          _selectedImage = imageFile;
-          _isScanningAiVision = true;
-          _isImageVerifiedCivicHazard = false;
-          _aiVisionRejectionReason = null;
-        });
+        await _processPickedImage(picked);
+      }
+    } catch (e) {
+      if (mounted) setState(() => _isScanningAiVision = false);
+    }
+  }
 
-        // Run 4-Class YOLOv8 Vision Audit on Python Microservice
-        final visionResult = await _apiService.detectVisualEvidence(imageFile: imageFile);
+  Future<void> _processPickedImage(XFile picked) async {
+    try {
+      final imageFile = File(picked.path);
+      setState(() {
+        _selectedImage = imageFile;
+        _isScanningAiVision = true;
+        _isImageVerifiedCivicHazard = false;
+        _aiVisionRejectionReason = null;
+      });
+
+      // Run 4-Class YOLOv8 Vision Audit on Python Microservice
+      final visionResult = await _apiService.detectVisualEvidence(imageFile: imageFile);
 
         if (mounted) {
           setState(() => _isScanningAiVision = false);
@@ -307,7 +334,17 @@ class _NewChallengeScreenState extends State<NewChallengeScreen> {
               if (visionResult.recommendedDomain != null) {
                 _selectedDomain = visionResult.recommendedDomain!;
               }
+              if (visionResult.assignedPriority != null) {
+                _selectedUrgency = visionResult.assignedPriority!;
+              }
+              _aiPriorityExplanation = visionResult.priorityExplanation;
+              _aiEstimatedSeverity = visionResult.estimatedSeverity;
             });
+
+            // Auto-fill suggested description if user hasn't written a custom one yet
+            if (visionResult.suggestedDescription != null && (_descController.text.isEmpty || _descController.text.length < 20)) {
+              _descController.text = visionResult.suggestedDescription!;
+            }
 
             // Auto-fill title if empty
             if (_titleController.text.isEmpty && visionResult.primaryClass != null) {
@@ -317,7 +354,7 @@ class _NewChallengeScreenState extends State<NewChallengeScreen> {
 
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text("✓ YOLOv8 Verified Civic Hazard: ${visionResult.primaryClass!.replaceAll('_', ' ').toUpperCase()} (${visionResult.confidencePercent})"),
+                content: Text("✓ YOLOv8 Verified: ${visionResult.primaryClass!.replaceAll('_', ' ').toUpperCase()} • Priority: ${_selectedUrgency}"),
                 backgroundColor: const Color(0xFF16A34A),
               ),
             );
@@ -391,7 +428,6 @@ class _NewChallengeScreenState extends State<NewChallengeScreen> {
             );
           }
         }
-      }
     } catch (e) {
       if (mounted) setState(() => _isScanningAiVision = false);
     }
@@ -539,8 +575,8 @@ class _NewChallengeScreenState extends State<NewChallengeScreen> {
 
             const SizedBox(height: 16),
 
-            // 5. AI Ingestion & HEI Match Preview
-            _buildAiIngestionCard(),
+            // 5. AI Ingestion & Civic Triage Preview
+            _buildCivicTriageCard(),
 
             const SizedBox(height: 16),
 
@@ -835,7 +871,7 @@ class _NewChallengeScreenState extends State<NewChallengeScreen> {
               const SizedBox(width: 10),
               Expanded(
                 child: DropdownButtonFormField<String>(
-                  value: _submitterType,
+                  initialValue: _submitterType,
                   decoration: InputDecoration(
                     labelText: "Submitter Role",
                     labelStyle: const TextStyle(fontSize: 12),
@@ -883,7 +919,7 @@ class _NewChallengeScreenState extends State<NewChallengeScreen> {
 
           // Domain dropdown
           DropdownButtonFormField<String>(
-            value: _selectedDomain,
+            initialValue: _selectedDomain,
             decoration: InputDecoration(
               labelText: "NEP 2020 Thematic Domain",
               labelStyle: const TextStyle(fontSize: 12),
@@ -913,38 +949,61 @@ class _NewChallengeScreenState extends State<NewChallengeScreen> {
 
           const SizedBox(height: 12),
 
-          // Priority / Urgency Chips
-          const Text("Urgency Level:", style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Color(0xFF475569))),
+          // Priority / Urgency (Authoritative AI Assigned)
+          const Text("Priority Level (Authoritative):", style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: Color(0xFF0F172A))),
           const SizedBox(height: 6),
           Row(
-            children: ["LOW", "MEDIUM", "HIGH", "CRITICAL"].map((u) {
-              final isSel = _selectedUrgency == u;
-              Color chipColor = const Color(0xFF64748B);
-              if (u == "CRITICAL") chipColor = const Color(0xFFDC2626);
-              if (u == "HIGH") chipColor = const Color(0xFFEA580C);
-              if (u == "MEDIUM") chipColor = const Color(0xFFD97706);
-              if (u == "LOW") chipColor = const Color(0xFF16A34A);
-
-              return Padding(
-                padding: const EdgeInsets.only(right: 6),
-                child: ChoiceChip(
-                  label: Text(u, style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: isSel ? Colors.white : chipColor)),
-                  selected: isSel,
-                  selectedColor: chipColor,
-                  backgroundColor: chipColor.withValues(alpha: 0.1),
-                  onSelected: (val) {
-                    if (val) setState(() => _selectedUrgency = u);
-                  },
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: _selectedUrgency == "CRITICAL"
+                      ? const Color(0xFFFEE2E2)
+                      : (_selectedUrgency == "HIGH" ? const Color(0xFFFFEDD5) : const Color(0xFFE0F2FE)),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: _selectedUrgency == "CRITICAL"
+                        ? const Color(0xFFDC2626)
+                        : (_selectedUrgency == "HIGH" ? const Color(0xFFEA580C) : const Color(0xFF0284C7)),
+                  ),
                 ),
-              );
-            }).toList(),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      _selectedUrgency == "CRITICAL" ? Icons.warning_rounded : Icons.shield_outlined,
+                      size: 14,
+                      color: _selectedUrgency == "CRITICAL"
+                          ? const Color(0xFFDC2626)
+                          : (_selectedUrgency == "HIGH" ? const Color(0xFFEA580C) : const Color(0xFF0284C7)),
+                    ),
+                    const SizedBox(width: 5),
+                    Text(
+                      "● $_selectedUrgency PRIORITY (AI Evaluated)",
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w800,
+                        color: _selectedUrgency == "CRITICAL"
+                            ? const Color(0xFFDC2626)
+                            : (_selectedUrgency == "HIGH" ? const Color(0xFFEA580C) : const Color(0xFF0284C7)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            "Priority is determined automatically by AI safety rules. Citizens cannot manually alter priority.",
+            style: TextStyle(fontSize: 10.5, color: Color(0xFF64748B)),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildAiIngestionCard() {
+  Widget _buildCivicTriageCard() {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -957,34 +1016,42 @@ class _NewChallengeScreenState extends State<NewChallengeScreen> {
         children: [
           Row(
             children: [
-              const Icon(Icons.auto_awesome, color: Color(0xFF7C3AED), size: 16),
+              const Icon(Icons.shield_outlined, color: Color(0xFF0284C7), size: 16),
               const SizedBox(width: 6),
-              const Text("AI Matching & NEP 2020 HEI Allocation", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12.5, color: Color(0xFF4338CA))),
+              const Text(
+                "AI Civic Safety & Deduplication Engine",
+                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12.5, color: Color(0xFF0369A1)),
+              ),
               const Spacer(),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFEDE9FE),
+                  color: const Color(0xFFE0F2FE),
                   borderRadius: BorderRadius.circular(6),
                 ),
-                child: Text("Confidence: $_aiConfidence", style: const TextStyle(fontSize: 10, color: Color(0xFF6D28D9), fontWeight: FontWeight.bold)),
+                child: Text(
+                  _aiConfidence,
+                  style: const TextStyle(fontSize: 10, color: Color(0xFF0369A1), fontWeight: FontWeight.bold),
+                ),
               ),
             ],
           ),
+          if (_aiEstimatedSeverity != null) ...[
+            const SizedBox(height: 6),
+            Text(
+              "Severity: $_aiEstimatedSeverity",
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
+            ),
+          ],
           const SizedBox(height: 8),
           Text(
-            "🏛️ Assigned University: ${_suggestedHei?.name ?? 'Delhi Technological University (DTU)'}",
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
+            _aiPriorityExplanation ?? "AI evaluates defect type, road obstruction, and public hazard to schedule authoritative priority.",
+            style: const TextStyle(fontSize: 11.5, color: Color(0xFF334155), height: 1.3),
           ),
-          const SizedBox(height: 4),
-          Text(
-            "🔬 Specialized Lab: ${_suggestedHei?.specializedLab ?? 'Smart Transportation & Infrastructure Lab'}",
-            style: const TextStyle(fontSize: 11, color: Color(0xFF475569)),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            "📍 Distance to Spot: ${_suggestedHei?.distanceKm.toStringAsFixed(1) ?? '14.2'} km away",
-            style: const TextStyle(fontSize: 10.5, color: Color(0xFF0284C7), fontWeight: FontWeight.w600),
+          const SizedBox(height: 6),
+          const Text(
+            "📍 200m Cluster Perimeter: Duplicate reports within 200m are aggregated into Master Grievances.",
+            style: TextStyle(fontSize: 10.5, color: Color(0xFF16A34A), fontWeight: FontWeight.w600),
           ),
         ],
       ),

@@ -1,13 +1,12 @@
 package com.sankalp.backend.controller;
 
+import com.sankalp.backend.dto.AuthResponse;
 import com.sankalp.backend.dto.LoginRequest;
 import com.sankalp.backend.dto.RegisterRequest;
 import com.sankalp.backend.service.AuthService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -20,20 +19,12 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest request) {
-        String token = authService.register(request);
-        return ResponseEntity.ok(Map.of(
-                "message", "Registration successful",
-                "token", token
-        ));
+    public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request) {
+        return ResponseEntity.ok(authService.register(request));
     }
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request) {
-        String token = authService.login(request);
-        return ResponseEntity.ok(Map.of(
-                "message", "Login successful",
-                "token", token
-        ));
+    public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
+        return ResponseEntity.ok(authService.login(request));
     }
 }

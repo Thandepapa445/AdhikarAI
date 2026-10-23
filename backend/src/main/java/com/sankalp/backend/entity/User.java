@@ -29,6 +29,9 @@ public class User {
     @Column
     private String organizationName;
 
+    @Column(name = "organization_id")
+    private Long organizationId;
+
     public User() {}
 
     public User(String name, String email, String password, Role role, String district) {
@@ -44,7 +47,9 @@ public class User {
         GRAM_PANCHAYAT,
         HEI_FACULTY,
         INDUSTRY_PARTNER,
-        NODAL_ADMIN
+        NODAL_ADMIN,
+        SOCIETY_RESIDENT,
+        SOCIETY_MANAGER
     }
 
     public Long getId() { return id; }
@@ -67,4 +72,7 @@ public class User {
 
     public String getOrganizationName() { return organizationName; }
     public void setOrganizationName(String organizationName) { this.organizationName = organizationName; }
+
+    public Long getOrganizationId() { return organizationId; }
+    public void setOrganizationId(Long organizationId) { this.organizationId = organizationId; }
 }

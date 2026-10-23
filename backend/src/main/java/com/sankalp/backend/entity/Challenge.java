@@ -26,6 +26,44 @@ public class Challenge {
     @Column(nullable = false)
     private String urgency; // CRITICAL, HIGH, MEDIUM, LOW
 
+    // AI Priority & Civic Safety Triage
+    @Column(nullable = false)
+    private String priority; // LOW, MODERATE, HIGH, CRITICAL
+
+    @Column
+    private String estimatedSeverity;
+
+    @Column
+    private Double modelConfidence;
+
+    @Column(columnDefinition = "TEXT")
+    private String priorityExplanation;
+
+    @Column(columnDefinition = "TEXT")
+    private String aiSuggestedDescription;
+
+    @Column
+    private Boolean needsHumanReview;
+
+    @Column
+    private String safetyFlags;
+
+    @Column(columnDefinition = "TEXT")
+    private String priorityOverrideReason;
+
+    @Column
+    private String priorityOverriddenBy;
+
+    // Duplicate Complaint Clustering
+    @Column
+    private Long clusterId;
+
+    @Column
+    private Boolean isClusterMaster;
+
+    @Column
+    private Integer duplicateCount;
+
     @Column(nullable = false)
     private String submitterType; // INDIVIDUAL_CITIZEN, GRAM_PANCHAYAT, COMMUNITY_SHG, LOCAL_BODY
 
@@ -101,6 +139,16 @@ public class Challenge {
     @Column
     private LocalDateTime updatedAt;
 
+    // Dual-Workflow Society Linking
+    @Column(name = "linked_society_issue_id")
+    private Long linkedSocietyIssueId;
+
+    @Column(name = "origin_type")
+    private String originType = "CIVIC_DIRECT";
+
+    @Column(name = "resident_sign_off_status")
+    private String residentSignOffStatus;
+
     public Challenge() {}
 
     @PrePersist
@@ -119,6 +167,21 @@ public class Challenge {
         }
         if (this.citizenVerificationRequested == null) {
             this.citizenVerificationRequested = false;
+        }
+        if (this.priority == null) {
+            this.priority = "MODERATE";
+        }
+        if (this.urgency == null) {
+            this.urgency = this.priority;
+        }
+        if (this.isClusterMaster == null) {
+            this.isClusterMaster = true;
+        }
+        if (this.duplicateCount == null) {
+            this.duplicateCount = 1;
+        }
+        if (this.needsHumanReview == null) {
+            this.needsHumanReview = false;
         }
     }
 
@@ -224,4 +287,52 @@ public class Challenge {
 
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+
+    public String getPriority() { return priority; }
+    public void setPriority(String priority) {
+        this.priority = priority;
+        this.urgency = priority; // keep legacy urgency synchronized
+    }
+
+    public String getEstimatedSeverity() { return estimatedSeverity; }
+    public void setEstimatedSeverity(String estimatedSeverity) { this.estimatedSeverity = estimatedSeverity; }
+
+    public Double getModelConfidence() { return modelConfidence; }
+    public void setModelConfidence(Double modelConfidence) { this.modelConfidence = modelConfidence; }
+
+    public String getPriorityExplanation() { return priorityExplanation; }
+    public void setPriorityExplanation(String priorityExplanation) { this.priorityExplanation = priorityExplanation; }
+
+    public String getAiSuggestedDescription() { return aiSuggestedDescription; }
+    public void setAiSuggestedDescription(String aiSuggestedDescription) { this.aiSuggestedDescription = aiSuggestedDescription; }
+
+    public Boolean getNeedsHumanReview() { return needsHumanReview; }
+    public void setNeedsHumanReview(Boolean needsHumanReview) { this.needsHumanReview = needsHumanReview; }
+
+    public String getSafetyFlags() { return safetyFlags; }
+    public void setSafetyFlags(String safetyFlags) { this.safetyFlags = safetyFlags; }
+
+    public String getPriorityOverrideReason() { return priorityOverrideReason; }
+    public void setPriorityOverrideReason(String priorityOverrideReason) { this.priorityOverrideReason = priorityOverrideReason; }
+
+    public String getPriorityOverriddenBy() { return priorityOverriddenBy; }
+    public void setPriorityOverriddenBy(String priorityOverriddenBy) { this.priorityOverriddenBy = priorityOverriddenBy; }
+
+    public Long getClusterId() { return clusterId; }
+    public void setClusterId(Long clusterId) { this.clusterId = clusterId; }
+
+    public Boolean getIsClusterMaster() { return isClusterMaster; }
+    public void setIsClusterMaster(Boolean isClusterMaster) { this.isClusterMaster = isClusterMaster; }
+
+    public Integer getDuplicateCount() { return duplicateCount; }
+    public void setDuplicateCount(Integer duplicateCount) { this.duplicateCount = duplicateCount; }
+
+    public Long getLinkedSocietyIssueId() { return linkedSocietyIssueId; }
+    public void setLinkedSocietyIssueId(Long linkedSocietyIssueId) { this.linkedSocietyIssueId = linkedSocietyIssueId; }
+
+    public String getOriginType() { return originType; }
+    public void setOriginType(String originType) { this.originType = originType; }
+
+    public String getResidentSignOffStatus() { return residentSignOffStatus; }
+    public void setResidentSignOffStatus(String residentSignOffStatus) { this.residentSignOffStatus = residentSignOffStatus; }
 }

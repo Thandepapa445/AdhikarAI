@@ -57,81 +57,80 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.primaryDark,
-      body: SafeArea(
-        child: Center(
-          child: ScaleTransition(
-            scale: _scaleAnimation,
-            child: FadeTransition(
-              opacity: _fadeAnimation,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    width: 90,
-                    height: 90,
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF0284C7), Color(0xFF0D9488)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(24),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFF0284C7).withOpacity(0.4),
-                          blurRadius: 24,
-                          offset: const Offset(0, 8),
+      backgroundColor: AppTheme.backgroundLight,
+      body: AppPageBackground(
+        child: SafeArea(
+          child: Center(
+            child: ScaleTransition(
+              scale: _scaleAnimation,
+              child: FadeTransition(
+                opacity: _fadeAnimation,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      width: 90,
+                      height: 90,
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [AppTheme.primaryBlue, AppTheme.secondaryTeal],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
                         ),
-                      ],
-                    ),
-                    child: const Icon(
-                      Icons.auto_awesome,
-                      size: 48,
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  Text(
-                    AppConstants.appName,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 30,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.12),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: const Text(
-                      "NEP 2020 Multi-Modal Societal Innovation",
-                      style: TextStyle(
-                        color: Color(0xFF38BDF8),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
+                        borderRadius: BorderRadius.circular(24),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppTheme.primaryBlue.withValues(alpha: 0.3),
+                            blurRadius: 24,
+                            offset: const Offset(0, 8),
+                          ),
+                        ],
+                      ),
+                      child: const Icon(
+                        Icons.auto_awesome,
+                        size: 48,
+                        color: Colors.white,
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 32),
-                  const CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF38BDF8)),
-                    strokeWidth: 2.5,
-                  ),
-                  const SizedBox(height: 48),
-                  Text(
-                    AppConstants.governmentSubtitle,
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.6),
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.w600,
+                    const SizedBox(height: 24),
+                    Text(
+                      AppConstants.appName,
+                      style: const TextStyle(
+                        color: AppTheme.textPrimary,
+                        fontSize: 30,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0.5,
+                      ),
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 8),
+                    AppGlassPanel(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                      borderRadius: BorderRadius.circular(20),
+                      child: const Text(
+                        "NEP 2020 Multi-Modal Societal Innovation",
+                        style: TextStyle(
+                          color: AppTheme.primaryBlue,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+                    const CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryBlue),
+                      strokeWidth: 2.5,
+                    ),
+                    const SizedBox(height: 48),
+                    Text(
+                      AppConstants.governmentSubtitle,
+                      style: const TextStyle(
+                        color: AppTheme.textSecondary,
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),

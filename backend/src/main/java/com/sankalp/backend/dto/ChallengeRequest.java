@@ -37,5 +37,19 @@ public record ChallengeRequest(
 
         Integer affectedPopulation,
 
-        String evidenceImageUrl
+        String evidenceImageUrl,
+
+        String priority,
+
+        String estimatedSeverity,
+
+        Double modelConfidence,
+
+        String priorityExplanation,
+
+        String aiSuggestedDescription,
+
+        Boolean needsHumanReview,
+
+        String safetyFlags
 ) {}

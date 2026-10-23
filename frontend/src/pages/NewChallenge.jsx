@@ -121,6 +121,13 @@ export default function NewChallenge() {
     const [suggestedHei, setSuggestedHei] = useState(PARTICIPATING_HEIS[0]);
     const [submitting, setSubmitting] = useState(false);
 
+    // AI Civic Triage & Priority States
+    const [assignedPriority, setAssignedPriority] = useState("MODERATE");
+    const [estimatedSeverity, setEstimatedSeverity] = useState(null);
+    const [priorityExplanation, setPriorityExplanation] = useState(null);
+    const [safetyFlags, setSafetyFlags] = useState([]);
+    const [needsHumanReview, setNeedsHumanReview] = useState(false);
+
     // Reverse Geocoding & Automatic Field Filler
     const reverseGeocodeAndAutoFill = async (lat, lng, showToast = false) => {
         try {
@@ -148,7 +155,7 @@ export default function NewChallenge() {
                 if (nearest) setSuggestedHei(nearest);
 
                 if (showToast) {
-                    alert(`📍 Live GPS Acquired & Auto-Filled Anywhere in India!\n\n• State: ${detectedState}\n• District: ${detectedDistrict}\n• Area/Ward: ${detectedPanchayat}\n• Nearest University: ${nearest?.name || "Premier HEI"} (${nearest?.distanceKm || 0} km away)\n• Coordinates: ${lat.toFixed(4)}° N, ${lng.toFixed(4)}° E`);
+                    alert(`📍 Live GPS Acquired & Auto-Filled!\n\n• State: ${detectedState}\n• District: ${detectedDistrict}\n• Area/Ward: ${detectedPanchayat}\n• Coordinates: ${lat.toFixed(4)}° N, ${lng.toFixed(4)}° E`);
                 }
                 return true;
             }
@@ -396,6 +403,28 @@ export default function NewChallenge() {
         setShowCameraModal(false);
     };
 
+    const processRejectionDetails = (data) => {
+        let classification = "No Civic Hazard Detected";
+        let reason = data?.message || "No recognized civic hazard (Pothole, Garbage, Broken Street Light, Fallen Tree) detected in photo.";
+
+        if (data?.errorType === "NSFW_CONTENT" || data?.isNsfw) {
+            classification = "NSFW / Inappropriate Content";
+            reason = data?.nsfwAudit?.reason || data?.message || "Excessive exposed skin or intimate adult content detected.";
+        } else if (data?.errorType === "AI_GENERATED_IMAGE" || data?.isAiGenerated) {
+            classification = "AI-Generated Synthetic Image";
+            reason = data?.aiAudit?.reason || data?.message || "Synthetic generative AI signatures or diffusion artifacts detected.";
+        } else if (data?.errorType === "BLANK_OR_CORRUPTED" || data?.errorType === "PITCH_DARK" || data?.errorType === "OVEREXPOSED") {
+            classification = "Image Quality Defect";
+            reason = data?.message || "The photo appears blank, pitch dark, or overexposed.";
+        }
+
+        return {
+            classification,
+            reason,
+            formattedAlert: `🚫 Photo Evidence Rejected by AI Gate!\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n🚨 CLASSIFICATION: ${classification.toUpperCase()}\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n📌 REASON:\n${reason}\n\n⚠️ POLICY:\nAdhikar AI requires authentic, appropriate real-world photographs of actual civic defects to prevent spam, deepfakes, and misuse.`
+        };
+    };
+
     // Capture Frame from Live Camera Viewfinder Modal & Run YOLOv8 Verification
     const captureFromLiveCamera = async () => {
         if (!videoRef.current || !canvasRef.current) return;
@@ -462,6 +491,42 @@ export default function NewChallenge() {
                 if (detectionData.recommendedDomain) {
                     setDomain(detectionData.recommendedDomain);
                 }
+                if (detectionData.suggestedDescription) {
+                    setDescription(detectionData.suggestedDescription);
+                }
+                if (detectionData.assignedPriority) {
+                    setAssignedPriority(detectionData.assignedPriority);
+                    setUrgency(detectionData.assignedPriority);
+                }
+                if (detectionData.estimatedSeverity) {
+                    setEstimatedSeverity(detectionData.estimatedSeverity);
+                }
+                if (detectionData.priorityExplanation) {
+                    setPriorityExplanation(detectionData.priorityExplanation);
+                }
+                if (detectionData.safetyFlags) {
+                    setSafetyFlags(detectionData.safetyFlags);
+                }
+                if (detectionData.needsHumanReview !== undefined) {
+                    setNeedsHumanReview(detectionData.needsHumanReview);
+                }
+                if (!title) {
+                    const fmt = (detectionData.primaryClass || "Civic Hazard").replace(/_/g, " ");
+                    setTitle(`${fmt.charAt(0).toUpperCase() + fmt.slice(1)} reported at ${panchayat || district || "locality"}`);
+                }
+            } else if (detectionData && !detectionData.isVisualEvidenceVerified) {
+                setEvidenceUrl("");
+                setIsLiveCameraVerified(false);
+                const { classification, reason, formattedAlert } = processRejectionDetails(detectionData);
+                setVisionResult({
+                    isVisualEvidenceVerified: false,
+                    status: "REJECTED",
+                    errorType: detectionData.errorType,
+                    classification: classification,
+                    message: reason,
+                    audit: detectionData.nsfwAudit || detectionData.aiAudit
+                });
+                alert(formattedAlert);
             } else {
                 setEvidenceUrl(dataUrl);
                 setIsLiveCameraVerified(true);
@@ -530,15 +595,42 @@ export default function NewChallenge() {
                 if (detectionData.recommendedDomain) {
                     setDomain(detectionData.recommendedDomain);
                 }
+                if (detectionData.suggestedDescription) {
+                    setDescription(detectionData.suggestedDescription);
+                }
+                if (detectionData.assignedPriority) {
+                    setAssignedPriority(detectionData.assignedPriority);
+                    setUrgency(detectionData.assignedPriority);
+                }
+                if (detectionData.estimatedSeverity) {
+                    setEstimatedSeverity(detectionData.estimatedSeverity);
+                }
+                if (detectionData.priorityExplanation) {
+                    setPriorityExplanation(detectionData.priorityExplanation);
+                }
+                if (detectionData.safetyFlags) {
+                    setSafetyFlags(detectionData.safetyFlags);
+                }
+                if (detectionData.needsHumanReview !== undefined) {
+                    setNeedsHumanReview(detectionData.needsHumanReview);
+                }
+                if (!title) {
+                    const fmt = (detectionData.primaryClass || "Civic Hazard").replace(/_/g, " ");
+                    setTitle(`${fmt.charAt(0).toUpperCase() + fmt.slice(1)} reported at ${panchayat || district || "locality"}`);
+                }
             } else if (detectionData && !detectionData.isVisualEvidenceVerified) {
                 setEvidenceUrl("");
                 setIsLiveCameraVerified(false);
+                const { classification, reason, formattedAlert } = processRejectionDetails(detectionData);
                 setVisionResult({
                     isVisualEvidenceVerified: false,
                     status: "REJECTED",
-                    message: "No recognized civic hazard (Pothole, Garbage, Broken Street Light, Fallen Tree) detected in photo."
+                    errorType: detectionData.errorType,
+                    classification: classification,
+                    message: reason,
+                    audit: detectionData.nsfwAudit || detectionData.aiAudit
                 });
-                alert("🚫 Photo Evidence Rejected by AI Vision Gate!\n\nNo recognized civic hazard was detected in this photo.\n\nAdhikar AI requires authentic photos of civic defects (Potholes, Garbage Dumps, Broken Street Lights, Fallen Trees) to prevent spam.\n\nPlease upload a photo of the actual civic issue.");
+                alert(formattedAlert);
             } else {
                 setEvidenceUrl(dataUrl);
                 setIsLiveCameraVerified(true);
@@ -608,6 +700,13 @@ export default function NewChallenge() {
             longitude: Number(mapPosition.lng || 77.1170),
             affectedPopulation: Number(affectedPopulation) || 850,
             evidenceImageUrl: evidenceUrl || "https://images.unsplash.com/photo-1541888946425-d0fbb180c5f5?w=800",
+            priority: assignedPriority || urgency || "MODERATE",
+            estimatedSeverity: estimatedSeverity,
+            modelConfidence: visionResult?.highestConfidence || 0.85,
+            priorityExplanation: priorityExplanation,
+            aiSuggestedDescription: visionResult?.suggestedDescription,
+            needsHumanReview: needsHumanReview,
+            safetyFlags: Array.isArray(safetyFlags) ? safetyFlags.join(",") : (safetyFlags || ""),
             assignedHei: suggestedHei?.name || "Delhi Technological University (DTU), Delhi",
             assignedHeiDepartment: suggestedHei?.specializedLabs?.[0] || "Urban Mobility & Clean Energy Innovation Hub",
             facultyMentor: suggestedHei?.facultyMentors?.[0] || "Prof. S. K. Garg",
@@ -886,7 +985,7 @@ export default function NewChallenge() {
                                     <div style={{ ...styles.visionResultPill, background: "#fef2f2", borderColor: "#fecaca", color: "#991b1b" }}>
                                         <AlertTriangle size={16} color="#dc2626" />
                                         <div>
-                                            <strong>❌ AI Gate Rejected:</strong> {visionResult.message || "No recognized civic hazard detected. Only authentic photos of potholes, garbage, broken streetlights, or fallen trees are accepted."}
+                                            <strong>❌ AI Gate Rejected {visionResult.classification ? `(${visionResult.classification})` : ""}:</strong> {visionResult.message || "No recognized civic hazard detected. Only authentic photos of potholes, garbage, broken streetlights, or fallen trees are accepted."}
                                         </div>
                                     </div>
                                 )}
@@ -894,17 +993,35 @@ export default function NewChallenge() {
 
                             <div className="form-grid-2" style={styles.grid2}>
                                 <div style={styles.inputGroup}>
-                                    <label style={styles.label}>Urgency & Community Risk Level *</label>
-                                    <select
-                                        value={urgency}
-                                        onChange={(e) => setUrgency(e.target.value)}
-                                        style={styles.select}
-                                    >
-                                        <option value="CRITICAL">Critical (Immediate Health/Safety Hazard)</option>
-                                        <option value="HIGH">High (Severe Economic / Daily Distress)</option>
-                                        <option value="MEDIUM">Medium (Persistent Local Problem)</option>
-                                        <option value="LOW">Low (Long-Term Efficiency Upgrade)</option>
-                                    </select>
+                                    <label style={styles.label}>AI-Assigned Priority Level (Authoritative)</label>
+                                    <div style={{
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: "10px",
+                                        padding: "10px 14px",
+                                        background: "#f8fafc",
+                                        borderRadius: "8px",
+                                        border: "1px solid #cbd5e1"
+                                    }}>
+                                        <span style={{
+                                            padding: "3px 12px",
+                                            borderRadius: "12px",
+                                            fontWeight: 800,
+                                            fontSize: "12px",
+                                            color: (assignedPriority === "CRITICAL" || urgency === "CRITICAL") ? "#dc2626" :
+                                                   (assignedPriority === "HIGH" || urgency === "HIGH") ? "#ea580c" :
+                                                   (assignedPriority === "MODERATE" || urgency === "MEDIUM") ? "#0284c7" : "#16a34a",
+                                            background: (assignedPriority === "CRITICAL" || urgency === "CRITICAL") ? "#fee2e2" :
+                                                        (assignedPriority === "HIGH" || urgency === "HIGH") ? "#ffedd5" :
+                                                        (assignedPriority === "MODERATE" || urgency === "MEDIUM") ? "#e0f2fe" : "#dcfce7",
+                                            border: "1px solid currentColor"
+                                        }}>
+                                            ● {assignedPriority || urgency || "MODERATE"}
+                                        </span>
+                                        <span style={{ fontSize: "11.5px", color: "#64748b" }}>
+                                            Automated AI determination (Citizens cannot manually alter priority)
+                                        </span>
+                                    </div>
                                 </div>
 
                                 <div style={styles.inputGroup}>
@@ -950,49 +1067,52 @@ export default function NewChallenge() {
 
                             <div style={styles.aiRow}>
                                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
-                                    <span style={styles.aiLabel}>🎯 Top Matched University (HEI):</span>
-                                    <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
-                                        {suggestedHei.matchScorePercent && (
-                                            <span style={{ fontSize: "11px", fontWeight: 800, color: "#7c3aed", background: "#f3e8ff", padding: "1px 8px", borderRadius: "10px" }}>
-                                                ⭐ {suggestedHei.matchScorePercent} Match
-                                            </span>
-                                        )}
-                                        {suggestedHei.distanceKm !== undefined && (
-                                            <span style={{ fontSize: "11px", fontWeight: 800, color: "#15803d", background: "#dcfce7", padding: "1px 8px", borderRadius: "10px" }}>
-                                                📍 {suggestedHei.distanceKm} km away
-                                            </span>
-                                        )}
-                                    </div>
+                                    <span style={styles.aiLabel}>🛡️ AI Civic Safety & Priority Triage:</span>
+                                    <span style={{
+                                        fontSize: "11px",
+                                        fontWeight: 800,
+                                        color: (assignedPriority === "CRITICAL" || urgency === "CRITICAL") ? "#dc2626" :
+                                               (assignedPriority === "HIGH" || urgency === "HIGH") ? "#ea580c" : "#0284c7",
+                                        background: (assignedPriority === "CRITICAL" || urgency === "CRITICAL") ? "#fee2e2" : "#e0f2fe",
+                                        padding: "1px 8px",
+                                        borderRadius: "10px"
+                                    }}>
+                                        ● {assignedPriority || urgency || "MODERATE"} PRIORITY
+                                    </span>
                                 </div>
                                 <div style={styles.heiPill}>
-                                    <Building2 size={20} color="#7c3aed" style={{ minWidth: "20px" }} />
+                                    <ShieldCheck size={20} color="#0284c7" style={{ minWidth: "20px" }} />
                                     <div style={{ width: "100%" }}>
-                                        <div style={{ fontWeight: 800, fontSize: "13px", color: "#0f172a" }}>{suggestedHei.name}</div>
+                                        <div style={{ fontWeight: 800, fontSize: "13px", color: "#0f172a" }}>
+                                            {estimatedSeverity || "Standard Civic Hazard Assessment"}
+                                        </div>
                                         <div style={{ fontSize: "11.5px", color: "#475569", marginTop: "2px" }}>
-                                            🔬 <strong>Lab:</strong> {suggestedHei.specializedLabs ? suggestedHei.specializedLabs[0] : suggestedHei.specializedLab}
+                                            {priorityExplanation || "Priority is calculated deterministically from visual evidence severity, road obstruction, and public safety rules."}
                                         </div>
-                                        <div style={{ fontSize: "11px", color: "#64748b", marginTop: "1px" }}>
-                                            👨‍🏫 <strong>Mentor:</strong> {suggestedHei.facultyMentors ? suggestedHei.facultyMentors[0] : suggestedHei.facultyMentor}
-                                        </div>
+                                        {safetyFlags && safetyFlags.length > 0 && (
+                                            <div style={{ fontSize: "11px", color: "#dc2626", fontWeight: 700, marginTop: "4px" }}>
+                                                ⚠️ Safety Flags: {Array.isArray(safetyFlags) ? safetyFlags.join(", ") : safetyFlags}
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             </div>
 
                             <div style={styles.securityBox}>
                                 <div style={{ fontWeight: 800, fontSize: "12px", color: "#0369a1", display: "flex", alignItems: "center", gap: "6px" }}>
-                                    <Shield size={14} color="#0284c7" /> Adhikar AI Trust Protocol
+                                    <Shield size={14} color="#0284c7" /> Smart Geodesic Deduplication
                                 </div>
                                 <div style={{ fontSize: "11px", color: "#334155", marginTop: "6px", lineHeight: "1.4" }}>
-                                    • <strong>1-Tap GPS:</strong> Real-time reverse-geocoded auto-fill anywhere in India.<br />
-                                    • <strong>4-Class YOLO:</strong> Potholes, Garbage, Streetlights, Fallen Trees.<br />
-                                    • <strong>Dual-Track:</strong> Direct Municipal action or University Capstone R&D.
+                                    • <strong>200m Cluster Perimeter:</strong> Multiple reports of the same defect are automatically grouped into a single Master Grievance.<br />
+                                    • <strong>Corroboration Escalation:</strong> When 3+ independent citizens report the same issue, its priority escalates automatically for immediate action.<br />
+                                    • <strong>Traceable Audit:</strong> Every individual report and photo remains independently preserved.
                                 </div>
                             </div>
 
                             <div style={styles.infoBox}>
-                                <strong>💡 NEP 2020 Solution Protocol:</strong>
+                                <strong>💡 Municipal Redressal Protocol:</strong>
                                 <p style={{ fontSize: "11.5px", color: "#475569", marginTop: "4px" }}>
-                                    Upon submission, grassroots challenges are matched with top national university labs for R&D, engineering prototyping, and citizen-verified field deployment.
+                                    Upon submission, verified civic complaints are dispatched to the responsible municipal departments with authoritative priority scheduling and verified GPS coordinates.
                                 </p>
                             </div>
                         </div>

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { X, CheckCircle, Clock, MapPin, Building, Users, Briefcase, Award, ThumbsUp, AlertTriangle, FileText, CheckCircle2, ChevronRight } from "lucide-react";
+import { X, CheckCircle, Clock, MapPin, Building, Users, Briefcase, Award, ThumbsUp, AlertTriangle, FileText, CheckCircle2, ChevronRight, ShieldCheck } from "lucide-react";
 import { STAGES_OF_INNOVATION, THEMATIC_DOMAINS } from "../data/indiaData";
 import { challengeService } from "../services/api";
 
@@ -162,51 +162,83 @@ export default function ChallengeDetailModal({ challenge, onClose, onUpdate }) {
                             </div>
                         </div>
 
-                        {/* Right: Assigned University & Industry Partner */}
+                        {/* Right: AI Civic Assessment, Priority & Cluster Corroboration */}
                         <div style={styles.column}>
-                            {/* University (HEI) Assignment */}
+                            {/* AI Civic Triage & Priority Card */}
                             <div style={styles.card}>
                                 <div style={styles.heiHeader}>
-                                    <div style={styles.heiIconBadge}>
-                                        <Building size={20} color="#7c3aed" />
+                                    <div style={{ ...styles.heiIconBadge, background: "#e0f2fe" }}>
+                                        <ShieldCheck size={20} color="#0284c7" />
                                     </div>
                                     <div>
-                                        <div style={styles.heiSub}>Assigned Higher Education Institution (HEI)</div>
-                                        <h4 style={styles.heiName}>{challenge.assignedHei || "Allocation in Progress by Nodal Officer"}</h4>
+                                        <div style={styles.heiSub}>AI Civic Safety & Priority Triage</div>
+                                        <div style={{ display: "flex", gap: "8px", alignItems: "center", marginTop: "3px" }}>
+                                            <span style={{
+                                                padding: "2px 10px",
+                                                borderRadius: "12px",
+                                                fontWeight: 800,
+                                                fontSize: "12px",
+                                                color: (challenge.priority === "CRITICAL" || challenge.urgency === "CRITICAL") ? "#dc2626" :
+                                                       (challenge.priority === "HIGH" || challenge.urgency === "HIGH") ? "#ea580c" :
+                                                       (challenge.priority === "MODERATE" || challenge.urgency === "MEDIUM") ? "#0284c7" : "#16a34a",
+                                                background: (challenge.priority === "CRITICAL" || challenge.urgency === "CRITICAL") ? "#fee2e2" :
+                                                            (challenge.priority === "HIGH" || challenge.urgency === "HIGH") ? "#ffedd5" :
+                                                            (challenge.priority === "MODERATE" || challenge.urgency === "MEDIUM") ? "#e0f2fe" : "#dcfce7",
+                                                border: "1px solid currentColor"
+                                            }}>
+                                                ● {challenge.priority || challenge.urgency || "MODERATE"} PRIORITY
+                                            </span>
+                                            {challenge.needsHumanReview && (
+                                                <span style={{ fontSize: "11px", fontWeight: 700, color: "#d97706", background: "#fef3c7", padding: "2px 8px", borderRadius: "10px" }}>
+                                                    Needs Nodal Review
+                                                </span>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
 
-                                {challenge.assignedHeiDepartment && (
-                                    <div style={styles.detailRow}>
-                                        <span style={styles.detailKey}>Department / Lab:</span>
-                                        <span style={styles.detailVal}>{challenge.assignedHeiDepartment}</span>
+                                {challenge.estimatedSeverity && (
+                                    <div style={{ ...styles.detailRow, marginTop: "8px" }}>
+                                        <span style={styles.detailKey}>Severity:</span>
+                                        <span style={styles.detailVal}><strong>{challenge.estimatedSeverity}</strong></span>
                                     </div>
                                 )}
-                                {challenge.facultyMentor && (
-                                    <div style={styles.detailRow}>
-                                        <span style={styles.detailKey}>Faculty Mentor:</span>
-                                        <span style={styles.detailVal}><strong>{challenge.facultyMentor}</strong></span>
+                                {challenge.priorityExplanation && (
+                                    <div style={{ marginTop: "10px", fontSize: "12px", color: "#334155", background: "#f8fafc", padding: "10px", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
+                                        <strong>AI Triage Rationale:</strong> {challenge.priorityExplanation}
                                     </div>
                                 )}
-                                {challenge.studentTeam && (
-                                    <div style={styles.detailRow}>
-                                        <span style={styles.detailKey}>Student Innovation Team:</span>
-                                        <span style={styles.detailVal}>{challenge.studentTeam}</span>
+                                {challenge.safetyFlags && (
+                                    <div style={{ ...styles.detailRow, marginTop: "8px" }}>
+                                        <span style={styles.detailKey}>Safety Indicators:</span>
+                                        <span style={{ ...styles.detailVal, color: "#b91c1c", fontWeight: 700 }}>{challenge.safetyFlags}</span>
                                     </div>
                                 )}
                             </div>
 
-                            {/* Industry / CSR Sponsor */}
+                            {/* Geodesic Cluster & Duplicate Corroboration */}
                             <div style={styles.card}>
                                 <div style={styles.heiHeader}>
                                     <div style={{ ...styles.heiIconBadge, background: "#dcfce7" }}>
-                                        <Briefcase size={20} color="#16a34a" />
+                                        <Users size={20} color="#16a34a" />
                                     </div>
                                     <div>
-                                        <div style={styles.heiSub}>Industry & CSR Ecosystem Partner</div>
-                                        <h4 style={styles.heiName}>{challenge.industryPartner || "CSR Co-sponsorship Under Review"}</h4>
+                                        <div style={styles.heiSub}>Geodesic Deduplication & Community Impact</div>
+                                        <h4 style={styles.heiName}>
+                                            {(challenge.duplicateCount && challenge.duplicateCount > 1)
+                                                ? `Corroborated by ${challenge.duplicateCount} Citizen Reports`
+                                                : "Verified Unique Civic Grievance"}
+                                        </h4>
                                     </div>
                                 </div>
+                                <div style={{ fontSize: "12px", color: "#475569", lineHeight: "1.5", marginTop: "8px" }}>
+                                    📍 <strong>200m Smart Perimeter:</strong> Independent citizen reports within this vicinity are automatically aggregated into Master Cluster #{challenge.clusterId || challenge.id} to eliminate duplicates and accelerate municipal response.
+                                </div>
+                                {challenge.priorityOverrideReason && (
+                                    <div style={{ marginTop: "10px", fontSize: "12px", color: "#0369a1", background: "#f0f9ff", padding: "8px", borderRadius: "8px", border: "1px solid #bae6fd" }}>
+                                        <strong>Admin Override Note:</strong> {challenge.priorityOverrideReason}
+                                    </div>
+                                )}
                                 {challenge.prototypeDetails && (
                                     <div style={{ marginTop: "10px", fontSize: "13px", color: "#334155", background: "#f8fafc", padding: "10px", borderRadius: "8px" }}>
                                         <strong>Prototype Technology:</strong> {challenge.prototypeDetails}
