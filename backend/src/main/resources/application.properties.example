@@ -1,0 +1,22 @@
+spring.application.name=adhikar-ai-backend
+
+server.port=8085
+
+# PostgreSQL Configuration
+spring.datasource.url=jdbc:postgresql://localhost:5432/sih_project_2026
+spring.datasource.username=postgres
+spring.datasource.password=your_postgres_password_here
+spring.datasource.driver-class-name=org.postgresql.Driver
+
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=false
+spring.jpa.properties.hibernate.format_sql=true
+
+# JWT Configuration
+jwt.secret=YourSecureJwtSecretKeyForAdhikarAIPlatform2026!
+jwt.expiration=86400000
+
+# Cloudinary Integration (Optional)
+cloudinary.cloud-name=YOUR_CLOUD_NAME
+cloudinary.api-key=YOUR_CLOUDINARY_API_KEY
+cloudinary.api-secret=YOUR_CLOUDINARY_API_SECRET
