@@ -313,10 +313,7 @@ class _HomeScreenState extends State<HomeScreen> {
       orElse: () => AppConstants.thematicDomains[0],
     );
 
-    final stageInfo = AppConstants.stagesOfInnovation.firstWhere(
-      (s) => s['key'] == c.status,
-      orElse: () => AppConstants.stagesOfInnovation[0],
-    );
+    final stageInfo = AppConstants.stagesOfInnovation[c.currentStageIndex];
 
     return InkWell(
       onTap: () {

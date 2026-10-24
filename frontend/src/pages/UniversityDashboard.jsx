@@ -6,7 +6,7 @@ import {
     AlertTriangle, Sparkles, SlidersHorizontal, ChevronRight, Eye,
     Lightbulb, BookOpen, Layers, Laptop, Cpu
 } from "lucide-react";
-import { THEMATIC_DOMAINS, PARTICIPATING_HEIS, INDUSTRY_CSR_PARTNERS, STAGES_OF_INNOVATION } from "../data/indiaData";
+import { THEMATIC_DOMAINS, PARTICIPATING_HEIS, INDUSTRY_CSR_PARTNERS, STAGES_OF_INNOVATION, getInnovationStageIndex } from "../data/indiaData";
 import { challengeService, getLocalChallenges, saveLocalChallenges } from "../services/api";
 import ChallengeDetailModal from "../components/ChallengeDetailModal";
 
@@ -277,8 +277,8 @@ export default function UniversityDashboard() {
                         <div style={styles.projectListGrid}>
                             {heiChallenges.map(challenge => {
                                 const domainObj = THEMATIC_DOMAINS.find(d => d.id === challenge.domain) || { icon: "💡", color: "#0284c7" };
-                                const stageIndex = STAGES_OF_INNOVATION.findIndex(s => s.key === challenge.status);
-                                const stageObj = STAGES_OF_INNOVATION[stageIndex >= 0 ? stageIndex : 0];
+                                const stageIndex = getInnovationStageIndex(challenge.status);
+                                const stageObj = STAGES_OF_INNOVATION[stageIndex] || STAGES_OF_INNOVATION[0];
 
                                 return (
                                     <div key={challenge.id} style={styles.projectCard}>

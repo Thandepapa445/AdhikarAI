@@ -366,162 +366,16 @@ export function findNearestMatchedHei(lat, lng, domainId) {
 }
 
 // ============================================================================
-// PAN-INDIA SEED CHALLENGES (DUAL TRACK: DIRECT MUNICIPAL + UNIVERSITY R&D)
+// PAN-INDIA SEED CHALLENGES (EMPTY - POPULATED ONLY BY AUTHENTIC REPORTS)
 // ============================================================================
-export const INITIAL_SEED_CHALLENGES = [
-    {
-        id: "ADH-2026-1041",
-        title: "Deep Hazardous Pothole Cluster and Asphalt Breakdown on Arterial Road",
-        description: "Severe road crater and pavement collapse on main commuter thoroughfare. Heavy monsoon runoff has eroded the sub-base, causing severe bike skidding risks and severe traffic bottlenecks during morning rush hour.",
-        domain: "INFRASTRUCTURE",
-        domainName: "Roads & Urban/Rural Infrastructure",
-        urgency: "HIGH",
-        submitterType: "INDIVIDUAL_CITIZEN",
-        submitterName: "Aditya Sharma",
-        citizenEmail: "aditya.sharma@adhikar.in",
-        state: "Delhi NCR",
-        district: "North West Delhi",
-        block: "Rohini Sector 16",
-        panchayat: "Main Commercial Avenue",
-        locationText: "Outer Ring Road Junction, Rohini Sector 16, Delhi",
-        latitude: 28.7499,
-        longitude: 77.1170,
-        affectedPopulation: 4500,
-        evidenceImageUrl: "https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?w=800",
-        assignedHei: "Delhi Technological University (DTU), Delhi",
-        assignedHeiDepartment: "Urban Mobility & Clean Energy Innovation Hub",
-        facultyMentor: "Prof. S. K. Garg",
-        status: "ASSIGNED",
-        upvotes: 42,
-        triageType: "CIVIC_DIRECT",
-        recommendedDepartment: "Public Works Department (PWD)",
-        createdAt: "2026-09-05T09:30:00Z",
-        updatedAt: "2026-09-07T12:00:00Z"
-    },
-    {
-        id: "ADH-2026-1042",
-        title: "Unattended Solid Waste Garbage Accumulation Near Residential Market",
-        description: "Overflowing municipal garbage dump creating severe hygiene risks, foul odor, and street dog menace outside primary school. Requires immediate mechanical clearance and permanent smart segregation bins.",
-        domain: "HEALTHCARE",
-        domainName: "Sanitation & Public Health",
-        urgency: "HIGH",
-        submitterType: "COMMUNITY_SHG",
-        submitterName: "Pooja Verma (Clean City SHG)",
-        citizenEmail: "pooja.verma@adhikar.in",
-        state: "Uttar Pradesh",
-        district: "Ghaziabad",
-        block: "Vijay Nagar",
-        panchayat: "Sector 11 Market",
-        locationText: "Near ABESIT Campus, NH-09, Vijay Nagar, Ghaziabad",
-        latitude: 28.6360,
-        longitude: 77.4470,
-        affectedPopulation: 2800,
-        evidenceImageUrl: "https://images.unsplash.com/photo-1605600659873-d808a13e4d2a?w=800",
-        assignedHei: "ABESIT Group of Institutions, Ghaziabad",
-        assignedHeiDepartment: "Smart Infrastructure & Road Materials Lab",
-        facultyMentor: "Dr. Hemant Ahuja",
-        status: "PROTOTYPING",
-        upvotes: 67,
-        triageType: "CIVIC_DIRECT",
-        recommendedDepartment: "Municipal Solid Waste Management",
-        createdAt: "2026-09-04T11:20:00Z",
-        updatedAt: "2026-09-07T14:15:00Z"
-    },
-    {
-        id: "ADH-2026-1043",
-        title: "Non-Functional Public Streetlight Fixtures Creating Dark Nocturnal Corridor",
-        description: "Four consecutive street lighting poles with broken luminaires and damaged electrical wiring along the canal road. Pedestrian safety and women commuter security severely compromised after sunset.",
-        domain: "INFRASTRUCTURE",
-        domainName: "Roads & Urban/Rural Infrastructure",
-        urgency: "MEDIUM",
-        submitterType: "INDIVIDUAL_CITIZEN",
-        submitterName: "Rohan Nair",
-        citizenEmail: "rohan.nair@adhikar.in",
-        state: "Karnataka",
-        district: "Bengaluru Urban",
-        block: "Yelahanka",
-        panchayat: "Canal Ring Road",
-        locationText: "Near IISc Outer Perimeter, Yelahanka, Bengaluru",
-        latitude: 13.0219,
-        longitude: 77.5671,
-        affectedPopulation: 1600,
-        evidenceImageUrl: "https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=800",
-        assignedHei: "Indian Institute of Science (IISc), Bengaluru",
-        assignedHeiDepartment: "Center for Sustainable Technologies (CST)",
-        facultyMentor: "Prof. Monto Mani",
-        status: "FIELD_TESTING",
-        upvotes: 38,
-        triageType: "CIVIC_DIRECT",
-        recommendedDepartment: "State Electricity Board / Lighting Division",
-        createdAt: "2026-09-03T16:45:00Z",
-        updatedAt: "2026-09-07T10:30:00Z"
-    },
-    {
-        id: "ADH-2026-1044",
-        title: "Fallen Tree and Heavy Timber Obstructing Public Roadway",
-        description: "Large banyan branch collapsed during heavy rainstorm, completely blocking vehicular transit and snapping overhead telecom cables. Emergency clearance crew needed to saw timber and reopen roadway.",
-        domain: "ENERGY_ENVIRONMENT",
-        domainName: "Clean Energy & Environmental Safety",
-        urgency: "CRITICAL",
-        submitterType: "GRAM_PANCHAYAT",
-        submitterName: "Manoj Kumar (Panchayat Head)",
-        citizenEmail: "manoj.mukhya@adhikar.in",
-        state: "Jharkhand",
-        district: "Palamu",
-        block: "Satbarwa",
-        panchayat: "Satbarwa Khurd",
-        locationText: "National Highway Link, Satbarwa Khurd, Palamu",
-        latitude: 23.9525,
-        longitude: 84.1825,
-        affectedPopulation: 3200,
-        evidenceImageUrl: "https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?w=800",
-        assignedHei: "BIT Mesra, Ranchi",
-        assignedHeiDepartment: "Clean Water & Rural Innovation FabLab",
-        facultyMentor: "Dr. Arvind Sharma",
-        status: "RESOLVED",
-        upvotes: 91,
-        triageType: "CIVIC_DIRECT",
-        recommendedDepartment: "Urban Forestry & Disaster Relief Unit",
-        createdAt: "2026-09-01T08:00:00Z",
-        updatedAt: "2026-09-07T16:00:00Z"
-    },
-    {
-        id: "ADH-2026-1045",
-        title: "Fluoride and Arsenic Contamination in Village Borewells - Low Cost Filtration Need",
-        description: "Over 8 drinking water handpumps exhibit fluoride levels exceeding 3.5 mg/L causing skeletal fluorosis among children. Need low-cost, bio-char or graphene-based solar filtration unit deployable at village level under NEP 2020 student capstone.",
-        domain: "WATER",
-        domainName: "Water Resources & Management",
-        urgency: "HIGH",
-        submitterType: "COMMUNITY_SHG",
-        submitterName: "Sunita Devi (Mahila Mandal)",
-        citizenEmail: "sunita.devi@adhikar.in",
-        state: "Jharkhand",
-        district: "Palamu",
-        block: "Satbarwa",
-        panchayat: "Dali Village",
-        locationText: "Dali Gram Panchayat, Satbarwa, Palamu",
-        latitude: 23.9200,
-        longitude: 84.2300,
-        affectedPopulation: 2200,
-        evidenceImageUrl: "https://images.unsplash.com/photo-1541888946425-d0fbb180c5f5?w=800",
-        assignedHei: "BIT Mesra, Ranchi",
-        assignedHeiDepartment: "Clean Water & Rural Innovation FabLab",
-        facultyMentor: "Dr. Arvind Sharma",
-        status: "PROTOTYPING",
-        upvotes: 114,
-        triageType: "UNIVERSITY_RND",
-        recommendedDepartment: "Public Health Engineering Department (PHED)",
-        createdAt: "2026-08-28T10:15:00Z",
-        updatedAt: "2026-09-07T11:45:00Z"
-    }
-];
+export const INITIAL_SEED_CHALLENGES = [];
 
 // ============================================================================
 // 8-STAGE SOCIAL INNOVATION & GRIEVANCE LIFECYCLE (NEP 2020)
 // ============================================================================
 export const STAGES_OF_INNOVATION = [
     { key: "SUBMITTED", step: 1, label: "Problem Ingested", name: "Problem Ingested", desc: "Citizen challenge verified via 1-Tap GPS & AI Vision.", icon: "📥" },
-    { key: "SCREENING", step: 2, label: "Domain Triage", name: "Domain Triage", desc: "AI NLP classification & duplicate deduplication.", icon: "🤖" },
+    { key: "VALIDATED", aliasKey: "SCREENING", step: 2, label: "Domain Triage", name: "Domain Triage", desc: "AI NLP classification & duplicate deduplication.", icon: "🤖" },
     { key: "ASSIGNED", step: 3, label: "University HEI Matched", name: "University HEI Matched", desc: "Assigned to specialized multidisciplinary student lab.", icon: "🎓" },
     { key: "RESEARCH", step: 4, label: "Field Research & Capstone", name: "Field Research & Capstone", desc: "Student team scoping challenge under faculty mentor.", icon: "🔬" },
     { key: "PROTOTYPE", step: 5, label: "Lab Prototyping", name: "Lab Prototyping", desc: "Low-cost engineering prototype built in university fablab.", icon: "⚙️" },
@@ -529,6 +383,26 @@ export const STAGES_OF_INNOVATION = [
     { key: "PILOT", step: 7, label: "Field Deployment & Verification", name: "Field Deployment & Verification", desc: "Live on-ground deployment in local area/ward.", icon: "🚀" },
     { key: "RESOLVED", step: 8, label: "Citizen Sign-Off", name: "Citizen Sign-Off", desc: "Citizen & local authority verified successful resolution.", icon: "✅" }
 ];
+
+export function getInnovationStageIndex(status) {
+    if (!status) return 0;
+    const s = String(status).trim().toUpperCase();
+    if (s === "SUBMITTED") return 0;
+    if (s === "VALIDATED" || s === "SCREENING") return 1;
+    if (s === "ASSIGNED") return 2;
+    if (s === "RESEARCH" || s === "R&D") return 3;
+    if (s === "PROTOTYPE" || s === "PROTOTYPING") return 4;
+    if (s === "TESTING" || s === "FIELD_TESTING") return 5;
+    if (s === "PILOT" || s === "DEPLOYED") return 6;
+    if (s === "RESOLVED" || s === "CLOSED" || s === "VERIFIED") return 7;
+    const idx = STAGES_OF_INNOVATION.findIndex(st => st.key.toUpperCase() === s || st.aliasKey?.toUpperCase() === s);
+    return idx >= 0 ? idx : 0;
+}
+
+export function getInnovationStage(status) {
+    const idx = getInnovationStageIndex(status);
+    return STAGES_OF_INNOVATION[idx] || STAGES_OF_INNOVATION[0];
+}
 
 export const INDUSTRY_CSR_PARTNERS = [
     {

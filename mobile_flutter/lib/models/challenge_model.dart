@@ -181,7 +181,16 @@ class ChallengeModel {
   }
 
   int get currentStageIndex {
-    final idx = AppConstants.stagesOfInnovation.indexWhere((s) => s['key'] == status);
+    final s = status.toUpperCase().trim();
+    if (s == 'SUBMITTED') return 0;
+    if (s == 'VALIDATED' || s == 'SCREENING') return 1;
+    if (s == 'ASSIGNED') return 2;
+    if (s == 'RESEARCH' || s == 'R&D') return 3;
+    if (s == 'PROTOTYPE' || s == 'PROTOTYPING') return 4;
+    if (s == 'TESTING' || s == 'FIELD_TESTING') return 5;
+    if (s == 'PILOT' || s == 'DEPLOYED') return 6;
+    if (s == 'RESOLVED' || s == 'CLOSED' || s == 'VERIFIED') return 7;
+    final idx = AppConstants.stagesOfInnovation.indexWhere((st) => st['key'] == s);
     return idx >= 0 ? idx : 0;
   }
 }

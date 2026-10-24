@@ -129,7 +129,7 @@ export default function NavBar({ activeTab, setActiveTab }) {
                                             DTU Delhi • Urban Mobility Lab
                                         </div>
                                         <div style={{ fontSize: 12, color: "#475569" }}>
-                                            Cold-mix polymer patch deployed for Pothole #ADH-2026-1041. Field verification requested.
+                                            Field pilot deployed for community infrastructure challenge. Verification requested.
                                         </div>
                                         <div style={{ fontSize: 10, color: "#94a3b8", marginTop: 3 }}>2 hours ago</div>
                                     </div>

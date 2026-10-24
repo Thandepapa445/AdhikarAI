@@ -48,26 +48,47 @@ const isJunkChallenge = (c) => {
     );
 };
 
+export const isFakeSeedChallenge = (c) => {
+    if (!c) return true;
+    const sid = String(c.id || "");
+    const email = String(c.citizenEmail || "").toLowerCase();
+    const title = String(c.title || "").toLowerCase();
+    return (
+        sid === "1" || sid === "2" || sid === "3" || sid === "4" || sid === "5" ||
+        sid === "ADH-2026-1041" || sid === "ADH-2026-1042" || sid === "ADH-2026-1043" || sid === "ADH-2026-1044" || sid === "ADH-2026-1045" ||
+        email === "aditya.sharma@adhikar.in" ||
+        email === "pooja.verma@adhikar.in" ||
+        email === "rohan.nair@adhikar.in" ||
+        email === "manoj.mukhya@adhikar.in" ||
+        email === "sunita.devi@adhikar.in" ||
+        title.includes("deep hazardous pothole cluster") ||
+        title.includes("unattended solid waste garbage accumulation near residential market") ||
+        title.includes("non-functional public streetlight fixtures creating dark nocturnal corridor") ||
+        title.includes("fallen tree and heavy timber obstructing public roadway") ||
+        title.includes("fluoride and arsenic contamination in village borewells")
+    );
+};
+
 export function getLocalChallenges() {
     try {
         const stored = localStorage.getItem(STORAGE_KEY);
         if (stored) {
             const parsed = JSON.parse(stored);
             if (Array.isArray(parsed) && parsed.length > 0) {
-                const clean = parsed.filter(c => !isJunkChallenge(c));
-                if (clean.length > 0) return clean;
+                const clean = parsed.filter(c => !isJunkChallenge(c) && !isFakeSeedChallenge(c));
+                return clean;
             }
         }
     } catch (e) {
         console.error("Local storage read error", e);
     }
-    return INITIAL_SEED_CHALLENGES;
+    return [];
 }
 
 export function saveLocalChallenges(challenges) {
     try {
         if (Array.isArray(challenges)) {
-            const clean = challenges.filter(c => !isJunkChallenge(c));
+            const clean = challenges.filter(c => !isJunkChallenge(c) && !isFakeSeedChallenge(c));
             localStorage.setItem(STORAGE_KEY, JSON.stringify(clean));
         }
     } catch (e) {
@@ -75,17 +96,23 @@ export function saveLocalChallenges(challenges) {
     }
 }
 
-// ============================================================================
-// HIGH-LEVEL CHALLENGE API METHODS
-// ============================================================================
-
 export const challengeService = {
+    async login(credentials) {
+        const res = await api.post("/auth/login", credentials);
+        if (res.data?.token) {
+            localStorage.setItem("adhikar_token", res.data.token);
+            localStorage.setItem("adhikar_user_email", res.data.email);
+            localStorage.setItem("adhikar_user_role", res.data.role);
+            localStorage.setItem("adhikar_user_name", res.data.name || "User");
+        }
+        return res.data;
+    },
     // Fetch all challenges (backend is primary authoritative source)
     async getAllChallenges() {
         try {
             const res = await api.get("/challenges");
-            if (Array.isArray(res.data) && res.data.length > 0) {
-                const clean = res.data.filter(c => !isJunkChallenge(c));
+            if (Array.isArray(res.data)) {
+                const clean = res.data.filter(c => !isJunkChallenge(c) && !isFakeSeedChallenge(c));
                 saveLocalChallenges(clean);
                 return clean;
             }
@@ -99,16 +126,15 @@ export const challengeService = {
     async getMyChallenges(citizenEmail) {
         try {
             const res = await api.get("/challenges/my");
-            if (Array.isArray(res.data) && res.data.length > 0) {
-                return res.data;
+            if (Array.isArray(res.data)) {
+                return res.data.filter(c => !isFakeSeedChallenge(c));
             }
         } catch (err) {
             // Fallback
         }
         const all = getLocalChallenges();
         if (!citizenEmail) return all;
-        const my = all.filter(c => c.citizenEmail === citizenEmail);
-        return my.length > 0 ? my : all;
+        return all.filter(c => c.citizenEmail === citizenEmail);
     },
 
     // Submit / Create new societal challenge
@@ -197,33 +223,25 @@ export const challengeService = {
 
     // Generic Stage Progression Updater (Advances through all 8 Stages)
     async updateChallengeStatus(id, newStatus, extraData = {}) {
-        const list = getLocalChallenges();
-        const updated = list.map(c => {
-            if (String(c.id) === String(id)) {
-                return {
-                    ...c,
-                    status: newStatus,
-                    ...extraData,
-                    updatedAt: new Date().toISOString()
-                };
-            }
-            return c;
-        });
-        saveLocalChallenges(updated);
-
+        const payload = { status: newStatus, ...extraData };
         try {
-            const res = await api.put(`/challenges/${id}/status`, {
-                status: newStatus,
-                ...extraData
-            });
+            const res = await api.put(`/challenges/${id}/status`, payload);
             if (res.data) {
-                const merged = updated.map(c => String(c.id) === String(id) ? res.data : c);
+                const list = getLocalChallenges();
+                const merged = list.map(c => String(c.id) === String(id) ? res.data : c);
                 saveLocalChallenges(merged);
                 return merged;
             }
         } catch (e) {
+            console.error("Backend status update failed:", e?.response?.data || e?.message);
+            if (e?.response && (e.response.status === 401 || e.response.status === 403)) {
+                throw new Error(e.response.data?.message || "Unauthorized: Administrative privileges required to advance stage.");
+            }
             console.warn("Backend status update fallback to local storage", e?.message);
         }
+        const list = getLocalChallenges();
+        const updated = list.map(c => String(c.id) === String(id) ? { ...c, status: newStatus, ...extraData, updatedAt: new Date().toISOString() } : c);
+        saveLocalChallenges(updated);
         return updated;
     },
 
@@ -239,6 +257,20 @@ export const challengeService = {
 
     // Citizen verify pilot deployment
     async verifyPilot(id, feedbackText) {
+        try {
+            const res = await api.post(`/challenges/${id}/verify-pilot`, {
+                feedback: feedbackText || "Citizen field verification confirmed by local resident & authority."
+            });
+            if (res.data) {
+                const list = getLocalChallenges();
+                const merged = list.map(c => String(c.id) === String(id) ? res.data : c);
+                saveLocalChallenges(merged);
+                return merged;
+            }
+        } catch (e) {
+            console.error("verifyPilot failed:", e?.response?.data || e?.message);
+            throw e;
+        }
         return this.updateChallengeStatus(id, "RESOLVED", {
             citizenVerificationRequested: false,
             citizenFeedbackNotes: feedbackText || "Citizen field verification confirmed by local resident & authority."
@@ -416,4 +448,5 @@ export const challengeService = {
     }
 };
 
+Object.assign(api, challengeService);
 export default api;

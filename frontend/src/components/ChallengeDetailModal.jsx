@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { X, CheckCircle, Clock, MapPin, Building, Users, Briefcase, Award, ThumbsUp, AlertTriangle, FileText, CheckCircle2, ChevronRight, ShieldCheck } from "lucide-react";
-import { STAGES_OF_INNOVATION, THEMATIC_DOMAINS } from "../data/indiaData";
+import { STAGES_OF_INNOVATION, THEMATIC_DOMAINS, getInnovationStageIndex, getInnovationStage } from "../data/indiaData";
 import { challengeService } from "../services/api";
 
 export default function ChallengeDetailModal({ challenge, onClose, onUpdate }) {
@@ -16,8 +16,7 @@ export default function ChallengeDetailModal({ challenge, onClose, onUpdate }) {
         color: "#0284c7"
     };
 
-    const currentStageIndex = STAGES_OF_INNOVATION.findIndex(s => s.key === challenge.status);
-    const activeStage = currentStageIndex >= 0 ? currentStageIndex : 0;
+    const activeStage = getInnovationStageIndex(challenge.status);
 
     const handleVerifyPilot = async () => {
         setVerifying(true);

@@ -72,10 +72,10 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/api/auth/**").permitAll()
                         // 1. Secured Administrative / Nodal Officer Endpoints
-                        .requestMatchers(HttpMethod.PUT, "/api/challenges/*/override-priority").hasAnyRole("NODAL_ADMIN", "ADMIN", "OFFICER", "GRAM_PANCHAYAT")
-                        .requestMatchers(HttpMethod.POST, "/api/challenges/*/separate-cluster").hasAnyRole("NODAL_ADMIN", "ADMIN", "OFFICER", "GRAM_PANCHAYAT")
-                        .requestMatchers(HttpMethod.PUT, "/api/challenges/*/status").hasAnyRole("NODAL_ADMIN", "ADMIN", "OFFICER", "GRAM_PANCHAYAT", "HEI_FACULTY", "INDUSTRY_PARTNER")
-                        .requestMatchers(HttpMethod.POST, "/api/challenges/*/allocate").hasAnyRole("NODAL_ADMIN", "ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/challenges/*/override-priority").hasAnyRole("NODAL_ADMIN", "ADMIN", "OFFICER", "NODAL_OFFICER", "GRAM_PANCHAYAT")
+                        .requestMatchers(HttpMethod.POST, "/api/challenges/*/separate-cluster").hasAnyRole("NODAL_ADMIN", "ADMIN", "OFFICER", "NODAL_OFFICER", "GRAM_PANCHAYAT")
+                        .requestMatchers(HttpMethod.PUT, "/api/challenges/*/status").hasAnyRole("NODAL_ADMIN", "ADMIN", "OFFICER", "NODAL_OFFICER", "GRAM_PANCHAYAT", "HEI_FACULTY", "INDUSTRY_PARTNER")
+                        .requestMatchers(HttpMethod.POST, "/api/challenges/*/allocate").hasAnyRole("NODAL_ADMIN", "ADMIN", "NODAL_OFFICER")
                         // 2. Residential Society Platform Endpoints
                         .requestMatchers(HttpMethod.GET, "/api/society/organizations").permitAll()
                         .requestMatchers(HttpMethod.PUT, "/api/society/issues/*/status").hasAnyRole("SOCIETY_MANAGER", "ADMIN")

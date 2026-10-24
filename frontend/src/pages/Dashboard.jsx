@@ -5,7 +5,7 @@ import {
     Briefcase, CheckCircle2, ChevronRight, AlertTriangle, ArrowUpRight,
     TrendingUp, ShieldCheck, FileCheck2, Lightbulb, RefreshCw, GraduationCap
 } from "lucide-react";
-import { THEMATIC_DOMAINS, PARTICIPATING_HEIS, INDIA_STATES_AND_REGIONS, STAGES_OF_INNOVATION, INDUSTRY_CSR_PARTNERS } from "../data/indiaData";
+import { THEMATIC_DOMAINS, PARTICIPATING_HEIS, INDIA_STATES_AND_REGIONS, STAGES_OF_INNOVATION, INDUSTRY_CSR_PARTNERS, getInnovationStageIndex, getInnovationStage } from "../data/indiaData";
 import { challengeService, getLocalChallenges } from "../services/api";
 import NavBar from "../components/NavBar";
 import ChallengeDetailModal from "../components/ChallengeDetailModal";
@@ -72,6 +72,26 @@ export default function Dashboard() {
         return () => window.removeEventListener("focus", handleFocus);
     }, []);
 
+    // Live sync currently open modal challenge when admin updates stage or HEI allocation
+    useEffect(() => {
+        if (selectedChallenge) {
+            const fresh = challenges.find(c => String(c.id) === String(selectedChallenge.id));
+            if (fresh && (
+                fresh.status !== selectedChallenge.status ||
+                fresh.assignedHei !== selectedChallenge.assignedHei ||
+                fresh.assignedHeiDepartment !== selectedChallenge.assignedHeiDepartment ||
+                fresh.facultyMentor !== selectedChallenge.facultyMentor ||
+                fresh.studentTeam !== selectedChallenge.studentTeam ||
+                fresh.industryPartner !== selectedChallenge.industryPartner ||
+                fresh.prototypeDetails !== selectedChallenge.prototypeDetails ||
+                fresh.pilotResults !== selectedChallenge.pilotResults ||
+                fresh.updatedAt !== selectedChallenge.updatedAt
+            )) {
+                setSelectedChallenge(fresh);
+            }
+        }
+    }, [challenges, selectedChallenge]);
+
     // Impact Statistics
     const totalChallenges = challenges.length;
     const inActiveRnD = challenges.filter(c => ["RESEARCH", "PROTOTYPE", "TESTING"].includes(c.status)).length;
@@ -90,7 +110,7 @@ export default function Dashboard() {
                 c.description?.toLowerCase().includes(searchTerm.toLowerCase());
 
             const matchesDomain = selectedDomain === "ALL" || c.domain === selectedDomain;
-            const matchesStatus = selectedStatus === "ALL" || c.status === selectedStatus;
+            const matchesStatus = selectedStatus === "ALL" || getInnovationStageIndex(c.status) === getInnovationStageIndex(selectedStatus);
 
             return matchesSearch && matchesDomain && matchesStatus;
         });
@@ -315,12 +335,8 @@ export default function Dashboard() {
                                         bgColor: "#e0f2fe"
                                     };
 
-                                    const stageIndex = STAGES_OF_INNOVATION.findIndex(s => s.key === challenge.status);
-                                    const currentStage = STAGES_OF_INNOVATION[stageIndex >= 0 ? stageIndex : 0] || {
-                                        step: 1,
-                                        label: challenge.status || "Submitted",
-                                        name: challenge.status || "Submitted"
-                                    };
+                                    const stageIndex = getInnovationStageIndex(challenge.status);
+                                    const currentStage = STAGES_OF_INNOVATION[stageIndex] || STAGES_OF_INNOVATION[0];
 
                                     return (
                                         <article

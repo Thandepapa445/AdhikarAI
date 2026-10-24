@@ -309,7 +309,19 @@ public class ChallengeService {
         if (body != null) {
             if (body.get("status") != null) {
                 try {
-                    challenge.setStatus(Challenge.Status.valueOf((String) body.get("status")));
+                    String statusStr = ((String) body.get("status")).trim().toUpperCase();
+                    if ("SCREENING".equals(statusStr)) {
+                        statusStr = "VALIDATED";
+                    } else if ("PROTOTYPING".equals(statusStr)) {
+                        statusStr = "PROTOTYPE";
+                    } else if ("FIELD_TESTING".equals(statusStr)) {
+                        statusStr = "TESTING";
+                    } else if ("DEPLOYED".equals(statusStr)) {
+                        statusStr = "PILOT";
+                    } else if ("CLOSED".equals(statusStr) || "VERIFIED".equals(statusStr)) {
+                        statusStr = "RESOLVED";
+                    }
+                    challenge.setStatus(Challenge.Status.valueOf(statusStr));
                 } catch (Exception e) {
                     // ignore invalid status enum
                 }

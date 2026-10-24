@@ -31,69 +31,10 @@ class ChallengeProvider with ChangeNotifier {
   String get selectedStage => _selectedStage;
   String get searchQuery => _searchQuery;
 
-  // Seed default data for offline initial view
+  // Seed default data for offline initial view (empty list - genuine data only)
   void initializeWithDefaults() {
-    if (_challenges.isEmpty) {
-      _challenges = [
-        ChallengeModel(
-          id: "ADH-2026-1041",
-          title: "Deep Hazardous Pothole Cluster and Asphalt Breakdown on Arterial Road",
-          description: "Severe road crater and pavement collapse on main commuter thoroughfare. Heavy monsoon runoff has eroded the sub-base, causing severe bike skidding risks and severe traffic bottlenecks.",
-          domain: "INFRASTRUCTURE",
-          domainName: "Roads & Urban/Rural Infrastructure",
-          urgency: "HIGH",
-          submitterType: "INDIVIDUAL_CITIZEN",
-          submitterName: "Aditya Sharma",
-          citizenEmail: "aditya.sharma@adhikar.in",
-          district: "North West Delhi",
-          block: "Rohini",
-          panchayat: "Sector 16",
-          locationText: "Outer Ring Road Junction, Rohini Sector 16, Delhi",
-          latitude: 28.7499,
-          longitude: 77.1170,
-          affectedPopulation: 4500,
-          status: "PILOT",
-          evidenceImageUrl: "https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?w=800",
-          upvotes: 48,
-          assignedHei: "Delhi Technological University (DTU), Delhi",
-          assignedHeiDepartment: "Urban Mobility & Clean Energy Innovation Hub",
-          facultyMentor: "Prof. S. K. Garg",
-          studentTeam: "CivicTech Pioneers",
-          industryPartner: "Smart Cities & Infrastructure Mission",
-          prototypeDetails: "Rapid Cold-Mix Polymer Composite Patch",
-          pilotResults: "Installed across 40m road crater section; durability verified under heavy bus transit.",
-          citizenVerificationRequested: true,
-        ),
-        ChallengeModel(
-          id: "ADH-2026-1042",
-          title: "Unattended Solid Waste Garbage Accumulation Near Residential Market",
-          description: "Overflowing municipal garbage dump creating severe hygiene risks, foul odor, and street dog menace outside primary school. Requires immediate mechanical clearance and permanent smart segregation bins.",
-          domain: "HEALTHCARE",
-          domainName: "Sanitation & Public Health",
-          urgency: "HIGH",
-          submitterType: "COMMUNITY_SHG",
-          submitterName: "Pooja Verma",
-          citizenEmail: "pooja.verma@adhikar.in",
-          district: "Ghaziabad",
-          block: "Vijay Nagar",
-          panchayat: "Sector 11",
-          locationText: "Near ABESIT Campus, NH-09, Vijay Nagar, Ghaziabad",
-          latitude: 28.6360,
-          longitude: 77.4470,
-          affectedPopulation: 2800,
-          status: "PROTOTYPE",
-          evidenceImageUrl: "https://images.unsplash.com/photo-1605600659873-d808a13e4d2a?w=800",
-          upvotes: 34,
-          assignedHei: "ABESIT Group of Institutions, Ghaziabad",
-          assignedHeiDepartment: "Smart Infrastructure & Road Materials Lab",
-          facultyMentor: "Dr. Hemant Ahuja",
-          studentTeam: "Swachh Bharat Innovation Team",
-          industryPartner: "Urban Local Body Environmental Fund",
-          prototypeDetails: "Solar-Compacting Smart Waste Segregator",
-        ),
-      ];
-      notifyListeners();
-    }
+    _challenges = [];
+    notifyListeners();
   }
 
   // Load from Backend API
@@ -103,13 +44,9 @@ class ChallengeProvider with ChangeNotifier {
 
     try {
       final list = await _apiService.fetchChallenges();
-      if (list.isNotEmpty) {
-        _challenges = list;
-      } else {
-        initializeWithDefaults();
-      }
+      _challenges = list;
     } catch (e) {
-      initializeWithDefaults();
+      _challenges = [];
     } finally {
       _isLoading = false;
       notifyListeners();
